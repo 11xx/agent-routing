@@ -1,9 +1,6 @@
-# GENERATED FILE — do not edit.
-# Source: routing/models.toml in ai-agent-routing.
-# Regenerate with `agent-routing gen`; never hand-patch this file.
+<!-- GENERATED from routing/models.toml in ai-agent-routing.
+     Regenerate with `agent-routing gen`; never hand-patch this file. -->
 
-#+name: model-routing
-#+begin_src markdown :tangle no
 ## Model Routing & Delegation
 
 Standing defaults for complementary Claude and Codex orchestration. **Opus 5 is the head model** — it plans, orchestrates, delegates, and owns the final answer — and Sol is the technical peer and execution axis beneath it. Delegation uses the other subscription where its model or quota is a better fit. Only models normally available on the active subscriptions are routed. Availability history remains in `~/code/ai-agent-routing/eras/`.
@@ -113,4 +110,3 @@ Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held
 
 These are **defaults, not limits**, except where a model or effort is explicitly prohibited. Judge output rather than rank alone. Machine-readable form of this matrix and the delegation mechanism rules: run `agent-routing models` / `agent-routing delegation` (no path needed). Mechanism-routing prose canon: `agent-routing mechanism`. Never route work through harness-native subagent defaults; invoke executors explicitly with stated model, effort, and a curated brief.
 
-#+end_src

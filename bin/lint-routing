@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Check that the authored doctrine and the machine manifest still agree.
+
+Two representations of the roster exist on purpose. `routing/models.toml` is
+data — queryable, complete, one row per effort. `doctrine/model-routing.md` is
+the text that lands in every harness's instructions, and it is *authored*: it
+compresses adjacent tiers into one row, orders rows for a reader rather than a
+parser, and phrases each role in prose. Generating either from the other
+destroys the other's reason to exist; earlier attempts to do so lost the
+compression, the ordering, and the wording in turn.
+
+What can be mechanised is agreement. This reports where they disagree instead
+of asking anyone to remember: an unknown model in the doctrine, a model in the
+manifest that the doctrine never mentions, or a number that appears in both and
+differs. It does not rewrite anything.
+"""
+
+import pathlib
+import re
+import sys
+import tomllib
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+DOCTRINE = ROOT / "doctrine" / "model-routing.md"
+MANIFEST = ROOT / "routing" / "models.toml"
+
+# "opus-5 · high", "gpt-5.6-luna · low/medium", and separator-less rows such as
+# "small-model class" whose whole class is one line.
+ROW = re.compile(
+    r"^\|\s*([a-z0-9.\- ]+?)\s*(?:·\s*([^|]+?)\s*)?\|([^|]*)\|([^|]*)\|([^|]*)\|"
+)
+NUMBER = re.compile(r"\d+(?:\.\d+)?")
+
+
+def efforts_in(cell):
+    """Split a compressed effort cell into the tiers it covers."""
+    return [part.strip() for part in re.split(r"[/,]| and ", cell) if part.strip()]
+
+
+def numbers_in(cell):
+    return set(NUMBER.findall(cell.replace(",", "")))
+
+
+def main():
+    with MANIFEST.open("rb") as handle:
+        models = tomllib.load(handle)["model"]
+    by_id = {m["id"]: m for m in models}
+
+    problems = []
+    mentioned = set()
+
+    for line in DOCTRINE.read_text().splitlines():
+        match = ROW.match(line)
+        if not match:
+            continue
+        model_id, effort_cell, pass_cell, usd_cell, out_cell = match.groups()
+        # The doctrine writes a class name with spaces where the manifest uses
+        # an id; compare on the id spelling.
+        model_id = model_id.replace(" ", "-")
+        effort_cell = effort_cell or ""
+        if model_id in {"model-·-effort", ":---"}:
+            continue
+        if model_id not in by_id:
+            problems.append(f"doctrine names unknown model {model_id!r}")
+            continue
+        mentioned.add(model_id)
+        model = by_id[model_id]
+        tiers = {e["effort"]: e for e in model.get("effort", [])}
+
+        for effort in efforts_in(effort_cell):
+            if effort in {"any", "class"} or effort not in tiers:
+                continue
+            entry = tiers[effort]
+            for label, cell, key, scale in (
+                ("pass@1", pass_cell, "pass_at_1", 100),
+                ("$", usd_cell, "usd_per_task", 1),
+            ):
+                value = entry.get(key)
+                if value is None:
+                    continue
+                expected = f"{round(value * scale)}" if scale == 100 else f"{value:.2f}"
+                found = numbers_in(cell)
+                if found and expected not in found and expected.rstrip("0").rstrip(".") not in found:
+                    problems.append(
+                        f"{model_id} {effort}: doctrine {label} cell {cell.strip()!r} "
+                        f"does not contain manifest value {expected}"
+                    )
+
+    for model_id in by_id:
+        if model_id not in mentioned:
+            problems.append(f"manifest has {model_id!r}; the doctrine table never lists it")
+
+    for problem in problems:
+        print(problem)
+    if problems:
+        print(f"\n{len(problems)} disagreement(s) — reconcile by hand; neither file is generated")
+        return 1
+    print(f"doctrine and manifest agree across {len(mentioned)} models")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

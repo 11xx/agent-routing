@@ -16,9 +16,8 @@ usage: agent-routing <verb> [args]
   models              print the model/effort matrix (models.toml)
   delegation          print the delegation mechanism matrix (delegation.toml)
   mechanism           print the mechanism-routing prose canon (DELEGATION.md)
-  prose               print the generated prose view of the matrix
-  gen                 regenerate the prose view from the manifest
-  gen --check         fail if the prose view is stale
+  doctrine            print the authored routing doctrine (goes into instructions)
+  lint                report where doctrine and manifest disagree
   eras                list the model-era history files
   dir                 print the routing data directory
   root                print the repository root
@@ -39,8 +38,8 @@ case "${1:-}" in
   models)     cat "$routing_dir/models.toml" ;;
   delegation) cat "$routing_dir/delegation.toml" ;;
   mechanism)  cat "$root/DELEGATION.md" ;;
-  prose)      cat "$root/generated/model-routing.org" ;;
-  gen)        shift; exec "$root/bin/gen-prose" "$@" ;;
+  doctrine)   cat "$root/doctrine/model-routing.md" ;;
+  lint)       exec "$root/bin/lint-routing" ;;
   eras)       ls -1 "$root/eras" ;;
   dir)        echo "$routing_dir" ;;
   root)       echo "$root" ;;

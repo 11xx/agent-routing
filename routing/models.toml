@@ -5,8 +5,8 @@
 # Access without a path: `agent-routing models`.
 
 [meta]
-benchmark = "deepswe v1.1, 113 tasks; roster measured 2026-07-25, deepseek-v4-pro added 2026-07-27"
-metric = "pass@1 / avg USD per task; out_tokens and steps recorded where they change a routing call"
+benchmark = "DeepSWE v1.1, 113 tasks, 2026-07-27"
+metric = "pass@1 / avg $ / output tokens"
 updated = "2026-07-27"
 era_notes = "Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held; Fable 5 is fully retired (credits-only direct billing, no subscription route). History in eras/"
 

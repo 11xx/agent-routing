@@ -11,10 +11,10 @@ reference it rather than restate it. Model and effort selection stays with the
 model/effort ladder; this document owns how the selected executor is invoked
 and what context it receives.
 
-Machine-readable form: `agent-routing delegation` (data at
-`ai-agent-skills/manifests/routing/delegation.toml`; the model/effort ladder
-is `agent-routing models`). Keep this prose and that data in sync when either
-changes.
+Machine-readable form: `agent-routing delegation`; the model/effort ladder is
+`agent-routing models`. `agent-routing lint` reports where the authored
+doctrine and the manifest disagree, so drift is detected rather than
+remembered.
 
 ## Routing matrix
 
