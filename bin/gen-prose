@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""Render the prose routing view from the manifests.
+
+The matrix is data. Prose that restates data drifts from it — that is why this
+exists rather than a rule asking two files to be edited together. Judgment
+prose (role, character, weaknesses, the policy block) is authored *inside* the
+manifest as fields on the record it describes, so there is one place to edit
+and the rendering is mechanical.
+
+Writes generated/model-routing.org, which README.org includes and tangles into
+each harness's global instructions.
+"""
+
+import pathlib
+import sys
+import tomllib
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+OUT = ROOT / "generated" / "model-routing.org"
+
+PROHIBITED = "prohibited"
+
+
+def pct(value):
+    return f"{round(value * 100)}%" if isinstance(value, (int, float)) else "—"
+
+
+def usd(value):
+    return f"{value:.2f}" if isinstance(value, (int, float)) else "—"
+
+
+def effort_rows(model):
+    """One table row per effort, collapsing a model with no efforts to a single row."""
+    efforts = model.get("effort") or []
+    if not efforts:
+        yield model["id"], "—", "—", "—", "—", model.get("role", "")
+        return
+    for e in efforts:
+        yield (
+            f"{model['id']} · {e['effort']}",
+            pct(e.get("pass_at_1")),
+            usd(e.get("usd_per_task")),
+            e.get("out_tokens", "—"),
+            "yes" if str(e.get("use", "")).startswith(PROHIBITED) else "",
+            e.get("use", ""),
+        )
+
+
+def render(data):
+    meta = data["meta"]
+    out = []
+    add = out.append
+
+    add("# GENERATED FILE — do not edit.")
+    add("# Source: routing/models.toml in ai-agent-routing. Regenerate with")
+    add("# `agent-routing gen` after editing the manifest; never hand-patch this.")
+    add("")
+    add("* Model routing and delegation")
+    add("")
+    add(f"Benchmark: {meta['benchmark']}.")
+    add(f"Metric: {meta['metric']}.")
+    add(f"Last updated: {meta['updated']}.")
+    add("")
+    add(f"{meta['era_notes']}")
+    add("")
+    add("** Model matrix")
+    add("")
+    add("| model · effort | pass@1 | $ | out | prohibited | use |")
+    add("|----------------+--------+---+-----+------------+-----|")
+    for model in data["model"]:
+        for row in effort_rows(model):
+            cells = " | ".join(str(c).replace("|", "/") for c in row)
+            add(f"| {cells} |")
+    add("")
+
+    add("** Roles and character")
+    add("")
+    for model in data["model"]:
+        status = model.get("status")
+        label = f"{model['id']}" + (f" ({status})" if status else "")
+        add(f"*** {label}")
+        add("")
+        add(f"Role: {model.get('role', '—')}")
+        if model.get("character"):
+            add("")
+            add(f"Character: {model['character']}")
+        for weakness in model.get("weaknesses", []):
+            add(f"- Weakness: {weakness}")
+        if model.get("notes"):
+            add(f"- Note: {model['notes']}")
+        add("")
+
+    if "quota" in data:
+        add("** Subscription quota")
+        add("")
+        for key, value in data["quota"].items():
+            add(f"- {key.replace('_', ' ')}: {value}")
+        add("")
+
+    if "policy" in data:
+        add("** Routing policy")
+        add("")
+        for key, value in data["policy"].items():
+            add(f"- {key.replace('_', ' ')}: {value}")
+        add("")
+
+    return "\n".join(out) + "\n"
+
+
+def main():
+    manifest = ROOT / "routing" / "models.toml"
+    with manifest.open("rb") as handle:
+        data = tomllib.load(handle)
+    rendered = render(data)
+    OUT.parent.mkdir(exist_ok=True)
+    if "--check" in sys.argv:
+        current = OUT.read_text() if OUT.exists() else ""
+        if current != rendered:
+            print(f"{OUT} is stale; run `agent-routing gen`", file=sys.stderr)
+            return 1
+        print("generated prose is current")
+        return 0
+    OUT.write_text(rendered)
+    print(OUT)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

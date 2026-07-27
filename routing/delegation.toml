@@ -1,0 +1,147 @@
+# Delegation mechanism matrix: machine-readable source of truth.
+# Prose view: ~/code/arc/DELEGATION.md (canonical prose for mechanism
+# routing). Model/effort selection lives in models.toml, not here.
+# Access without a path: `agent-routing delegation`.
+# `harness` field marks harness-specific rows; omit = shared policy.
+
+[meta]
+updated = "2026-07-25"
+golden_rule = "never tell an executor to delegate to itself"
+
+[[route]]
+actor = "claude"
+task = "plan an arc chain"
+mechanism = "arc JSON export + detailed journal spec"
+rules = "make dependencies and ownership explicit; generated executor prompts stop before review, merge, or integration"
+
+[[route]]
+actor = "claude"
+task = "delegate implementation to codex"
+mechanism = "/plan-for-codex; claude itself may run codex exec"
+rules = "codex exec appears only in instructions claude will run; never ask the codex executor to delegate again"
+
+[[route]]
+actor = "claude"
+task = "review and merge"
+mechanism = "review base..head, record verdict, arc integrate when gates pass"
+rules = "never skip review or merge automatically from an implementation prompt"
+
+[[route]]
+actor = "lead"
+task = "select a reviewer"
+mechanism = "stakes-based reviewer line (full policy: models.toml [policy].review)"
+rules = "the verdict never comes from the authoring model; reviewer tiers are exactly opus-5 high, sol high, and sol medium; docs-only work by the head model needs no external review; high-stakes work (migrations, schema/breaking, destructive, security) always gets sol high, and waits for the codex quota reset rather than being self-issued when that pool is exhausted"
+
+[[route]]
+actor = "codex"
+task = "execute a local arc"
+mechanism = "import bundle, read journal spec, work locally in assigned worktree"
+rules = "implement, verify, commit, arc snapshot, stop for review; no codex exec, no delegation, no merge, no integrate"
+
+[[route]]
+actor = "codex"
+task = "orchestrate sub-codex work"
+mechanism = "codex exec with a self-contained plan"
+rules = "only when the prompt explicitly assigns codex the orchestrator role; preserve the lead's review and merge boundary"
+
+[[route]]
+actor = "arc-skill"
+task = "coordinate a chain"
+mechanism = "arc CLI ledger: worktrees, blockers, snapshots, gates, reviews, integration checks"
+rules = "one writer per branch/worktree; local-only executor prompts; the lead owns dependency order and integration"
+
+[[rule]]
+id = "native-subagent-fence"
+policy = "do not route work through harness-native subagent defaults; invoke executors explicitly with stated model, effort, and a curated self-contained brief"
+why = "Codex 5.6 native subagents inherit the full conversation plus the parent's model family and reasoning level: the ladder deliberately routes pre-resolved implementation to sol low and lead judgment to sol high, while whole-conversation inheritance is unscoped context transfer"
+revisit = "if a harness ships reliable per-subagent model/effort/context controls"
+
+[[rule]]
+id = "sol-write-fence"
+policy = "every Sol write-mode prompt, including sol low, names exact targets, a scope ceiling, no extra tests or refactors, and abort conditions; if a named target or prerequisite is absent, stop and report rather than substituting another target or working around it"
+why = "Sol is literal and persistent: that makes clear-spec execution reliable but can turn ambiguity into overbuild or destructive goal completion"
+
+[[rule]]
+id = "acceptance-probes"
+policy = "every brief delegated to a low tier names acceptance probes as runnable commands that discriminate its material risks; the executor runs each at the final head and records it with `arc verify --command` before finishing. A brief whose material risk has no such command is not ready to delegate — resolve it or escalate the tier. If a probe cannot be run, the executor stops and asks for a new brief rather than skipping it"
+why = "gates catch compile, regression, and lint failures, and diff review catches overbuild; neither sees a plausible implementation of the wrong semantics, which is the one failure mode that stays green. A named probe converts that from a tier problem into a specification problem"
+caveat = "readiness consults declared gates only, so probe evidence is recorded and reviewable but never gating; this convention is enforced by the reviewer, not by the tool"
+
+[[rule]]
+id = "brief-premise-verification"
+policy = "the lead opens every path and symbol a brief names and verifies each premise against source before delegating; a brief asserting something untrue about the code is the lead's defect, not the executor's"
+why = "measured on the rescue chain: three of six first attempts blocked on unverified brief claims, and all four review-stopping findings were faithful implementations of incomplete briefs rather than execution errors, so no executor tier would have prevented them. Those findings were major and rode changes-requested verdicts; their structured blocking field was false, so the stop was the verdict's, not the finding's"
+
+[[rule]]
+id = "preferred-patterns"
+policy = "prefer programmatic orchestration (one-off script encoding per-agent prompt/model/effort/context and control flow as code) or an arc chain (ledger-backed dependency order, curated specs, machine-checked gates) over implicit inheritance"
+
+[[rule]]
+id = "proxy-shells"
+harness = "claude-code"
+policy = "backend proxy shells (codex and pi agent types) stay at sonnet low; they relay the exact command and result, never perform or redesign the delegated task; labels cx- or cx-luna- for codex-backed spawns, pi- for pi-backed spawns"
+
+[[rule]]
+id = "luna-invocation"
+harness = "codex"
+policy = "invoke luna explicitly with codex exec -m gpt-5.6-luna; do not assume native mixed-model subagents or favorable quota weighting"
+
+[[rule]]
+id = "sandboxed-executors"
+harness = "codex"
+policy = "sandboxed executors that commit and snapshot need the main repo .git in writable_roots (worktree git-dirs and the default arc store live there); ARC_DATA_ROOT moves the store out"
+
+[[rule]]
+id = "launcher-stdin-hygiene"
+harness = "codex"
+policy = "codex exec gets exactly one prompt source: prompt-as-argument requires < /dev/null on stdin; prompt-via-stdin means a single dedicated heredoc; an executor launch never shares a compound command with another stdin consumer or producer"
+why = "codex exec appends piped stdin to the prompt and blocks until EOF; a heredoc earlier in the compound command left the pipe open and the executor hung silently (2026-07-17 stall postmortem)"
+
+[[rule]]
+id = "launch-watchdogs"
+policy = "arm two watchdog tiers on every non-interactive executor launch: first-output within ~60s (near-empty log = launch failure, kill and relaunch) and log-growth progress checks (frozen log = wedge, inspect interim output); never idle on the assumption that a live process is a working one"
+
+[[rule]]
+id = "executor-start-breadcrumb"
+policy = "arc executors leave a start breadcrumb (arc comment: executor started, session id) right after reading the spec, so the ledger shows life between begin and first snapshot; convention until claim/heartbeat ships"
+
+# Executor backends: CLIs a lead drives programmatically. Prose contract and
+# probe checklist: DELEGATION.md "Executor backends (harness adapters)".
+# status = "verified" (probed, routable) | "unprobed" (do not select).
+
+[[backend]]
+id = "codex"
+status = "verified"
+entrypoint = "codex exec \"<prompt>\""
+model_flag = "-m gpt-5.6-{sol,terra,luna}"
+effort_flag = "-c model_reasoning_effort=\"low|medium|high|xhigh\""
+workdir_flag = "-C <dir>"
+capture = "-o <file>; stdout is the full transcript (noisy)"
+isolation = "OS sandbox: -s read-only | -s workspace-write (+ sandbox_workspace_write.writable_roots)"
+resume = "codex exec resume --last"
+quota_pool = "chatgpt-codex-subscription"
+default_for = "all GPT delegation; mandatory default for write mode (real sandbox)"
+
+[[backend]]
+id = "pi"
+status = "verified"
+version_probed = "0.80.10 (2026-07-17)"
+entrypoint = "pi -p \"<prompt>\" (also @file args to inline specs)"
+model_flag = "--provider openai-codex --model gpt-5.6-{sol,terra,luna}"
+effort_flag = "--thinking off|minimal|low|medium|high|xhigh|max (or :level model suffix)"
+workdir_flag = "none; cd first"
+capture = "stdout is exactly the final message"
+isolation = "NONE; read-only ~= --tools read,grep,find,ls (excludes bash: no git/shell); write mode unsandboxed"
+clean_room = "--no-session --no-extensions --no-skills --no-context-files"
+resume = "--session <id> | -c | --fork"
+quota_pool = "chatgpt-codex-subscription (same pool as codex CLI: NOT a quota fallback)"
+default_for = "provider-plural delegation and leads without codex access; write mode only when codex CLI itself is the blocker, and only in a dedicated worktree"
+
+[[backend]]
+id = "opencode"
+status = "unprobed"
+notes = "run the DELEGATION.md adapter probe checklist before first use"
+
+[[rule]]
+id = "quota-bidirectional"
+policy = "usage-limit errors are routine: report and fall back to the other subscription or wait for the stated reset; never retry-loop; hand off mid-arc via the handoff skills"

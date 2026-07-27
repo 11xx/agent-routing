@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Path-free access to the routing manifests. Any harness, skill, or script on
+# this machine runs `agent-routing <verb>` without knowing where the data
+# lives. This script resolves its own location, so symlinking it anywhere on
+# PATH keeps working and moving the repository needs no edit anywhere else.
+set -euo pipefail
+
+self=$(readlink -f "${BASH_SOURCE[0]}")
+root=$(cd "$(dirname "$self")/.." && pwd)
+routing_dir="$root/routing"
+
+usage() {
+  cat <<'EOF'
+usage: agent-routing <verb> [args]
+
+  models              print the model/effort matrix (models.toml)
+  delegation          print the delegation mechanism matrix (delegation.toml)
+  mechanism           print the mechanism-routing prose canon (DELEGATION.md)
+  prose               print the generated prose view of the matrix
+  gen                 regenerate the prose view from the manifest
+  gen --check         fail if the prose view is stale
+  eras                list the model-era history files
+  dir                 print the routing data directory
+  root                print the repository root
+  all                 print both manifests
+  check <model> [eff] exit non-zero if that model/effort is prohibited
+
+`check` is the only verb that answers a question rather than printing a file,
+and it is deliberately limited to the prohibition list, which is a recorded
+fact. Choosing a model for a task is judgment and stays with the caller.
+EOF
+}
+
+check() {
+  exec "$root/bin/routing-check" "$@"
+}
+
+case "${1:-}" in
+  models)     cat "$routing_dir/models.toml" ;;
+  delegation) cat "$routing_dir/delegation.toml" ;;
+  mechanism)  cat "$root/DELEGATION.md" ;;
+  prose)      cat "$root/generated/model-routing.org" ;;
+  gen)        shift; exec "$root/bin/gen-prose" "$@" ;;
+  eras)       ls -1 "$root/eras" ;;
+  dir)        echo "$routing_dir" ;;
+  root)       echo "$root" ;;
+  all)        cat "$routing_dir/models.toml"; echo; cat "$routing_dir/delegation.toml" ;;
+  check)      shift; check "$@" ;;
+  *)          usage; exit 2 ;;
+esac
