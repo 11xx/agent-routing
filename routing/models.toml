@@ -202,6 +202,15 @@ notes = "cost per task on this benchmark is unmeasured here; published output pr
   pass_at_1 = 0.08
   use = "only as a briefed defect generator whose every finding a lead verifies against source before acting. Never the independent reviewer of record, never an implementer, never a planner"
 
+# Narrative that the per-model fields cannot carry: the framing sentence and
+# the vocabulary the matrix is read with. Kept here so the whole prose view has
+# one source, rather than a generated table beside a hand-written preamble.
+[prose]
+intro = "Standing defaults for complementary Claude and Codex orchestration. **Opus 5 is the head model** — it plans, orchestrates, delegates, and owns the final answer — and Sol is the technical peer and execution axis beneath it. Delegation uses the other subscription where its model or quota is a better fit. Only models normally available on the active subscriptions are routed. Availability history remains in `~/code/ai-agent-routing/eras/`."
+glossary_intelligence = "how complex a problem the model completes correctly, unsupervised."
+glossary_taste = "cleanliness of UI/UX, architectural code quality, API design, copy."
+closing = "These are **defaults, not limits**, except where a model or effort is explicitly prohibited. Judge output rather than rank alone. Machine-readable form of this matrix and the delegation mechanism rules: run `agent-routing models` / `agent-routing delegation` (no path needed). Mechanism-routing prose canon: `agent-routing mechanism`. Never route work through harness-native subagent defaults; invoke executors explicitly with stated model, effort, and a curated brief."
+
 # Subscription quota, measured rather than inferred from API cash price.
 # Neither vendor exposes a consumption meter, so these observed ratios are
 # the only budgeting instrument available. Re-measure when a plan or model

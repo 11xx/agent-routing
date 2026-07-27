@@ -40,20 +40,27 @@ broken. Edit the field; the prose view follows.
 | :-- | :-- |
 | `routing/*.toml` | source of truth — edit here |
 | `DELEGATION.md` | source of truth for mechanism prose — how work reaches an executor |
-| `generated/model-routing.org` | generated; `README.org` in ai-agent-instructions includes it |
+| `generated/model-routing.org` | generated; a named noweb block that `README.org` in ai-agent-instructions pulls in |
 | `eras/` | history; why a roster changed, kept when the roster moves on |
 
 ## The propagation path
 
 ```
 routing/models.toml
-    └─ agent-routing gen ─→ generated/model-routing.org
-                                └─ included by ai-agent-instructions/README.org
+    └─ agent-routing gen ─→ generated/model-routing.org   (#+name: model-routing)
+                                └─ noweb-referenced by ai-agent-instructions/README.org
                                         └─ tangled to ~/.claude/CLAUDE.md,
                                            ~/.codex/AGENTS.md,
                                            ~/.config/opencode/AGENTS.md,
                                            ~/.pi/agent/
 ```
+
+The generated file is a named `markdown` src block carrying `:tangle no`, which
+is the convention the instruction repository already uses for library blocks:
+per-harness targets set `:noweb yes` and pull blocks in by name. It is a noweb
+reference rather than `#+INCLUDE` because `org-babel-tangle` never expands
+`#+INCLUDE` — that is an export-time feature, and a tangle would silently emit
+the literal keyword instead of the content.
 
 `agent-routing gen --check` fails when the generated view is stale, so the
 staleness is detectable rather than discovered later in a harness that has been
