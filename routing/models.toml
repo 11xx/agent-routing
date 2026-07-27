@@ -1,7 +1,8 @@
-# Model/effort routing matrix: machine-readable source of truth.
-# Prose view: ai-agent-instructions README.org "Model routing and delegation"
-# (tangled into each harness's global instructions). Update both together;
-# /model-refresh in Claude Code automates the propagation.
+# Model/effort routing matrix: the machine-readable view of the roster.
+# The authored view is doctrine/model-routing.md, which is what lands in every
+# harness's instruction files. Neither is generated from the other — each keeps
+# something the other cannot express — so `agent-routing lint` reports where
+# they disagree rather than asking anyone to remember to sync them.
 # Access without a path: `agent-routing models`.
 
 [meta]
