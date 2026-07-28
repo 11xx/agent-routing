@@ -69,6 +69,29 @@ verified**, and treat a plan or brief it produces as needing its premises
 checked against source before delegation, which is cheap and catches most of
 this class.
 
+<!-- GENERATIONAL: Opus 5 era, opened 2026-07-25. Delete this block whole when
+     the head-model seat changes. It calibrates one model generation's quirks,
+     not standing policy — every frontier release needs its own, and carrying a
+     previous model's calibration forward is worse than carrying none. The
+     standing rule this specialises lives in the shared instructions as
+     "Before you depend on it, run it". -->
+
+**Opus 5 calibration (2026-07).** It acts with high confidence on unverified
+substrate, and the confidence is indistinguishable from the well-founded kind
+from the inside — so any instruction keyed on *feeling* unsure is inert against
+it. Three consequences while this model holds the seat:
+
+- The shared verify-before-depending triggers are not optional for it.
+- Treat a plan or brief it authors as needing every premise checked against
+  source before delegation. Cheap, and it catches most of the class: in one
+  measured session three delegated runs each stopped on a lead-authored brief
+  defect before writing any code.
+- Do not run it unattended on work whose substrate it has not verified. Keep
+  executor stop conditions aggressive; they, not its judgement, are what
+  actually caught every instance.
+
+<!-- END GENERATIONAL -->
+
 Orchestration mechanics are a separate weak axis. A proxy subagent it spawned
 improvised a poll loop on a status file the harness never writes, and hung —
 fatal in an unattended run. Drive long delegations with a directly backgrounded
