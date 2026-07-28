@@ -17,9 +17,9 @@ Availability history remains in
 
 | Model · effort | pass@1 | $ | out | Role |
 | :--- | :--- | :--- | :--- | :--- |
-| opus-5 · high | 73% | 6.08 | 64k | **Head model, default lead, and the roster ceiling.** Planning, orchestration, taste, inferred intent, novel UX/copy, API and architectural ergonomics, simplification, user-facing review; synthesizes delegated work. Nothing accessible scores higher, so its leverage is delegation — spend sol low on specified labor instead of doing it here. |
+| opus-5 · high | 73% | 6.08 | 64k | **Roster ceiling, and one of two co-equal leads** (see Opus 5 medium against Sol high, which score identically on different quota pools). Strong at following a specified order; weak at checking the substrate it acts on — see the field-measured weaknesses below before trusting it unattended. Planning, orchestration, taste, inferred intent, novel UX/copy, API and architectural ergonomics, simplification, user-facing review; synthesizes delegated work. Nothing accessible scores higher, so its leverage is delegation — spend sol low on specified labor instead of doing it here. |
 | opus-5 · medium | 69% | 3.29 | 37k | **Quota-conscious lead tier.** Matches Sol high's pass@1 at 58% of Opus 5 high's output tokens. Use for routine leading and long sessions where the Claude window binds. |
-| opus-5 · low | 58% | 1.66 | 20k | Not a workhorse tier — dominated by Sol medium on both score and cash. Only when the Codex pool is exhausted. |
+| opus-5 · low | 58% | 1.66 | 20k | **A legitimate Claude-pool workhorse.** Not dominated by Sol medium — 58%/$1.66 against 61%/$1.86 is three points cheaper, not worse on both axes. It draws the Claude window, so it is capacity the Codex tiers cannot substitute for. Use for specified labor when the Claude window has room and the Codex pool is the constraint. |
 | opus-5 · xhigh / max | 73–74% | 9.07–11.84 | 92–118k | **Prohibited.** Never select either, including on explicit request: xhigh buys 0 points for +49% cost, max buys 1 point for +95%. |
 | gpt-5.6-sol · xhigh | 71% | 4.70 | 41k | **Explicit request only.** 2 points over high for +35% cash and +46% tokens — the same non-scaling shape that prohibits the tiers above it. High is the working ceiling; reach past it for a genuinely hard unplanned task or a rerun after high missed. |
 | gpt-5.6-sol · high | 69% | 3.47 | 28k | **Technical lead tier, and the best pass@1-per-token row on the board.** Correctness, feasibility, failure modes, deep dives, judgment-involving implementation, adversarial review; carries whole arcs delegated wholesale. |
@@ -45,14 +45,41 @@ a reason to select one. Opus 5 above high buys 0 points at xhigh for +49% and
 high bought ≤1 point for 1.5–2.4×. Hard ceilings: **Opus 5 high, Sol xhigh** —
 everything above them is prohibited, not merely discouraged.
 
-Opus 5 tops the roster outright — high beats every Sol tier including Sol max,
-and beats Fable at every comparable effort for roughly a third of the cash.
-One thing the benchmark does not measure: it is a smaller model than Fable and
-lacks Fable's ceiling on genuinely novel hard reasoning. Both readings hold —
-DeepSWE scores bounded SWE tasks, not that ceiling — but no accessible model
-exposes it any more. Because Opus 5 *is* the ceiling, there is no escalation
-path above it: a slice it cannot land gets decomposed, given better context, or
-a sideways second opinion from Sol high — never a higher effort tier.
+Opus 5 tops the roster on score — high beats every Sol tier including Sol max.
+Because it *is* the ceiling there is no escalation above it: a slice it cannot
+land gets decomposed, given better context, or a sideways second opinion from
+Sol high, never a higher effort tier.
+
+**What the benchmark does not measure, and the field does.** Opus 5 is strong
+at following a specified order and weak at checking the substrate it acts on.
+Measured over one long session (2026-07-27/28): it assumed `org-babel` expands
+`#+INCLUDE` and that cross-file noweb references resolve — neither is true, and
+both fail *silently*, one of them into four live harness instruction files; it
+read a `grep | head -6` as a complete set and briefed an executor with five of
+twelve call sites; it wrote `arc $cmd` unquoted under zsh twice, so two probes
+measured nothing and a wrong conclusion was drawn from one before the shell
+behaviour was noticed; and it delegated ledger-writing work into a sandbox that
+cannot write the ledger, a constraint recorded in its own memory.
+
+Every one was caught before shipping — by diffing, by testing, or by an
+executor's stop condition — and none by the model noticing unprompted. The
+reasoning was sound each time; the substrate was unchecked. Two consequences
+for routing: **do not run it unattended on work whose substrate it has not
+verified**, and treat a plan or brief it produces as needing its premises
+checked against source before delegation, which is cheap and catches most of
+this class.
+
+Orchestration mechanics are a separate weak axis. A proxy subagent it spawned
+improvised a poll loop on a status file the harness never writes, and hung —
+fatal in an unattended run. Drive long delegations with a directly backgrounded
+call, never through a proxy agent free to invent its own wait.
+
+**Two co-equal leads, not one default.** Opus 5 medium and Sol high both score
+69% at roughly the same cash, on *different quota pools* — Claude and Codex.
+They are not alternatives to choose between; they are independent capacity, and
+defaulting to one wastes the other. Route by which window has headroom, and by
+the axis in question: Sol for correctness, feasibility, and failure modes, Opus
+for taste, novel UX and copy, and API shape.
 
 Sol carries technical intelligence and long execution arcs. Its two field
 weaknesses need active fencing: **overbuild** (it can turn a five-line change
