@@ -64,7 +64,7 @@ weaknesses = ["overbuild: state scope ceilings and 'no tests/refactors beyond th
   pass_at_1 = 0.71
   usd_per_task = 4.70
   out_tokens = "41k"
-  use = "sol ceiling: the hardest delegated technical slice, or a rerun after high missed; not the default"
+  use = "explicit request only. 2 points over high for +35% cash and +46% output tokens, which is the same non-scaling shape that prohibits the tiers above it. High is the working ceiling; reach past it only for a genuinely hard unplanned task or a rerun after high missed the bar"
   [[model.effort]]
   effort = "high"
   pass_at_1 = 0.69
@@ -82,7 +82,7 @@ weaknesses = ["overbuild: state scope ceilings and 'no tests/refactors beyond th
   pass_at_1 = 0.45
   usd_per_task = 1.07
   out_tokens = "11k"
-  use = "the delegated implementation workhorse, and the primary way an opus-5 head buys leverage: clear-spec slices, quick repo/system changes under observation, lookups, and assigned-worker tasks; never broad judgment, novel design, or underspecified changes"
+  use = "the standing delegated workhorse and the most points-per-output-token row on the board (45% at 11k). Use for fully pre-resolved slices, lookups, and mechanical edits where the 9-point gap to terra high does not change the outcome; terra high is the default workhorse otherwise. Never broad judgment, novel design, or underspecified changes"
   [[model.effort]]
   effort = "ultra"
   use = "prohibited: never select, including by explicit request"
@@ -96,7 +96,7 @@ role = "superseded by sol low as the planned-work default; select only by explic
   effort = "high"
   pass_at_1 = 0.54
   usd_per_task = 1.13
-  use = "explicit fallback only; not an ambient planned-slice or quota-window default"
+  use = "workhorse candidate pending measurement of how the codex pool meters. 9 points over sol low for 6% more cash but roughly double the output tokens, so it wins under cost accounting and loses under token accounting. Sol low stays the standing default until that is settled"
   [[model.effort]]
   effort = "xhigh"
   pass_at_1 = 0.60
@@ -118,7 +118,7 @@ role = "cheapest family, with the steepest effort curve on the board: unusable a
   usd_per_task = 3.03
   out_tokens = "73k"
   steps = 102
-  use = "competent but inefficient: 2 points below sol high for less cash yet 2.6x the output tokens and 2.8x the steps. On the shared codex subscription that trade is probably bad, since quota is tokens rather than dollars; select only when paying API cash and latency does not matter"
+  use = "not a token workhorse despite the low cash: luna high scores 44% for 26k output tokens against sol low's 45% for 11k — the same result for 2.4x the tokens. Competent but inefficient: 2 points below sol high for less cash yet 2.6x the output tokens and 2.8x the steps. On the shared codex subscription that trade is probably bad, since quota is tokens rather than dollars; select only when paying API cash and latency does not matter"
   [[model.effort]]
   effort = "xhigh"
   pass_at_1 = 0.57
@@ -218,6 +218,7 @@ closing = "These are **defaults, not limits**, except where a model or effort is
 # changes; do not extrapolate one provider's figures onto the other.
 [quota]
 method = "observed share of one rolling window consumed by a session of known token count"
+weighting = "MODEL-WEIGHTED, not token-counted: the same ~500k uncached tokens consumed ~15% of a window on opus-5 and ~30% on fable-5. Identical tokens, double the share, so the window is priced closer to model cost than to raw token count — subsidised well above direct API rates, but still cost-shaped. Compare tiers on the cash column, not the out_tokens column, unless a per-model weighting is actually measured"
 claude_plan = "Pro $20, 5h rolling window"
 claude_opus_5 = "~500k uncached tokens ~= 15% of one window, so roughly 3.3M uncached tokens per window"
 claude_fable_5 = "~500k uncached tokens ~= 30% of one window when it was still on the subscription: opus-5 does the same work for about half the quota"
@@ -233,7 +234,7 @@ acceptance_probes = "the mechanism that makes the floor safe: every brief delega
 floor_failure_response = "pre-registered so the reflex does not decide it: if a low-authored semantic defect passes its named probe and first review, or two of THE NEXT SIX low changes need extra verdict rounds for executor-caused defects, the remedy is to make acceptance probes declarable so they gate — NOT to buy a higher tier. An absent or non-discriminating probe is a machinery gap; escalation is the fallback only if declarable probes exist and the defect recurs anyway. The cohort is the next six, fixed at adoption, not a rolling window"
 floor_measurement = "the trigger above is only evaluable if the data is recorded: each delegated change records which tier implemented it, and every review round is classified brief-caused, executor-caused, or integration-staleness. Only executor-caused rounds count against the floor. This is observational, not a controlled experiment — cause is not a structured verdict field and there is no high-tier counterfactual"
 head_model = "opus-5 high leads: it plans, orchestrates, delegates, and synthesizes. It is also the roster ceiling — nothing accessible scores higher — so there is no escalation path above it. A slice it cannot land gets decomposed, better context, or a sideways second opinion from sol high, never a higher effort tier. Its leverage comes from spending sol low on specified labor rather than doing that labor itself"
-quota_window = "the Claude window is the scarcer of the two and has no meter: keep the head model on judgment and push specified labor to the codex pool. Subscription quota is output tokens, not dollars, and opus-5 high spends 64k per task against sol high's 28k for the same class of result — so the cash column understates how much a Claude-side tier costs the window. Drop to opus-5 medium (37k out, same pass@1 as sol high) for routine leading in a long session. Start assigned implementation on sol low; Sol ultra and max are prohibited; fast mode is deliberate, never ambient"
+quota_window = "the Claude window is the scarcer of the two and has no meter. Keep the head model on judgment and push specified labor to the codex pool. Window consumption tracks model cost rather than token count (see [quota].weighting), so compare Claude-side tiers on cash: opus-5 medium at $3.29 does routine leading for about half of opus-5 high at $6.08. The codex pool's weighting is unmeasured; until it is, treat every cheap-tier ordering as open, because each of them reverses between the two readings and the Claude-side evidence says nothing about the codex pool. Sol ultra and max are prohibited; fast mode is deliberate, never ambient"
 user_facing = "opus-5 writes or reviews novel user-facing work: UX, copy, API shape, and final polish. Sol may implement against an already-settled design system, but novel design and final polish stay on the Claude taste axis"
 review_generation = "defect generation and defect adjudication are separable and priced differently. Generation can run on a model far below the reviewer floor if it is given an adversarial brief — one that names the failure mode gates cannot catch, enumerates the defect classes to sweep, and refuses a bare 'no issues' by requiring each ruled-out class to name the file and reasoning. Adjudication cannot: every finding from a sub-floor generator is a candidate until a reviewer-tier model or the lead confirms it against source. Measured 2026-07-27: deepseek-v4-pro at 8% pass@1 produced six confirmed defects and two fully fabricated blocking claims in the same run. This does not add a reviewer tier and does not change who may issue a verdict"
 review = "the verdict never comes from the model that authored the diff; reviewer tiers are exactly opus-5 high, sol high, and sol medium (sol low never reviews; sol xhigh authors, it does not review). opus-5-authored work: routine/docs none, behavior-affecting a sol medium read-only skim, high-stakes (migrations, schema/breaking, destructive, security) sol high mandatory. sol-authored work: opus-5 as lead reviews the diff, high-stakes adds a second sol high pass. When codex quota is exhausted, opus-5 high is the only reviewer left and a high-stakes verdict waits for the reset rather than being self-issued. Inactive futures grok-4.5 and kimi-k3 join the line only when activated"
