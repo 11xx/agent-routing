@@ -34,13 +34,13 @@ weaknesses = ["stops scaling above high, harder than any other family: xhigh buy
   pass_at_1 = 0.73
   usd_per_task = 6.08
   out_tokens = "64k"
-  use = "default lead tier and the roster ceiling: plan, orchestrate, delegate, synthesize, review. Nothing available scores higher, so a hard slice gets decomposed or given more context, never escalated upward"
+  use = "EXPLICIT REQUEST ONLY. 4 points over medium for +85% cash and +73% output tokens — a poor trade, and not the same category as the prohibited tiers above it, which buy 0 and 1 point. It stays available because it is the roster ceiling on the axis Sol does not cover at any tier: novel UX, copy, API shape, taste. Reach for it when a task is named as judgment-dense, never because a task feels hard — that reflex is what the effort ladder cannot fix, since effort does not buy verification"
   [[model.effort]]
   effort = "medium"
   pass_at_1 = 0.69
   usd_per_task = 3.29
   out_tokens = "37k"
-  use = "quota-conscious lead tier: matches sol high's pass@1 at half the output tokens of opus-5 high. Use for routine leading and long sessions where the Claude window is the binding constraint"
+  use = "THE DEFAULT LEAD TIER. Matches sol high's 69% at 37k output tokens against opus-5 high's 64k, so on a cost-shaped window it does the same class of work for roughly half the consumption. Planning, orchestration, delegation, ceremony, review, cleanup — everything a lead does that is not a named judgment-dense call"
   [[model.effort]]
   effort = "low"
   pass_at_1 = 0.58
