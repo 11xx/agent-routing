@@ -30,7 +30,7 @@ rules = "never skip review or merge automatically from an implementation prompt"
 actor = "lead"
 task = "select a reviewer"
 mechanism = "stakes-based reviewer line (full policy: models.toml [policy].review)"
-rules = "the verdict never comes from the authoring model; reviewer tiers are exactly opus-5 high, sol high, and sol medium; docs-only work by the head model needs no external review; high-stakes work (migrations, schema/breaking, destructive, security) always gets sol high, and waits for the codex quota reset rather than being self-issued when that pool is exhausted"
+rules = "the verdict never comes from the authoring model; reviewer tiers are exactly opus-5 medium, sol high, and sol medium; docs-only work by the head model needs no external review; high-stakes work (migrations, schema/breaking, destructive, security) always gets sol high, and waits for the codex quota reset rather than being self-issued when that pool is exhausted"
 
 [[route]]
 actor = "codex"

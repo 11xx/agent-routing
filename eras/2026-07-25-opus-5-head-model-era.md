@@ -24,14 +24,17 @@ available by default rather than by exception.
 | medium | 69% | 3.29 | 37k | 52 |
 | low | 58% | 1.66 | 20k | 36 |
 
-Opus 5 high is the strongest practical row in the roster: it beats Sol high
+Opus 5 high is the strongest measured row in the roster: it beats Sol high
 (69%) and Sol xhigh (71%), matches Sol max (73%) for less cash, and beats
-Fable at every comparable effort for roughly a third of the price.
+Fable at every comparable effort for roughly a third of the price. That score
+does not make it the routine route: medium delivers the Sol-high band for
+roughly half the Claude-window cost and is the routing ceiling. High remains
+available only when the user explicitly requests it.
 
 **The scaling stops hard above high** — xhigh is +0 points for +49% cost and
-max is +1 for +95%. Both are prohibited; high is the hard ceiling. This is the
-third time the pattern has appeared (Fable above high, Sol above xhigh), which
-is why it is now written as a general rule rather than a per-model note.
+max is +1 for +95%. Both are prohibited. This is the third time the pattern
+has appeared (Fable above high, Sol above xhigh), which is why it is written as
+a general rule rather than a per-model note.
 
 ## Character, where field use and benchmark disagree
 
@@ -44,9 +47,10 @@ small, since no accessible model exposes it any more.
 - It gains **more** from cheap workhorses than Fable did. The correct shape is
   decompose-and-delegate: pre-resolved slices to sol low, hard technical
   slices to sol high or xhigh.
-- Because Opus 5 *is* the ceiling, there is no escalation path above it. A
-  slice it cannot land gets decomposed, given better context, or a sideways
-  second opinion — never a higher effort tier.
+- Opus 5 medium is the routing ceiling. High is available but not recommended
+  and is never an automatic escalation. A slice medium cannot land gets
+  decomposed, given better context, or a sideways second opinion unless the
+  user explicitly asks for high.
 - Opus 5 low (58%) is **not** a workhorse tier: Sol medium beats it on both
   score (61%) and cash ($1.86 vs $1.66 is close, but the points are not).
   Sol low remains the workhorse.
@@ -74,14 +78,14 @@ push specified labor to the Codex pool.
 
 ## Rules this era establishes
 
-- Opus 5 high is the default lead tier and the hard ceiling. Opus 5 xhigh and
-  max join Sol ultra and Sol max on the prohibited list.
+- Opus 5 medium is the default lead tier and routing ceiling. High remains
+  available only by explicit user request; Opus 5 xhigh and max join Sol ultra
+  and Sol max on the prohibited list.
 - Subscription quota is measured in output tokens, not dollars. Opus 5 high
   spends 64k per task against Sol high's 28k for a comparable result, so the
   cash column understates what a Claude-side tier costs the window. Opus 5
-  medium (37k out, Sol high's 69%) is the quota-conscious lead tier for long
-  sessions.
-- Reviewer tiers are exactly opus-5 high, sol high, and sol medium. When the
+  medium (37k out, Sol high's 69%) is the standing lead tier.
+- Reviewer tiers are exactly opus-5 medium, sol high, and sol medium. When the
   Codex pool is exhausted, routine and behavior-affecting work may proceed on
   Opus 5's judgment, but a high-stakes verdict waits for the reset rather
   than being self-issued.

@@ -43,7 +43,7 @@ backward-compatible behavior for delegated work.
 
 The verdict never comes from the model that authored the diff, and review
 effort is priced by stakes, not applied uniformly. The reviewer tiers are
-exactly **Opus 5 high**, **Sol high**, and **Sol medium** — Sol low never
+exactly **Opus 5 medium**, **Sol high**, and **Sol medium** — Sol low never
 reviews (too shallow for a verdict) and Sol xhigh authors rather than
 reviews. Machine form: `agent-routing models` (`[policy].review`).
 
