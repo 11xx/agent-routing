@@ -50,7 +50,8 @@ reviews. Machine form: `agent-routing models` (`[policy].review`).
 | Author | Routine / docs-only | Behavior-affecting | High-stakes* |
 | --- | --- | --- | --- |
 | Opus 5 (head model) | none — its own agency suffices | Sol medium read-only skim | Sol high, mandatory |
-| Sol executor (any effort) | lead reads the diff | Opus 5 lead review | lead + a second Sol high pass |
+| GPT executor (Sol, Terra, or Luna) | lead reads the diff | Opus 5 lead review | lead + a second Sol high pass |
+| DeepSeek V4 Flash/Pro | lead verifies every claim | Opus 5 lead review | not routed |
 
 *High-stakes: data migrations, schema or breaking changes, destructive
 operations, security-sensitive surfaces.
@@ -165,9 +166,9 @@ with the routing policy:
 
 - Effort inheritance is the wrong direction. A high-effort orchestrator
   spawning same-effort context gatherers is the most expensive possible
-  configuration; the ladder routes bounded gathering and pre-resolved
-  implementation to Sol low, fixed-shape extraction to Luna, and lead
-  judgment to Sol high.
+  configuration; the ladder routes fixed-shape calls to Luna low/medium,
+  bounded implementation to Terra high, controlled Luna-high trials to fully
+  pre-resolved work, and lead judgment to Sol high.
 - Whole-conversation inheritance is unscoped context transfer. It pays for
   the entire session history in every child and buries the task signal.
   Delegated work gets a curated, self-contained brief: the spec, the done
@@ -180,13 +181,12 @@ spec, or an orchestration script) where model, effort, and context are all
 stated. Revisit if a harness ships per-subagent model/effort/context
 controls and they prove reliable.
 
-Explicit model selection does not remove prompting safeguards. Every Sol
-write-mode prompt, including Sol low, must name exact targets, set a scope
-ceiling, prohibit unrequested tests and refactors, and state abort conditions.
+Explicit model selection does not remove prompting safeguards. Every
+implementation prompt routed below the Sol-high floor must name exact targets,
+set a scope ceiling, prohibit unrequested tests and refactors, and state abort
+conditions. Every Sol write-mode prompt keeps the same fence at all efforts.
 If a named target or prerequisite is absent, the executor stops and reports it;
-it must not substitute another target or improvise a workaround. Sol's literal
-persistence is the reason it works well as the clear-spec executor and the
-reason these fences are mandatory.
+it must not substitute another target or improvise a workaround.
 
 ## Acceptance probes
 
@@ -225,14 +225,15 @@ Two limits, stated rather than glossed:
   riding `changes-requested` verdicts — their structured `blocking` field was
   false, so what stopped the work was the verdict, not the finding.
 
-If the floor fails anyway — a low-authored semantic defect passing its named
-probe and first review, or two of *the next six* low changes needing extra
-verdict rounds for executor-caused defects — the response is to make probes
+If the floor fails anyway — a workhorse-authored semantic defect passing its
+named probe and first review, or two changes in the fixed *next six* workhorse
+cohort needing extra verdict rounds for executor-caused defects — make probes
 declarable so they gate, not to buy a higher tier. An absent or
 non-discriminating probe is a gap in the machinery, and escalation only
 answers it if declarable probes exist and the defect recurs regardless. The
-cohort is fixed at adoption rather than rolling, and evaluating it needs the
-data recorded: which tier implemented each change, and whether each review
+cohort is fixed at adoption rather than rolling; changing the workhorse model
+does not reset it. Evaluating it needs the data recorded: which model and effort
+implemented each change, and whether each review
 round was brief-caused, executor-caused, or integration-staleness. Only
 executor-caused rounds count against the floor.
 
@@ -271,19 +272,19 @@ Adapter contract (probe checklist for onboarding any new harness):
    the exact usage-limit error signature. Two backends on one pool are not
    fallbacks for each other's limits.
 
-### Verified backends (2026-07-17)
+### Verified backends (2026-07-31)
 
-| Contract | codex CLI (`codex exec`) | pi (`pi -p`), v0.80.10 |
+| Contract | codex CLI (`codex exec`) | pi (`pi -p`), v0.83.0 |
 | --- | --- | --- |
 | Entrypoint | `codex exec "<prompt>"` | `pi -p "<prompt>"`; `@file` args inline files (specs) |
-| Model | `-m gpt-5.6-{sol,terra,luna}` | `--provider openai-codex --model gpt-5.6-{sol,terra,luna}` |
+| Model | `-m gpt-5.6-{sol,terra,luna}` | GPT: `--provider openai-codex --model gpt-5.6-{sol,terra,luna}`; DeepSeek: `--provider deepseek --model deepseek-v4-{flash,pro}` |
 | Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) |
 | Working dir | `-C <dir>` | none — `cd` first |
 | Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message |
 | Isolation | OS sandbox: `-s read-only` / `-s workspace-write` (+ `writable_roots`) | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access |
 | Clean-room | curated prompt; reads repo AGENTS.md | `--no-session --no-extensions --no-skills --no-context-files` |
 | Resume | `codex exec resume --last` | `--session <id>` / `-c` / `--fork` |
-| Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | **same** ChatGPT/Codex pool via the `openai-codex` login — not a quota fallback for codex CLI limits |
+| Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota |
 
 Backend selection between the two GPT routes:
 
@@ -294,10 +295,15 @@ Backend selection between the two GPT routes:
   access), and then only inside a dedicated worktree with explicit
   scope fencing in the prompt.
 - **pi's niche is provider plurality and lead portability**: one adapter
-  reaches every provider the user has logged in (today only
-  `openai-codex`; Anthropic/Copilot/xAI logins would appear in the same
-  `--provider` flag), and any harness that can run a shell can drive it.
-  A non-Claude, non-codex lead delegating to GPT goes through pi.
+  reaches every provider the user has logged in. Today `openai-codex` reaches
+  GPT-5.6 on the shared Codex subscription, while `deepseek` reaches V4 Flash
+  and V4 Pro on independent API billing. Any harness that can run a shell can
+  drive it. A non-Claude, non-Codex lead delegating to GPT goes through Pi.
+- **DeepSeek V4 Flash 0731 is experimental.** The official public-beta API is
+  callable and adapted for Codex/Responses, but its vendor-reported 54.4
+  DeepSWE result used DeepSeek's unreleased minimal harness. Use it only for
+  bounded implementation with an exact brief, discriminating probes, and lead
+  review. V4 Pro's callable endpoint remains preview until its final release.
 - pi "read-only" (`--tools read,grep,find,ls`) is tool-level, not
   OS-level, and excludes bash entirely: file reading and search work,
   `git log`/build commands do not. Investigations needing shell stay on

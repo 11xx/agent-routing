@@ -50,8 +50,9 @@
   matches Fable's practical capability more efficiently at roughly half the
   subscription quota burn, without Fable's ceiling on the hardest
   reasoning — see `2026-07-25-opus-5-head-model-era.md`.
-- Implementation workhorse under an orchestrator (from 2026-07-18):
-  gpt-5.6-sol low. Terra high is explicit fallback only.
+- Implementation workhorse under an orchestrator from 2026-07-18 through the
+  2026-07-30 price reset: gpt-5.6-sol low. Terra high then took the default
+  bounded-work role; Luna high entered probation for pre-resolved trials.
 
 ## Selection rule
 

@@ -5,7 +5,7 @@
 # `harness` field marks harness-specific rows; omit = shared policy.
 
 [meta]
-updated = "2026-07-25"
+updated = "2026-07-31"
 golden_rule = "never tell an executor to delegate to itself"
 
 [[route]]
@@ -53,17 +53,17 @@ rules = "one writer per branch/worktree; local-only executor prompts; the lead o
 [[rule]]
 id = "native-subagent-fence"
 policy = "do not route work through harness-native subagent defaults; invoke executors explicitly with stated model, effort, and a curated self-contained brief"
-why = "Codex 5.6 native subagents inherit the full conversation plus the parent's model family and reasoning level: the ladder deliberately routes pre-resolved implementation to sol low and lead judgment to sol high, while whole-conversation inheritance is unscoped context transfer"
+why = "Codex 5.6 native subagents inherit the full conversation plus the parent's model family and reasoning level: the ladder deliberately routes fixed-shape calls to Luna low/medium, bounded implementation to Terra high, controlled Luna-high trials to fully pre-resolved work, and lead judgment to Sol high, while whole-conversation inheritance is unscoped context transfer"
 revisit = "if a harness ships reliable per-subagent model/effort/context controls"
 
 [[rule]]
-id = "sol-write-fence"
-policy = "every Sol write-mode prompt, including sol low, names exact targets, a scope ceiling, no extra tests or refactors, and abort conditions; if a named target or prerequisite is absent, stop and report rather than substituting another target or working around it"
-why = "Sol is literal and persistent: that makes clear-spec execution reliable but can turn ambiguity into overbuild or destructive goal completion"
+id = "executor-write-fence"
+policy = "every implementation prompt routed below the Sol-high floor names exact targets, a scope ceiling, no extra tests or refactors, and abort conditions. Every Sol write-mode prompt keeps the same fence at all efforts. If a named target or prerequisite is absent, stop and report rather than substituting another target or working around it"
+why = "A cheap executor is safe only when the lead makes scope and failure loud. Sol adds a field-measured persistence risk: ambiguity can become overbuild or destructive literal goal completion"
 
 [[rule]]
 id = "acceptance-probes"
-policy = "every brief delegated to a low tier names acceptance probes as runnable commands that discriminate its material risks; the executor runs each at the final head and records it with `arc verify --command` before finishing. A brief whose material risk has no such command is not ready to delegate — resolve it or escalate the tier. If a probe cannot be run, the executor stops and asks for a new brief rather than skipping it"
+policy = "every implementation brief routed below the Sol-high floor names acceptance probes as runnable commands that discriminate its material risks; the executor runs each at the final head and records it with `arc verify --command` before finishing. A brief whose material risk has no such command is not ready to delegate — resolve it or escalate the tier. If a probe cannot be run, the executor stops and asks for a new brief rather than skipping it"
 why = "gates catch compile, regression, and lint failures, and diff review catches overbuild; neither sees a plausible implementation of the wrong semantics, which is the one failure mode that stays green. A named probe converts that from a tier problem into a specification problem"
 caveat = "readiness consults declared gates only, so probe evidence is recorded and reviewable but never gating; this convention is enforced by the reviewer, not by the tool"
 
@@ -84,7 +84,12 @@ policy = "backend proxy shells (codex and pi agent types) stay at sonnet low; th
 [[rule]]
 id = "luna-invocation"
 harness = "codex"
-policy = "invoke luna explicitly with codex exec -m gpt-5.6-luna; do not assume native mixed-model subagents or favorable quota weighting"
+policy = "invoke Luna explicitly with codex exec -m gpt-5.6-luna and choose low/medium for fixed-shape calls; high and above are controlled fully pre-resolved trials pending field evidence, not ambient defaults. Do not assume native mixed-model subagents"
+
+[[rule]]
+id = "deepseek-experimental-invocation"
+harness = "pi"
+policy = "invoke the official V4 Flash 0731 public beta with `--provider deepseek --model deepseek-v4-flash`; it is an experimental independent-pool executor, not a reviewer or default route. The callable V4 Pro endpoint remains preview and is retained only for its measured defect-generation niche until the final release"
 
 [[rule]]
 id = "sandboxed-executors"
@@ -125,17 +130,17 @@ default_for = "all GPT delegation; mandatory default for write mode (real sandbo
 [[backend]]
 id = "pi"
 status = "verified"
-version_probed = "0.80.10 (2026-07-17)"
+version_probed = "0.83.0 (2026-07-31)"
 entrypoint = "pi -p \"<prompt>\" (also @file args to inline specs)"
-model_flag = "--provider openai-codex --model gpt-5.6-{sol,terra,luna}"
+model_flag = "GPT: --provider openai-codex --model gpt-5.6-{sol,terra,luna}; DeepSeek: --provider deepseek --model deepseek-v4-{flash,pro}"
 effort_flag = "--thinking off|minimal|low|medium|high|xhigh|max (or :level model suffix)"
 workdir_flag = "none; cd first"
 capture = "stdout is exactly the final message"
 isolation = "NONE; read-only ~= --tools read,grep,find,ls (excludes bash: no git/shell); write mode unsandboxed"
 clean_room = "--no-session --no-extensions --no-skills --no-context-files"
 resume = "--session <id> | -c | --fork"
-quota_pool = "chatgpt-codex-subscription (same pool as codex CLI: NOT a quota fallback)"
-default_for = "provider-plural delegation and leads without codex access; write mode only when codex CLI itself is the blocker, and only in a dedicated worktree"
+quota_pool = "provider-dependent: openai-codex shares the codex CLI's ChatGPT subscription and is not a quota fallback; deepseek uses separate API billing and quota"
+default_for = "provider-plural clean-room delegation, leads without codex access, and experimental DeepSeek work; GPT write mode only when codex CLI itself is the blocker, and only in a dedicated worktree"
 
 [[backend]]
 id = "opencode"

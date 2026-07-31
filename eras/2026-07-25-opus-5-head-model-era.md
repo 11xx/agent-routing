@@ -44,16 +44,17 @@ not reach. **Both are recorded, because they are not the same claim** — DeepSW
 scores bounded SWE tasks, not that ceiling. The practical consequence is
 small, since no accessible model exposes it any more.
 
-- It gains **more** from cheap workhorses than Fable did. The correct shape is
-  decompose-and-delegate: pre-resolved slices to sol low, hard technical
-  slices to sol high or xhigh.
+- It gains **more** from cheap workhorses than Fable did. Since the 2026-07-30
+  price reset, the correct shape is decompose-and-delegate: bounded slices to
+  Terra high, controlled fully pre-resolved trials to Luna high, and hard
+  technical slices to Sol high or xhigh.
 - Opus 5 medium is the routing ceiling. High is available but not recommended
   and is never an automatic escalation. A slice medium cannot land gets
   decomposed, given better context, or a sideways second opinion unless the
   user explicitly asks for high.
-- Opus 5 low (58%) is **not** a workhorse tier: Sol medium beats it on both
-  score (61%) and cash ($1.86 vs $1.66 is close, but the points are not).
-  Sol low remains the workhorse.
+- Opus 5 low (58%) remains legitimate Claude-pool capacity when the Codex pool
+  is constrained. It is not the normal delegated workhorse: Terra high carries
+  that labor on the Codex pool, while Luna high remains probationary.
 - Because it is the head model, it authors most planning and taste work. That
   makes the no-self-review rule load-bearing rather than ceremonial.
 
@@ -81,10 +82,10 @@ push specified labor to the Codex pool.
 - Opus 5 medium is the default lead tier and routing ceiling. High remains
   available only by explicit user request; Opus 5 xhigh and max join Sol ultra
   and Sol max on the prohibited list.
-- Subscription quota is measured in output tokens, not dollars. Opus 5 high
-  spends 64k per task against Sol high's 28k for a comparable result, so the
-  cash column understates what a Claude-side tier costs the window. Opus 5
-  medium (37k out, Sol high's 69%) is the standing lead tier.
+- Subscription quota is model-weighted. On Claude this remains an observed
+  ratio; on Codex it is now an explicit credit schedule. Opus 5 medium is the
+  standing lead tier, while Terra high carries routine delegated work and Luna
+  high receives controlled trials at much lower published Codex credit rates.
 - Reviewer tiers are exactly opus-5 medium, sol high, and sol medium. When the
   Codex pool is exhausted, routine and behavior-affecting work may proceed on
   Opus 5's judgment, but a high-stakes verdict waits for the reset rather

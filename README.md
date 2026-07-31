@@ -8,7 +8,8 @@ agent-routing models                  # the model/effort matrix
 agent-routing delegation              # the mechanism matrix
 agent-routing mechanism               # DELEGATION.md, the mechanism prose canon
 agent-routing check opus-5 xhigh      # exits 1: prohibited
-agent-routing gen                     # regenerate the prose view from the data
+agent-routing doctrine                # authored prose used by every harness
+agent-routing lint                    # check doctrine/manifest agreement
 ```
 
 ## Why it is its own repository
@@ -26,45 +27,40 @@ should not become ones.
 
 ## What is authoritative
 
-`routing/models.toml` and `routing/delegation.toml` are the source of truth.
-Everything else in this repository is either generated from them or is prose
-they cannot express.
+`routing/models.toml` and `routing/delegation.toml` are the machine-readable
+source of truth. `doctrine/model-routing.md` and `DELEGATION.md` are the
+authored prose sources for decisions the manifests cannot usefully express.
 
-Judgment lives *inside* the manifest, as `role`, `character`, `weaknesses` and
-the `[policy]` block — fields on the record they describe. This is deliberate.
-A separate prose document restating the same decisions is a second source of
-truth with a manual synchronisation rule, and that rule is always eventually
-broken. Edit the field; the prose view follows.
+Queryable judgment lives inside the manifest as `role`, `character`,
+`weaknesses`, and the `[policy]` block. The authored doctrine carries the
+reader-oriented ordering and context that the manifest cannot express. They
+are two representations of one policy; `agent-routing lint` makes their shared
+model coverage and numbers a mechanical check rather than a remembered
+synchronisation step.
 
 | path | status |
 | :-- | :-- |
-| `routing/*.toml` | source of truth — edit here |
-| `DELEGATION.md` | source of truth for mechanism prose — how work reaches an executor |
-| `generated/model-routing.org` | generated; a named noweb block that `README.org` in ai-agent-instructions pulls in |
+| `routing/*.toml` | machine-readable source of truth — edit here |
+| `doctrine/model-routing.md` | authored routing doctrine composed into every harness instruction file |
+| `DELEGATION.md` | authored mechanism prose — how work reaches an executor |
 | `eras/` | history; why a roster changed, kept when the roster moves on |
 
 ## The propagation path
 
 ```
-routing/models.toml
-    └─ agent-routing gen ─→ generated/model-routing.org   (#+name: model-routing)
-                                └─ noweb-referenced by ai-agent-instructions/README.org
-                                        └─ tangled to ~/.claude/CLAUDE.md,
-                                           ~/.codex/AGENTS.md,
-                                           ~/.config/opencode/AGENTS.md,
-                                           ~/.pi/agent/
+doctrine/model-routing.md
+    └─ agent-routing doctrine ─→ external fragment in ai-agent-instructions
+                                    └─ bin/build writes ~/.claude/CLAUDE.md,
+                                       ~/.codex/AGENTS.md,
+                                       ~/.config/opencode/AGENTS.md,
+                                       ~/.pi/agent/
 ```
 
-The generated file is a named `markdown` src block carrying `:tangle no`, which
-is the convention the instruction repository already uses for library blocks:
-per-harness targets set `:noweb yes` and pull blocks in by name. It is a noweb
-reference rather than `#+INCLUDE` because `org-babel-tangle` never expands
-`#+INCLUDE` — that is an export-time feature, and a tangle would silently emit
-the literal keyword instead of the content.
-
-`agent-routing gen --check` fails when the generated view is stale, so the
-staleness is detectable rather than discovered later in a harness that has been
-reading a wrong number for a week.
+The doctrine and manifest intentionally are not generated from each other: the
+manifest keeps one queryable row per effort, while the doctrine compresses and
+orders rows for a reader. `agent-routing lint` checks model coverage and every
+number represented in both, so disagreement is detected before the instruction
+build runs.
 
 ## What this repository will not do
 
@@ -83,7 +79,7 @@ decision legible and the prohibitions unambiguous.
    leave a field out rather than guessing it — an absent number is honest, an
    invented one is load-bearing.
 2. Note what changed and why in `eras/` when a roster seat moves.
-3. `agent-routing gen`, then retangle from ai-agent-instructions.
+3. Run `agent-routing lint`, then `bin/build` from ai-agent-instructions.
 
 Prohibitions carry a `use` string starting with `prohibited`; `check` keys on
 that prefix, so the explanation and the enforcement stay in one place.

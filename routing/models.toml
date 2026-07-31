@@ -6,10 +6,11 @@
 # Access without a path: `agent-routing models`.
 
 [meta]
-benchmark = "DeepSWE v1.1, 113 tasks, 2026-07-27"
+benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-07-27"
 metric = "pass@1 / avg $ / output tokens"
-updated = "2026-07-27"
-era_notes = "Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held; Fable 5 is fully retired (credits-only direct billing, no subscription route). History in eras/"
+updated = "2026-07-31"
+pricing_update = "OpenAI cut standard short-context Terra token prices by 20% and Luna by 80% on 2026-07-30. Per-task costs below apply the uniform price change to the measured benchmark token mix; capability and output-token results did not change."
+era_notes = "Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held. OpenAI's 2026-07-30 Terra/Luna price and credit reset moved the workhorse roles. DeepSeek V4 Flash 0731 entered public beta on 2026-07-31 while V4 Pro remained preview. History in eras/"
 
 [[model]]
 id = "opus-5"
@@ -51,7 +52,9 @@ weaknesses = ["medium is the routing ceiling: high buys only 4 points for +85% c
 [[model]]
 id = "gpt-5.6-sol"
 family = "gpt-5.6"
-role = "technical peer and execution axis under an opus-5 head: correctness, feasibility, failure modes, deep technical dives, adversarial review, and long autonomous implementation arcs. The most token-efficient family on the board at every tier, which is why delegated labor lives here"
+role = "technical peer and judgment-bearing execution axis under an opus-5 head: correctness, feasibility, failure modes, deep technical dives, adversarial review, and long autonomous implementation arcs. Terra carries routine delegated labor; Sol carries the work where its capability and token efficiency matter more than its credit rate"
+api_price_per_million = { input = 5.0, cached_input = 0.5, output = 30.0 }
+subscription_credits_per_million = { input = 125.0, cached_input = 12.5, output = 750.0 }
 weaknesses = ["overbuild: state scope ceilings and 'no tests/refactors beyond those listed'", "over-determination: name exact targets, stop when they are absent, give explicit abort conditions, and prefer sandboxes for risky access; applies at low too"]
   [[model.effort]]
   effort = "max"
@@ -76,13 +79,13 @@ weaknesses = ["overbuild: state scope ceilings and 'no tests/refactors beyond th
   pass_at_1 = 0.61
   usd_per_task = 1.86
   out_tokens = "18k"
-  use = "escalation after low misses or when a planned slice retains limited implementation judgment; also the read-only review skim tier, and it dominates opus-5 low on both score and cash"
+  use = "escalation from the Terra/Luna workhorses when a planned slice retains technical judgment; also the read-only review skim tier"
   [[model.effort]]
   effort = "low"
   pass_at_1 = 0.45
   usd_per_task = 1.07
   out_tokens = "11k"
-  use = "the standing delegated workhorse and the most points-per-output-token row on the board (45% at 11k). Use for fully pre-resolved slices, lookups, and mechanical edits where the 9-point gap to terra high does not change the outcome; terra high is the default workhorse otherwise. Never broad judgment, novel design, or underspecified changes"
+  use = "no longer a default route. It remains the most output-token-efficient row (45% at 11k), but Terra high now beats it by 9 points for less benchmark cash. Select only for a measured Sol-specific compatibility or output-length reason"
   [[model.effort]]
   effort = "ultra"
   use = "prohibited: never select, including by explicit request"
@@ -90,57 +93,62 @@ weaknesses = ["overbuild: state scope ceilings and 'no tests/refactors beyond th
 [[model]]
 id = "gpt-5.6-terra"
 family = "gpt-5.6"
-status = "fallback"
-role = "superseded by sol low as the planned-work default; select only by explicit request or for a concrete compatibility or availability reason"
+role = "default delegated workhorse for bounded production tasks, coding, document work, and tool use, from fully pre-resolved slices through work that retains ordinary judgment but does not need Sol's technical depth"
+api_price_per_million = { input = 2.0, cached_input = 0.2, output = 12.0 }
+subscription_credits_per_million = { input = 50.0, cached_input = 5.0, output = 300.0 }
   [[model.effort]]
   effort = "high"
   pass_at_1 = 0.54
-  usd_per_task = 1.13
-  use = "workhorse candidate pending measurement of how the codex pool meters. 9 points over sol low for 6% more cash but roughly double the output tokens, so it wins under cost accounting and loses under token accounting. Sol low stays the standing default until that is settled"
+  usd_per_task = 0.90
+  out_tokens = "22k"
+  use = "the default delegated workhorse. It beats Sol low by 9 points at 84% of its benchmark cash and subscription-credit cost. Use for bounded work, including fully pre-resolved slices and tasks retaining ordinary implementation judgment"
   [[model.effort]]
   effort = "xhigh"
   pass_at_1 = 0.60
-  usd_per_task = 2.13
-  use = "explicit Terra request needing more; upper effort scales, but remains outside normal routing"
+  usd_per_task = 1.70
+  use = "escalation when Terra high is the right model shape but the task needs more reasoning; Sol medium remains the reviewer-capable and more token-efficient alternative"
   [[model.effort]]
   effort = "max"
   pass_at_1 = 0.70
-  usd_per_task = 4.95
+  usd_per_task = 3.96
   use = "explicit Terra ceiling only"
 
 [[model]]
 id = "gpt-5.6-luna"
 family = "gpt-5.6"
-role = "cheapest family, with the steepest effort curve on the board: unusable at low/medium, competent at xhigh/max. Default use remains fixed-input/fixed-output workflow calls at low/medium; the upper tiers are a real budget option but lose to sol on tokens and steps"
+role = "credit-efficient family with the steepest effort cliff on the board: low/medium stay fixed-shape workflow tiers, while high and above are probationary planned-execution options pending controlled field evidence rather than leads, reviewers, or ambient defaults"
+api_price_per_million = { input = 0.2, cached_input = 0.02, output = 1.2 }
+subscription_credits_per_million = { input = 5.0, cached_input = 0.5, output = 30.0 }
   [[model.effort]]
   effort = "max"
   pass_at_1 = 0.67
-  usd_per_task = 3.03
+  usd_per_task = 0.61
   out_tokens = "73k"
   steps = 102
-  use = "not a token workhorse despite the low cash: luna high scores 44% for 26k output tokens against sol low's 45% for 11k — the same result for 2.4x the tokens. Competent but inefficient: 2 points below sol high for less cash yet 2.6x the output tokens and 2.8x the steps. On the shared codex subscription that trade is probably bad, since quota is tokens rather than dollars; select only when paying API cash and latency does not matter"
+  use = "an experimental cheap but slow planned-execution option: 2 points below Sol high for about one-sixth of its benchmark cash and subscription-credit cost, but 2.6x the output tokens and 2.8x the steps. Use only in controlled trials when the task is fully specified, latency is secondary, and lead review is available"
   [[model.effort]]
   effort = "xhigh"
   pass_at_1 = 0.57
-  usd_per_task = 1.54
+  usd_per_task = 0.31
   out_tokens = "45k"
-  use = "cheapest row above 50%; still token-hungry against sol medium (61% at 18k out). Explicit cash-constrained fan-outs only"
+  use = "experimental planned executor for clear tasks needing more than Luna high; it is still token- and latency-heavy against Sol medium, so use only in controlled trials and never for interactive or underspecified work"
   [[model.effort]]
   effort = "high"
+  status = "probationary"
   pass_at_1 = 0.44
-  usd_per_task = 0.78
+  usd_per_task = 0.16
   out_tokens = "26k"
-  use = "roughly sol low's score at 70% of the price but 2.4x the tokens; not an ambient substitute for the workhorse"
+  use = "probationary pre-resolved executor: roughly Sol low's score for about 15% of its benchmark cash and subscription-credit cost, but capability is unchanged and local field reliability is unmeasured. Use only for controlled, fully specified trials with exact targets, scope ceilings, acceptance probes, and lead review"
   [[model.effort]]
   effort = "medium"
   pass_at_1 = 0.11
-  usd_per_task = 0.22
+  usd_per_task = 0.04
   out_tokens = "8.2k"
   use = "bounded function-shaped calls only: classify, extract, aggregate, summarize one thing. The cliff disqualifies agentic or multi-file coding"
   [[model.effort]]
   effort = "low"
   pass_at_1 = 0.02
-  usd_per_task = 0.07
+  usd_per_task = 0.01
   out_tokens = "3.1k"
   use = "bounded function-shaped calls only"
 
@@ -191,13 +199,27 @@ status = "restricted"
 role = "never for anything that ships. The class is no longer uniformly weak — gemini-3.6-flash high reaches 49% — but every row is dominated by a cheaper or better 5.6 tier, and the fast-and-cheap ones (kimi-k2.7-code 31%, glm-5.2 high 36%, gemini-3.1-pro 12%) are far below the floor for delegated work"
 
 [[model]]
+id = "deepseek-v4-flash"
+family = "deepseek"
+status = "experimental"
+role = "callable independent-pool executor for source-verified bounded work when Codex quota is constrained. The 0731 API is an official public-beta build adapted for Codex and the Responses API, but it remains probationary until neutral same-harness evidence and local field runs establish reliability"
+character = "DeepSeek reports 54.4 on DeepSWE at max effort using its own unreleased Harness minimal mode. Record that as vendor evidence, not as a pass@1 row comparable to this matrix. The model is materially different from the April preview despite keeping the same architecture and size: it was re-post-trained for agent work"
+api_price_per_million = { cache_hit_input = 0.0028, cache_miss_input = 0.14, output = 0.28 }
+notes = "Live-probed through pi 0.83.0 on 2026-07-31. Public beta is API-only; the DeepSeek app/web model was unchanged. V4 Pro's final release is still pending."
+  [[model.effort]]
+  effort = "max"
+  vendor_reported_deepswe = 0.544
+  use = "probationary bounded implementation through Pi with an exact brief, discriminating probes, and lead review. Never the reviewer of record or a planner; do not promote it over Terra/Luna from vendor results alone"
+
+[[model]]
 id = "deepseek-v4-pro"
 family = "deepseek"
 status = "restricted"
-role = "candidate generator under a brief, never an adjudicator. Reachable through the pi backend on a deepseek login whose quota is independent of the codex pool, which is the only reason to reach for it: it is the reviewer of last resort when codex is exhausted and opus-5 would otherwise be reviewing its own diff"
+role = "candidate generator under a brief, never an adjudicator. The callable endpoint remains the April preview and is superseded for normal experiments by the official V4 Flash 0731 public beta; retain it only for its field-measured defect-generation behavior until the final V4 Pro release"
 character = "far below the floor on autonomous work — 8% pass@1 places it under luna low/medium, not near sonnet — yet under an adversarial review brief it produced six real defects across eight changes that a neutral 'review this' ask from the same model missed entirely. The value came from the brief and from a lead who checked every claim, not from the model. Field-measured 2026-07-27"
 weaknesses = ["writes confident, well-argued, entirely false findings: two of eight blocking claims in the measured run described an artifact of a malformed diff rather than the branch, with full failure scenarios attached", "cannot be trusted to notice that its input is wrong, which is the failure a peer-grade reviewer catches first", "recording its verdict through `--on-behalf-of` over-credits, because arc's `--model` field records the invoker's model and there is no field for the subject's"]
-notes = "cost per task on this benchmark is unmeasured here; published output pricing is cheap but that was not the deciding factor"
+api_price_per_million = { cache_hit_input = 0.003625, cache_miss_input = 0.435, output = 0.87 }
+notes = "Live-probed through pi 0.83.0 on 2026-07-31. Cost per task on this benchmark is unmeasured here; published output pricing is cheap but that was not the deciding factor. DeepSeek says the final V4 Pro release will follow soon."
   [[model.effort]]
   effort = "max"
   pass_at_1 = 0.08
@@ -207,34 +229,33 @@ notes = "cost per task on this benchmark is unmeasured here; published output pr
 # the vocabulary the matrix is read with. Kept here so the whole prose view has
 # one source, rather than a generated table beside a hand-written preamble.
 [prose]
-intro = "Standing defaults for complementary Claude and Codex orchestration. **Opus 5 is the head model** — it plans, orchestrates, delegates, and owns the final answer — and Sol is the technical peer and execution axis beneath it. Delegation uses the other subscription where its model or quota is a better fit. Only models normally available on the active subscriptions are routed. Availability history remains in `~/code/ai-agent-routing/eras/`."
+intro = "Standing defaults for complementary Claude and Codex orchestration. **Opus 5 is the head model** — it plans, orchestrates, delegates, and owns the final answer — and Sol is the technical peer and execution axis beneath it. Delegation uses the other subscription where its model or quota is a better fit. Only models verified through current local backends are routed; probationary API models are labeled experimental. Availability history remains in `~/code/ai-agent-routing/eras/`."
 glossary_intelligence = "how complex a problem the model completes correctly, unsupervised."
 glossary_taste = "cleanliness of UI/UX, architectural code quality, API design, copy."
-closing = "These are **defaults, not limits**, except where a model or effort is explicitly prohibited. Judge output rather than rank alone. Machine-readable form of this matrix and the delegation mechanism rules: run `agent-routing models` / `agent-routing delegation` (no path needed). Mechanism-routing prose canon: `agent-routing mechanism`. Never route work through harness-native subagent defaults; invoke executors explicitly with stated model, effort, and a curated brief."
+closing = "These are **defaults, not limits**, except where a model or effort is explicitly prohibited. Judge output rather than rank alone: Terra high carries bounded labor, Luna high gets controlled fully specified trials, Sol technical judgment and persistence, and Opus planning, orchestration, taste, and synthesis. Machine-readable form: `agent-routing models` / `agent-routing delegation`; mechanism prose: `agent-routing mechanism`. Never route work through harness-native subagent defaults; invoke executors explicitly with stated model, effort, and a curated brief."
 
-# Subscription quota, measured rather than inferred from API cash price.
-# Neither vendor exposes a consumption meter, so these observed ratios are
-# the only budgeting instrument available. Re-measure when a plan or model
-# changes; do not extrapolate one provider's figures onto the other.
+# Subscription quota: observed for Claude and published as credits for Codex.
+# Re-measure observed figures when a plan or model changes. Do not extrapolate
+# one provider's accounting onto another.
 [quota]
-method = "observed share of one rolling window consumed by a session of known token count"
-weighting = "MODEL-WEIGHTED, not token-counted: the same ~500k uncached tokens consumed ~15% of a window on opus-5 and ~30% on fable-5. Identical tokens, double the share, so the window is priced closer to model cost than to raw token count — subsidised well above direct API rates, but still cost-shaped. Compare tiers on the cash column, not the out_tokens column, unless a per-model weighting is actually measured"
+method = "Claude uses observed share of one rolling window consumed by a session of known token count. OpenAI publishes Codex credits per million input, cached-input, and output tokens plus approximate messages per five-hour window."
+weighting = "MODEL-WEIGHTED on both subscriptions. Claude evidence is observed: the same ~500k uncached tokens consumed ~15% of a window on opus-5 and ~30% on fable-5. Codex evidence is explicit and exactly cost-weighted: every token class for Sol, Terra, and Luna costs 25 credits per API dollar, so task-level credit ratios equal the benchmark cash ratios."
 claude_plan = "Pro $20, 5h rolling window"
 claude_opus_5 = "~500k uncached tokens ~= 15% of one window, so roughly 3.3M uncached tokens per window"
 claude_fable_5 = "~500k uncached tokens ~= 30% of one window when it was still on the subscription: opus-5 does the same work for about half the quota"
 caching = "these are UNCACHED figures; a cache-warm session stretches the window substantially, which is why long single-context arcs beat repeated cold re-derivation"
-codex_pool = "chatgpt-codex subscription, shared by sol, terra, luna, and both the codex and pi backends; weighting per model is unmeasured, so never assume terra or luna conserves quota"
+codex_pool = "ChatGPT Work and Codex share one five-hour window across the codex CLI and pi's openai-codex login. Official Plus estimates are Sol 10-100, Terra 25-200, and Luna 250-2,000 local messages per five hours; these approximate ranges are not exact transforms of the credit schedule because use varies with context, reasoning, tools, retrieval, and caching."
 
 [policy]
-effort_cliff = "the 5.6 family degrades steeply on agentic work at low effort; sol low is the field-tested exception for tightly scoped pre-resolved execution under an orchestrator, and luna low/medium remains the exception for bounded function-shaped calls. Luna's curve is the steepest on the board (2% low to 67% max), so never generalize a luna tier's behavior from another"
+effort_cliff = "the 5.6 family degrades steeply on agentic work at low effort. Luna's curve is the steepest on the board (2% low to 67% max): low/medium remain bounded function-shaped calls, while high and above remain probationary planned-execution tiers until controlled field evidence lands. Never generalize one Luna tier's behavior from another"
 non_scaling_tops = "every family stops paying before its top tier, so 'tops the bench' is never a reason to select one. opus-5 medium is the routing ceiling; high remains available only by explicit user request, while xhigh buys 0 points over high for +49% and max buys 1 for +95% and both are prohibited. sol xhigh is its hard ceiling; ultra and max are prohibited"
 prohibited = "never select, including on explicit request: opus-5 xhigh, opus-5 max, sol ultra, sol max. Opus-5 medium is the routing ceiling; high is available but not recommended and is never selected automatically"
-delegation_effort = "priced by residual risk after the gate, not by handoff ambiguity: sol low is the default when the brief is source-verified and bounded AND the lead can name a final-head command whose outcome discriminates each material risk. Escalate to medium or high when the brief still leaves an architecture, API, or semantic choice to the executor, or when no such discriminating command exists. xhigh is the hard Sol ceiling; Sol ultra and max are prohibited; terra is explicit fallback only. Migrations, schema/breaking changes, destructive operations, and security keep the high-stakes floor regardless of how well specified they are"
-acceptance_probes = "the mechanism that makes the floor safe: every brief delegated to a low tier names acceptance probes as runnable commands, and the executor records each at the final head with `arc verify --command` so the evidence lands in the ledger. Loudness is constructed by the lead, not bought with a higher tier — naming a probe requires knowing the required behavior, not predicting the executor's mistake. Caveat to state rather than gloss: readiness consults declared gates only, so ad hoc probe evidence never gates and never turns green; the convention is reviewer-enforced, and a reviewer who assumes the tool is checking will stop checking"
-floor_failure_response = "pre-registered so the reflex does not decide it: if a low-authored semantic defect passes its named probe and first review, or two of THE NEXT SIX low changes need extra verdict rounds for executor-caused defects, the remedy is to make acceptance probes declarable so they gate — NOT to buy a higher tier. An absent or non-discriminating probe is a machinery gap; escalation is the fallback only if declarable probes exist and the defect recurs anyway. The cohort is the next six, fixed at adoption, not a rolling window"
-floor_measurement = "the trigger above is only evaluable if the data is recorded: each delegated change records which tier implemented it, and every review round is classified brief-caused, executor-caused, or integration-staleness. Only executor-caused rounds count against the floor. This is observational, not a controlled experiment — cause is not a structured verdict field and there is no high-tier counterfactual"
+delegation_effort = "priced by residual risk after the gate, not by handoff ambiguity: Terra high is the default for source-verified bounded work, from fully pre-resolved slices through ordinary implementation judgment. Luna high is available only as a controlled pre-resolved trial until field evidence establishes reliability. Escalate to Sol medium or high when the brief leaves deeper architecture, API, or semantic judgment, or when no discriminating command exists. Sol xhigh is its hard ceiling; Sol ultra and max are prohibited. Migrations, schema/breaking changes, destructive operations, and security keep the high-stakes Sol-high floor regardless of specification quality"
+acceptance_probes = "the mechanism that makes the executor floor safe: every implementation brief routed below the Sol-high floor names acceptance probes as runnable commands, and the executor records each at the final head with `arc verify --command` so the evidence lands in the ledger. Loudness is constructed by the lead, not bought with a higher tier — naming a probe requires knowing the required behavior, not predicting the executor's mistake. Caveat to state rather than gloss: readiness consults declared gates only, so ad hoc probe evidence never gates and never turns green; the convention is reviewer-enforced, and a reviewer who assumes the tool is checking will stop checking"
+floor_failure_response = "pre-registered so the reflex does not decide it: if a workhorse-authored semantic defect passes its named probe and first review, or two of the fixed next-six workhorse cohort need extra verdict rounds for executor-caused defects, the remedy is to make acceptance probes declarable so they gate — not to buy a higher tier. An absent or non-discriminating probe is a machinery gap; escalation is the fallback only if declarable probes exist and the defect recurs anyway. Changing the workhorse model does not silently reset the cohort"
+floor_measurement = "the trigger above is only evaluable if the data is recorded: each delegated change records the exact model and effort that implemented it, and every review round is classified brief-caused, executor-caused, or integration-staleness. Only executor-caused rounds count against the floor. This is observational, not a controlled experiment — cause is not a structured verdict field and there is no counterfactual executor"
 head_model = "opus-5 medium leads: it plans, orchestrates, delegates, and synthesizes at the routing ceiling. High remains available only when the user explicitly requests that effort; it is not an escalation tier. A slice medium cannot land gets decomposed, better context, or a sideways second opinion from sol high rather than an automatic effort increase"
-quota_window = "the Claude window is the scarcer of the two and has no meter. Keep the head model on judgment and push specified labor to the codex pool. Window consumption tracks model cost rather than token count (see [quota].weighting), so compare Claude-side tiers on cash: opus-5 medium at $3.29 does routine leading for about half of opus-5 high at $6.08. The codex pool's weighting is unmeasured; until it is, treat every cheap-tier ordering as open, because each of them reverses between the two readings and the Claude-side evidence says nothing about the codex pool. Sol ultra and max are prohibited; fast mode is deliberate, never ambient"
+quota_window = "the Claude window remains the scarcer pool, so keep the head model on judgment and push specified labor to Codex. OpenAI's schedule prices every model at 25 credits per API dollar, so benchmark cash ratios transfer directly to task-level credits; official Plus estimates are Sol 10-100, Terra 25-200, and Luna 250-2,000 local messages per five hours. Route bounded labor to Terra high, trial fully pre-resolved work on Luna high, and spend Sol only where technical judgment or token-efficient persistence earns its rate. Codex fast mode consumes 2.5x credits; Claude fast mode burns its window substantially faster. Both stay deliberate, never ambient"
 user_facing = "opus-5 writes or reviews novel user-facing work: UX, copy, API shape, and final polish. Sol may implement against an already-settled design system, but novel design and final polish stay on the Claude taste axis"
-review_generation = "defect generation and defect adjudication are separable and priced differently. Generation can run on a model far below the reviewer floor if it is given an adversarial brief — one that names the failure mode gates cannot catch, enumerates the defect classes to sweep, and refuses a bare 'no issues' by requiring each ruled-out class to name the file and reasoning. Adjudication cannot: every finding from a sub-floor generator is a candidate until a reviewer-tier model or the lead confirms it against source. Measured 2026-07-27: deepseek-v4-pro at 8% pass@1 produced six confirmed defects and two fully fabricated blocking claims in the same run. This does not add a reviewer tier and does not change who may issue a verdict"
-review = "the verdict never comes from the model that authored the diff; reviewer tiers are exactly opus-5 medium, sol high, and sol medium (sol low never reviews; sol xhigh authors, it does not review). opus-5-authored work: routine/docs none, behavior-affecting a sol medium read-only skim, high-stakes (migrations, schema/breaking, destructive, security) sol high mandatory. sol-authored work: opus-5 medium as lead reviews the diff, high-stakes adds a second sol high pass. When codex quota is exhausted, opus-5 medium is the only reviewer left and a high-stakes verdict waits for the reset rather than being self-issued. Inactive futures grok-4.5 and kimi-k3 join the line only when activated"
+review_generation = "defect generation and defect adjudication are separable and priced differently. Generation can run on a model below the reviewer floor if it is given an adversarial brief — one that names the failure mode gates cannot catch, enumerates the defect classes to sweep, and refuses a bare 'no issues' by requiring each ruled-out class to name the file and reasoning. Adjudication cannot: every finding from a sub-floor generator is a candidate until a reviewer-tier model or the lead confirms it against source. Measured 2026-07-27: the V4 Pro preview at 8% pass@1 produced six confirmed defects and two fully fabricated blocking claims in the same run. V4 Flash 0731's vendor-reported improvement does not add a reviewer tier or change who may issue a verdict"
+review = "the verdict never comes from the model that authored the diff; reviewer tiers are exactly opus-5 medium, sol high, and sol medium. Luna, Terra, Sol low, Sol xhigh, and both DeepSeek models never review. Opus-authored work: routine/docs none, behavior-affecting a Sol-medium skim, high-stakes Sol high mandatory. GPT- or DeepSeek-authored work: Opus 5 medium reviews the diff; high-stakes GPT work adds a second Sol-high pass, while high-stakes work never routes to experimental DeepSeek. When Codex quota is exhausted, Opus 5 medium is the only reviewer left and a high-stakes verdict waits for the reset rather than being self-issued"
