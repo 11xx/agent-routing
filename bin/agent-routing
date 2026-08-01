@@ -14,6 +14,7 @@ usage() {
 usage: agent-routing <verb> [args]
 
   models              print the model/effort matrix (models.toml)
+  profiles            print the named delegation profiles (profiles.toml)
   delegation          print the delegation mechanism matrix (delegation.toml)
   mechanism           print the mechanism-routing prose canon (DELEGATION.md)
   doctrine            print the authored routing doctrine (goes into instructions)
@@ -23,10 +24,12 @@ usage: agent-routing <verb> [args]
   root                print the repository root
   all                 print both manifests
   check <model> [eff] exit non-zero if that model/effort is prohibited
+  resolve <profile> --backend <backend> [--variant <name>] [--allow-experimental] [--json]
+                      resolve a caller-selected task profile
 
-`check` is the only verb that answers a question rather than printing a file,
-and it is deliberately limited to the prohibition list, which is a recorded
-fact. Choosing a model for a task is judgment and stays with the caller.
+`resolve` never classifies a task: the caller chooses the profile. It only maps
+that recorded choice to the current provider, model, and effort. `check` remains
+limited to the prohibition list.
 EOF
 }
 
@@ -36,6 +39,7 @@ check() {
 
 case "${1:-}" in
   models)     cat "$routing_dir/models.toml" ;;
+  profiles)   cat "$routing_dir/profiles.toml" ;;
   delegation) cat "$routing_dir/delegation.toml" ;;
   mechanism)  cat "$root/DELEGATION.md" ;;
   doctrine)   cat "$root/doctrine/model-routing.md" ;;
@@ -43,7 +47,8 @@ case "${1:-}" in
   eras)       ls -1 "$root/eras" ;;
   dir)        echo "$routing_dir" ;;
   root)       echo "$root" ;;
-  all)        cat "$routing_dir/models.toml"; echo; cat "$routing_dir/delegation.toml" ;;
+  all)        cat "$routing_dir/models.toml"; echo; cat "$routing_dir/profiles.toml"; echo; cat "$routing_dir/delegation.toml" ;;
   check)      shift; check "$@" ;;
+  resolve)    shift; exec "$root/bin/resolve-route" "$@" ;;
   *)          usage; exit 2 ;;
 esac

@@ -20,6 +20,9 @@ import re
 import sys
 import tomllib
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "lib"))
+from routing_profiles import validation_problems  # noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCTRINE = ROOT / "doctrine" / "model-routing.md"
 MANIFEST = ROOT / "routing" / "models.toml"
@@ -90,12 +93,14 @@ def main():
         if model_id not in mentioned:
             problems.append(f"manifest has {model_id!r}; the doctrine table never lists it")
 
+    problems.extend(validation_problems(ROOT))
+
     for problem in problems:
         print(problem)
     if problems:
         print(f"\n{len(problems)} disagreement(s) — reconcile by hand; neither file is generated")
         return 1
-    print(f"doctrine and manifest agree across {len(mentioned)} models")
+    print(f"doctrine, model manifest, and route profiles agree across {len(mentioned)} models")
     return 0
 
 

@@ -5,6 +5,8 @@ with one accessor, for every harness and tool on this machine.
 
 ```sh
 agent-routing models                  # the model/effort matrix
+agent-routing profiles                # named task-shape routes
+agent-routing resolve implement --backend codex --json
 agent-routing delegation              # the mechanism matrix
 agent-routing mechanism               # DELEGATION.md, the mechanism prose canon
 agent-routing check opus-5 xhigh      # exits 1: prohibited
@@ -27,8 +29,9 @@ should not become ones.
 
 ## What is authoritative
 
-`routing/models.toml` and `routing/delegation.toml` are the machine-readable
-source of truth. `doctrine/model-routing.md` and `DELEGATION.md` are the
+`routing/models.toml`, `routing/profiles.toml`, and
+`routing/delegation.toml` are the machine-readable source of truth.
+`doctrine/model-routing.md` and `DELEGATION.md` are the
 authored prose sources for decisions the manifests cannot usefully express.
 
 Queryable judgment lives inside the manifest as `role`, `character`,
@@ -62,12 +65,31 @@ orders rows for a reader. `agent-routing lint` checks model coverage and every
 number represented in both, so disagreement is detected before the instruction
 build runs.
 
+## Named route profiles
+
+Callers classify work by task shape and pass that choice to the resolver. The
+resolver is a pure local table read: it does not inspect the task, access the
+network, cache results on disk, or choose a profile. A successful response has
+exactly the concrete route and a table hash for durable logs:
+
+```sh
+agent-routing resolve extract --backend pi --json
+agent-routing resolve implement --backend pi --variant deepseek \
+  --allow-experimental --json
+```
+
+Profiles stay on one axis: extraction, exploration, implementation, planning,
+review, or design. Backend sandboxing, tool fences, output capture, and
+liveness remain adapter behavior in `DELEGATION.md` and the backend skills.
+Probationary and experimental variants fail closed unless the caller explicitly
+passes `--allow-experimental`.
+
 ## What this repository will not do
 
-**It will not pick a model for you.** `check` answers whether a tier is
-prohibited, because that is a recorded fact. There is deliberately no
-`agent-routing pick <task>`: selection is judgment, it is the head model's job,
-and a CLI that encodes it becomes a stale oracle that is obeyed anyway.
+**It will not classify work for you.** `resolve` maps a caller-selected profile
+to the current route, and `check` answers whether a tier is prohibited. There
+is deliberately no `agent-routing pick <task>`: classification is judgment,
+it is the head model's job, and a CLI that guesses becomes a stale oracle.
 
 **It will not verify identity or enforce anything.** Nothing here gates. A
 harness that ignores this data is not stopped by it; the data only makes the
