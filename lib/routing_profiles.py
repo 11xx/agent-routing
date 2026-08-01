@@ -9,6 +9,8 @@ import tomllib
 
 STABILITIES = {"stable", "probationary", "experimental"}
 UNROUTABLE_MODEL_STATUSES = {"deprecated", "inactive", "restricted", "retired", "superseded"}
+MODEL_STATUSES = UNROUTABLE_MODEL_STATUSES | {"experimental"}
+EFFORT_STATUSES = {"explicit-only", "experimental", "probationary"}
 
 
 def load_toml(path: pathlib.Path):
@@ -16,8 +18,14 @@ def load_toml(path: pathlib.Path):
         return tomllib.load(handle)
 
 
-def route_version(path: pathlib.Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+def route_version(root: pathlib.Path) -> str:
+    digest = hashlib.sha256()
+    for relative in ("routing/models.toml", "routing/profiles.toml", "routing/delegation.toml"):
+        digest.update(relative.encode())
+        digest.update(b"\0")
+        digest.update((root / relative).read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()[:12]
 
 
 def validation_problems(root: pathlib.Path) -> list[str]:
@@ -29,6 +37,14 @@ def validation_problems(root: pathlib.Path) -> list[str]:
     by_backend = {backend["id"]: backend for backend in delegation.get("backend", [])}
 
     problems: list[str] = []
+    for model in models:
+        status = model.get("status")
+        if status is not None and status not in MODEL_STATUSES:
+            problems.append(f"model {model['id']!r}: unknown status {status!r}")
+        for tier in model.get("effort", []):
+            tier_status = tier.get("status")
+            if tier_status is not None and tier_status not in EFFORT_STATUSES:
+                problems.append(f"model {model['id']!r} effort {tier.get('effort')!r}: unknown status {tier_status!r}")
     profile_ids: set[str] = set()
     for profile in profiles:
         profile_id = profile.get("id", "<missing>")
@@ -61,6 +77,16 @@ def validation_problems(root: pathlib.Path) -> list[str]:
                     problems.append(f"{label}: model {model_id!r} has no effort {effort!r}")
                 elif str(tier.get("use", "")).lower().startswith("prohibited"):
                     problems.append(f"{label}: {model_id} {effort} is prohibited: {tier['use']}")
+                elif tier.get("status") == "explicit-only":
+                    problems.append(f"{label}: {model_id} {effort} requires an explicit model request and cannot back a profile")
+                model_status = model.get("status")
+                tier_status = tier.get("status") if tier else None
+                if model_status == "experimental" and stability != "experimental":
+                    problems.append(f"{label}: experimental model {model_id!r} requires experimental stability")
+                if tier_status == "probationary" and stability not in {"probationary", "experimental"}:
+                    problems.append(f"{label}: probationary tier {model_id} {effort} cannot be marked {stability}")
+                if tier_status == "experimental" and stability != "experimental":
+                    problems.append(f"{label}: experimental tier {model_id} {effort} cannot be marked {stability}")
             provider = route.get("provider")
             backends = route.get("backends", [])
             if not backends:
@@ -115,7 +141,7 @@ def resolve(
         "stability": stability,
         "profile": resolved_profile,
         "backend": backend,
-        "route_version": route_version(profiles_path),
+        "route_version": route_version(root),
     }
 
 

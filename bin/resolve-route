@@ -17,7 +17,7 @@ def main() -> int:
     parser.add_argument("--backend", required=True)
     parser.add_argument("--variant")
     parser.add_argument("--allow-experimental", action="store_true")
-    parser.add_argument("--json", action="store_true", help="accepted for an explicit stable output contract")
+    parser.add_argument("--json", action="store_true", required=True, help="emit the stable JSON route contract")
     args = parser.parse_args()
     try:
         route = resolve(

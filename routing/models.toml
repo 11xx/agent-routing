@@ -8,7 +8,7 @@
 [meta]
 benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-07-27"
 metric = "pass@1 / avg $ / output tokens"
-updated = "2026-07-31"
+updated = "2026-08-01"
 pricing_update = "OpenAI cut standard short-context Terra token prices by 20% and Luna by 80% on 2026-07-30. Per-task costs below apply the uniform price change to the measured benchmark token mix; capability and output-token results did not change."
 era_notes = "Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held. OpenAI's 2026-07-30 Terra/Luna price and credit reset moved the workhorse roles. DeepSeek V4 Flash 0731 entered public beta on 2026-07-31 while V4 Pro remained preview. History in eras/"
 
@@ -32,6 +32,7 @@ weaknesses = ["medium is the routing ceiling: high buys only 4 points for +85% c
   use = "prohibited: never select, including by explicit request. Identical pass@1 to high for +49% cost and 1.4x the tokens — it buys nothing measurable"
   [[model.effort]]
   effort = "high"
+  status = "explicit-only"
   pass_at_1 = 0.73
   usd_per_task = 6.08
   out_tokens = "64k"
@@ -64,6 +65,7 @@ weaknesses = ["overbuild: state scope ceilings and 'no tests/refactors beyond th
   use = "prohibited: +2 points over xhigh for +78% cost, and opus-5 high matches it for less"
   [[model.effort]]
   effort = "xhigh"
+  status = "explicit-only"
   pass_at_1 = 0.71
   usd_per_task = 4.70
   out_tokens = "41k"
@@ -109,6 +111,7 @@ subscription_credits_per_million = { input = 50.0, cached_input = 5.0, output = 
   use = "escalation when Terra high is the right model shape but the task needs more reasoning; Sol medium remains the reviewer-capable and more token-efficient alternative"
   [[model.effort]]
   effort = "max"
+  status = "explicit-only"
   pass_at_1 = 0.70
   usd_per_task = 3.96
   use = "explicit Terra ceiling only"
@@ -121,6 +124,7 @@ api_price_per_million = { input = 0.2, cached_input = 0.02, output = 1.2 }
 subscription_credits_per_million = { input = 5.0, cached_input = 0.5, output = 30.0 }
   [[model.effort]]
   effort = "max"
+  status = "experimental"
   pass_at_1 = 0.67
   usd_per_task = 0.61
   out_tokens = "73k"
@@ -128,6 +132,7 @@ subscription_credits_per_million = { input = 5.0, cached_input = 0.5, output = 3
   use = "an experimental cheap but slow planned-execution option: 2 points below Sol high for about one-sixth of its benchmark cash and subscription-credit cost, but 2.6x the output tokens and 2.8x the steps. Use only in controlled trials when the task is fully specified, latency is secondary, and lead review is available"
   [[model.effort]]
   effort = "xhigh"
+  status = "experimental"
   pass_at_1 = 0.57
   usd_per_task = 0.31
   out_tokens = "45k"

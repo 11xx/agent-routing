@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Reject concrete roster pins in active delegation consumer sources."""
+
+import pathlib
+import os
+import sys
+import tomllib
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+CODE = pathlib.Path(os.environ.get("AI_AGENT_CODE_ROOT", ROOT.parent))
+
+
+def load(path):
+    with path.open("rb") as handle:
+        return tomllib.load(handle)
+
+
+def files_under(path):
+    if path.is_file():
+        yield path
+        return
+    for member in path.rglob("*"):
+        if member.is_file() and ".git" not in member.parts and "node_modules" not in member.parts:
+            yield member
+
+
+def main():
+    models = load(ROOT / "routing" / "models.toml").get("model", [])
+    profiles = load(ROOT / "routing" / "profiles.toml").get("profile", [])
+    literals = {model["id"] for model in models}
+    for profile in profiles:
+        for route in [profile, *profile.get("variant", [])]:
+            if route.get("backend_model"):
+                literals.add(route["backend_model"])
+
+    roots = [
+        CODE / "ai-agent-instructions" / "config" / "pi-settings.json",
+        CODE / "ai-agent-instructions" / "fragments",
+        CODE / "ai-agent-instructions" / "agents",
+        CODE / "ai-agent-instructions" / "extensions" / "subagent",
+        CODE / "ai-agent-skills" / "skills" / "codex-delegate",
+        CODE / "ai-agent-skills" / "skills" / "pi-delegate",
+        CODE / "ai-agent-skills" / "skills" / "consultant",
+        CODE / "ai-agent-skills" / "skills" / "plan-for-codex",
+        CODE / "ai-agent-skills" / "skills" / "multi-wargame",
+    ]
+    missing = [path for path in roots if not path.exists()]
+    if missing:
+        for path in missing:
+            print(f"missing delegation consumer: {path}")
+        return 2
+
+    proxy_pins = {
+        CODE / "ai-agent-skills" / "skills" / "codex-delegate" / "agents" / "codex.md",
+        CODE / "ai-agent-skills" / "skills" / "pi-delegate" / "agents" / "pi.md",
+    }
+    problems = []
+    for root in roots:
+        for path in files_under(root):
+            try:
+                text = path.read_text()
+            except UnicodeDecodeError:
+                continue
+            for line_number, line in enumerate(text.splitlines(), 1):
+                found = sorted(literal for literal in literals if literal in line)
+                if found:
+                    problems.append(f"{path}:{line_number}: concrete route literal: {', '.join(found)}")
+                stripped = line.strip()
+                if path.suffix == ".md" and stripped.startswith("model:"):
+                    if path not in proxy_pins or stripped != "model: sonnet":
+                        problems.append(f"{path}:{line_number}: delegation source pins model frontmatter")
+                if path in proxy_pins and stripped.startswith("effort:") and stripped != "effort: low":
+                    problems.append(f"{path}:{line_number}: proxy shell changed its centrally recorded effort")
+                if path.name == "pi-settings.json" and '"defaultModel"' in stripped:
+                    problems.append(f"{path}:{line_number}: Pi default must use $route, not defaultModel")
+
+    for problem in problems:
+        print(problem)
+    if problems:
+        print(f"\n{len(problems)} consumer routing pin(s); use a named agent-routing profile")
+        return 1
+    print(f"delegation consumers contain no concrete roster pins across {len(roots)} source roots")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -274,19 +274,19 @@ Adapter contract (probe checklist for onboarding any new harness):
    the exact usage-limit error signature. Two backends on one pool are not
    fallbacks for each other's limits.
 
-### Verified backends (2026-07-31)
+### Verified backends (2026-08-01)
 
-| Contract | codex CLI (`codex exec`) | pi (`pi -p`), v0.83.0 |
-| --- | --- | --- |
-| Entrypoint | `codex exec "<prompt>"` | `pi -p "<prompt>"`; `@file` args inline files (specs) |
-| Model | `-m gpt-5.6-{sol,terra,luna}` | GPT: `--provider openai-codex --model gpt-5.6-{sol,terra,luna}`; DeepSeek: `--provider deepseek --model deepseek-v4-{flash,pro}` |
-| Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) |
-| Working dir | `-C <dir>` | none — `cd` first |
-| Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message |
-| Isolation | OS sandbox: `-s read-only` / `-s workspace-write` (+ `writable_roots`) | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access |
-| Clean-room | curated prompt; reads repo AGENTS.md | `--no-session --no-extensions --no-skills --no-context-files` |
-| Resume | `codex exec resume --last` | `--session <id>` / `-c` / `--fork` |
-| Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota |
+| Contract | codex CLI (`codex exec`) | pi (`pi -p`), v0.83.0 | Claude CLI (`claude -p`) |
+| --- | --- | --- | --- |
+| Entrypoint | `codex exec "<prompt>"` | `pi -p "<prompt>"`; `@file` args inline files (specs) | `claude -p "<prompt>"` |
+| Model | `-m gpt-5.6-{sol,terra,luna}` | GPT: `--provider openai-codex --model gpt-5.6-{sol,terra,luna}`; DeepSeek: `--provider deepseek --model deepseek-v4-{flash,pro}` | `--model claude-opus-5` |
+| Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high` |
+| Working dir | `-C <dir>` | none — `cd` first | none — `cd` first; `--add-dir=<path>` adds explicit read roots |
+| Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message | stdout for one-shot calls; `--output-format stream-json` for supervised runs |
+| Isolation | OS sandbox: `-s read-only` / `-s workspace-write` (+ `writable_roots`) | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access | permission mode plus tool allowlist; `plan` is the read-only consultation mode |
+| Clean-room | curated prompt; reads repo AGENTS.md | `--no-session --no-extensions --no-skills --no-context-files` | `--safe-mode --disable-slash-commands --no-session-persistence` with a curated stdin prompt |
+| Resume | `codex exec resume --last` | `--session <id>` / `-c` / `--fork` | `--resume <session-id>` |
+| Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota | Claude subscription through the first-party client |
 
 Backend selection between the two GPT routes:
 
@@ -314,6 +314,9 @@ Backend selection between the two GPT routes:
   every backend. pi's stdin behavior under `-p` is unprobed: apply the
   same `< /dev/null` discipline defensively.
 - opencode: **unprobed** — run the contract checklist before first use.
+- Claude is the first-party backend for `design` and taste-axis review. It is
+  not a substitute for Pi's native provider route; its subscription entitlement
+  belongs to the Claude client.
 
 ## Launcher hygiene and liveness
 

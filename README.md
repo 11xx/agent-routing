@@ -12,6 +12,7 @@ agent-routing mechanism               # DELEGATION.md, the mechanism prose canon
 agent-routing check opus-5 xhigh      # exits 1: prohibited
 agent-routing doctrine                # authored prose used by every harness
 agent-routing lint                    # check doctrine/manifest agreement
+agent-routing lint-consumers          # reject roster pins in active consumers
 ```
 
 ## Why it is its own repository
@@ -65,12 +66,20 @@ orders rows for a reader. `agent-routing lint` checks model coverage and every
 number represented in both, so disagreement is detected before the instruction
 build runs.
 
+`agent-routing lint-consumers` scans the active delegation surfaces in the two
+direct consumer repositories. It rejects concrete model IDs and static agent
+model frontmatter while leaving tests and historical manifests out of scope.
+The proxy-shell agent aliases are the one deliberate exception: their
+version-agnostic Claude alias is required by Claude's static agent frontmatter,
+and the central delegation manifest records that shell-only policy.
+
 ## Named route profiles
 
 Callers classify work by task shape and pass that choice to the resolver. The
 resolver is a pure local table read: it does not inspect the task, access the
 network, cache results on disk, or choose a profile. A successful response has
-exactly the concrete route and a table hash for durable logs:
+exactly the concrete route and a hash of the three routing manifests for durable
+logs:
 
 ```sh
 agent-routing resolve extract --backend pi --json
@@ -79,7 +88,8 @@ agent-routing resolve implement --backend pi --variant deepseek \
 ```
 
 Profiles stay on one axis: extraction, exploration, bounded implementation,
-broad execution, planning, review, or design. Backend sandboxing, tool fences, output capture, and
+broad execution, planning, review, design, or an interactive harness default.
+Backend sandboxing, tool fences, output capture, and
 liveness remain adapter behavior in `DELEGATION.md` and the backend skills.
 Probationary and experimental variants fail closed unless the caller explicitly
 passes `--allow-experimental`.

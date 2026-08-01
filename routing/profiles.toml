@@ -50,6 +50,15 @@ backends = ["codex", "pi"]
   backends = ["pi"]
 
 [[profile]]
+id = "interactive"
+purpose = "default interactive Pi parent session before a task-specific child route is selected"
+provider = "openai-codex"
+model = "gpt-5.6-sol"
+effort = "medium"
+stability = "stable"
+backends = ["pi"]
+
+[[profile]]
 id = "plan"
 purpose = "read-only technical planning where feasibility, failure modes, and ordered execution are the work"
 provider = "openai-codex"
