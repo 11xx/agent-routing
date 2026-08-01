@@ -78,8 +78,8 @@ agent-routing resolve implement --backend pi --variant deepseek \
   --allow-experimental --json
 ```
 
-Profiles stay on one axis: extraction, exploration, implementation, planning,
-review, or design. Backend sandboxing, tool fences, output capture, and
+Profiles stay on one axis: extraction, exploration, bounded implementation,
+broad execution, planning, review, or design. Backend sandboxing, tool fences, output capture, and
 liveness remain adapter behavior in `DELEGATION.md` and the backend skills.
 Probationary and experimental variants fail closed unless the caller explicitly
 passes `--allow-experimental`.

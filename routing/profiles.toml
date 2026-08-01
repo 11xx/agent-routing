@@ -59,6 +59,15 @@ stability = "stable"
 backends = ["codex", "pi"]
 
 [[profile]]
+id = "execute"
+purpose = "broad or multi-slice implementation where technical judgment and long-horizon persistence remain material"
+provider = "openai-codex"
+model = "gpt-5.6-sol"
+effort = "high"
+stability = "stable"
+backends = ["codex", "pi"]
+
+[[profile]]
 id = "review"
 purpose = "read-only correctness and regression review of a bounded behavior-affecting change"
 provider = "openai-codex"
@@ -66,6 +75,14 @@ model = "gpt-5.6-sol"
 effort = "medium"
 stability = "stable"
 backends = ["codex", "pi"]
+
+  [[profile.variant]]
+  id = "high-stakes"
+  provider = "openai-codex"
+  model = "gpt-5.6-sol"
+  effort = "high"
+  stability = "stable"
+  backends = ["codex", "pi"]
 
 [[profile]]
 id = "design"

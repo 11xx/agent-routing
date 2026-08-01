@@ -27,6 +27,11 @@ class RoutingProfilesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not support backend"):
             resolve(ROOT, "design", "codex")
 
+    def test_stable_variant_does_not_need_experimental_opt_in(self):
+        route = resolve(ROOT, "review", "codex", variant_id="high-stakes")
+        self.assertEqual(route["profile"], "review:high-stakes")
+        self.assertEqual(route["stability"], "stable")
+
 
 if __name__ == "__main__":
     unittest.main()
