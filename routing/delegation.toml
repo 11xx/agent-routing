@@ -89,7 +89,7 @@ policy = "resolve the extract profile for fixed-shape calls and the explicitly o
 [[rule]]
 id = "deepseek-experimental-invocation"
 harness = "pi"
-policy = "invoke the official V4 Flash 0731 public beta with `--provider deepseek --model deepseek-v4-flash`; it is an experimental independent-pool executor, not a reviewer or default route. The callable V4 Pro endpoint remains preview and is retained only for its measured defect-generation niche until the final release"
+policy = "invoke the generally available V4 Flash 0731 with `--provider deepseek --model deepseek-v4-flash`; it is an experimental independent-pool executor, not a reviewer or default route. The callable V4 Pro endpoint remains preview and is retained only for its measured defect-generation niche until the final release"
 
 [[rule]]
 id = "sandboxed-executors"
@@ -185,7 +185,7 @@ why = "the pool is an optional $10/month subscription, unlike the two standing o
 [[rule]]
 id = "opencode-go-invocation"
 harness = "opencode"
-policy = "capability rows transfer from the roster because the model is identical — opencode-go/gpt-5.6-luna is the same gpt-5.6-luna measured on the matrix — while cost and quota accounting do not: Go meters usage dollars ($12 per five hours, $30 weekly, $60 monthly) rather than credits. Several Go models are hosted in China and refuse to run until the workspace takes an explicit data-residency opt-in; that opt-in is the user's decision and is never taken on their behalf. Exit status is honest (1 on model error), but the default prefix is heavy — a bare prompt wrote 16.3k cache tokens — so fence context aggressively on a dollar-metered window"
+policy = "capability rows transfer from the roster because the model is identical — opencode-go/gpt-5.6-luna is the same gpt-5.6-luna measured on the matrix — while cost and quota accounting do not: Go meters usage dollars ($12 per five hours, $30 weekly, $60 monthly) rather than credits. Several Go models are hosted in China and refuse to run until the workspace takes an explicit data-residency opt-in; that opt-in governs where delegated code and repository context are sent, so it is the user's decision and is never taken on their behalf. The remedy when one of those models is wanted is a provider allowlist naming which routes carry an acceptable retention posture — the same model is served zero-retention elsewhere — never a relaxation of the stop. Until that allowlist exists, the refusal is terminal and the model stays unrouted on this pool. This rule keys on the observed refusal rather than on an inferred rationale: the message states hosting location, and whether the gate is a retention policy underneath is unconfirmed. Exit status is honest (1 on model error), but the default prefix is heavy — a bare prompt wrote 16.3k cache tokens — so fence context aggressively on a dollar-metered window"
 why = "measured live on 2026-08-01: gpt-5.6-luna returned on the first call, deepseek-v4-flash refused with a China-hosting opt-in requirement, and --format json reported the per-step token accounting that makes the dollar window locally measurable"
 
 [[rule]]

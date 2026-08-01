@@ -10,7 +10,7 @@ benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-07-27"
 metric = "pass@1 / avg $ / output tokens"
 updated = "2026-08-01"
 pricing_update = "OpenAI cut standard short-context Terra token prices by 20% and Luna by 80% on 2026-07-30. Per-task costs below apply the uniform price change to the measured benchmark token mix; capability and output-token results did not change."
-era_notes = "Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held. OpenAI's 2026-07-30 Terra/Luna price and credit reset moved the workhorse roles. DeepSeek V4 Flash 0731 entered public beta on 2026-07-31 while V4 Pro remained preview. History in eras/"
+era_notes = "Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held. OpenAI's 2026-07-30 Terra/Luna price and credit reset moved the workhorse roles. DeepSeek V4 Flash 0731 reached general availability on 2026-07-31 while V4 Pro remained preview. History in eras/"
 
 [[model]]
 id = "opus-5"
@@ -208,10 +208,10 @@ role = "never for anything that ships. The class is no longer uniformly weak —
 id = "deepseek-v4-flash"
 family = "deepseek"
 status = "experimental"
-role = "callable independent-pool executor for source-verified bounded work when Codex quota is constrained. The 0731 API is an official public-beta build adapted for Codex and the Responses API, but it remains probationary until neutral same-harness evidence and local field runs establish reliability"
+role = "callable independent-pool executor for source-verified bounded work when Codex quota is constrained. The 0731 build is generally available and supersedes the preview, but release status is not capability evidence: it stays probationary until neutral same-harness measurement and local field runs establish reliability"
 character = "DeepSeek reports 54.4 on DeepSWE at max effort using its own unreleased Harness minimal mode. Record that as vendor evidence, not as a pass@1 row comparable to this matrix. The model is materially different from the April preview despite keeping the same architecture and size: it was re-post-trained for agent work"
 api_price_per_million = { cache_hit_input = 0.0028, cache_miss_input = 0.14, output = 0.28 }
-notes = "Live-probed through pi 0.83.0 on 2026-07-31. Public beta is API-only; the DeepSeek app/web model was unchanged. V4 Pro's final release is still pending."
+notes = "Live-probed through pi 0.83.0 on 2026-07-31, the day it went generally available. Release was API-only; the DeepSeek app/web model was unchanged. V4 Pro's final release is still pending. Reachable on more than one pool, and the pools differ in retention posture rather than in capability: zero-retention routes exist at some providers, while the opencode-go route is gated behind an explicit China-hosting opt-in and stays unrouted until a provider allowlist exists to express that distinction."
   [[model.effort]]
   effort = "max"
   vendor_reported_deepswe = 0.544
@@ -221,7 +221,7 @@ notes = "Live-probed through pi 0.83.0 on 2026-07-31. Public beta is API-only; t
 id = "deepseek-v4-pro"
 family = "deepseek"
 status = "restricted"
-role = "candidate generator under a brief, never an adjudicator. The callable endpoint remains the April preview and is superseded for normal experiments by the official V4 Flash 0731 public beta; retain it only for its field-measured defect-generation behavior until the final V4 Pro release"
+role = "candidate generator under a brief, never an adjudicator. The callable endpoint remains the April preview and is superseded for normal experiments by the generally available V4 Flash 0731; retain it only for its field-measured defect-generation behavior until the final V4 Pro release"
 character = "far below the floor on autonomous work — 8% pass@1 places it under luna low/medium, not near sonnet — yet under an adversarial review brief it produced six real defects across eight changes that a neutral 'review this' ask from the same model missed entirely. The value came from the brief and from a lead who checked every claim, not from the model. Field-measured 2026-07-27"
 weaknesses = ["writes confident, well-argued, entirely false findings: two of eight blocking claims in the measured run described an artifact of a malformed diff rather than the branch, with full failure scenarios attached", "cannot be trusted to notice that its input is wrong, which is the failure a peer-grade reviewer catches first", "recording its verdict through `--on-behalf-of` over-credits, because arc's `--model` field records the invoker's model and there is no field for the subject's"]
 api_price_per_million = { cache_hit_input = 0.003625, cache_miss_input = 0.435, output = 0.87 }
