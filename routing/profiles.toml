@@ -15,6 +15,14 @@ effort = "low"
 stability = "stable"
 backends = ["codex", "pi"]
 
+  [[profile.variant]]
+  id = "opencode-go"
+  provider = "opencode-go"
+  model = "gpt-5.6-luna"
+  effort = "low"
+  stability = "experimental"
+  backends = ["opencode"]
+
 [[profile]]
 id = "explore"
 purpose = "read-only codebase reconnaissance and source mapping without a verdict"
@@ -48,6 +56,14 @@ backends = ["codex", "pi"]
   effort = "max"
   stability = "experimental"
   backends = ["pi"]
+
+  [[profile.variant]]
+  id = "opencode-go-trial"
+  provider = "opencode-go"
+  model = "gpt-5.6-luna"
+  effort = "max"
+  stability = "experimental"
+  backends = ["opencode"]
 
 [[profile]]
 id = "interactive"

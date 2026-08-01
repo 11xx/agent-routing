@@ -17,6 +17,7 @@ class ConsumerLintTest(unittest.TestCase):
             "ai-agent-instructions/config/pi-settings.json": json.dumps({"$route": "interactive"}),
             "ai-agent-skills/skills/codex-delegate/agents/codex.md": "model: sonnet\neffort: low\n",
             "ai-agent-skills/skills/pi-delegate/agents/pi.md": "model: sonnet\neffort: low\n",
+            "ai-agent-skills/skills/opencode-delegate/agents/opencode.md": "model: sonnet\neffort: low\n",
         }
         directories = [
             "ai-agent-instructions/fragments",

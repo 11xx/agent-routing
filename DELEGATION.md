@@ -276,17 +276,17 @@ Adapter contract (probe checklist for onboarding any new harness):
 
 ### Verified backends (2026-08-01)
 
-| Contract | codex CLI (`codex exec`) | pi (`pi -p`), v0.83.0 | Claude CLI (`claude -p`) |
-| --- | --- | --- | --- |
-| Entrypoint | `codex exec "<prompt>"` | `pi -p "<prompt>"`; `@file` args inline files (specs) | `claude -p "<prompt>"` |
-| Model | `-m gpt-5.6-{sol,terra,luna}` | GPT: `--provider openai-codex --model gpt-5.6-{sol,terra,luna}`; DeepSeek: `--provider deepseek --model deepseek-v4-{flash,pro}` | `--model claude-opus-5` |
-| Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high` |
-| Working dir | `-C <dir>` | none — `cd` first | none — `cd` first; `--add-dir=<path>` adds explicit read roots |
-| Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message | stdout for one-shot calls; `--output-format stream-json` for supervised runs |
-| Isolation | OS sandbox: `-s read-only` / `-s workspace-write` (+ `writable_roots`) | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access | permission mode plus tool allowlist; `plan` is the read-only consultation mode |
-| Clean-room | curated prompt; reads repo AGENTS.md | `--no-session --no-extensions --no-skills --no-context-files` | `--safe-mode --disable-slash-commands --no-session-persistence` with a curated stdin prompt |
-| Resume | `codex exec resume --last` | `--session <id>` / `-c` / `--fork` | `--resume <session-id>` |
-| Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota | Claude subscription through the first-party client |
+| Contract | codex CLI (`codex exec`) | pi (`pi -p`), v0.83.0 | Claude CLI (`claude -p`) | opencode (`opencode run`), v1.18.10 |
+| --- | --- | --- | --- | --- |
+| Entrypoint | `codex exec "<prompt>"` | `pi -p "<prompt>"`; `@file` args inline files (specs) | `claude -p "<prompt>"` | `opencode run "<prompt>"` |
+| Model | `-m gpt-5.6-{sol,terra,luna}` | GPT: `--provider openai-codex --model gpt-5.6-{sol,terra,luna}`; DeepSeek: `--provider deepseek --model deepseek-v4-{flash,pro}` | `--model claude-opus-5` | `-m opencode-go/<model>` |
+| Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high` | `--variant high\|max` |
+| Working dir | `-C <dir>` | none — `cd` first | none — `cd` first; `--add-dir=<path>` adds explicit read roots | `--dir <dir>` |
+| Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message | stdout for one-shot calls; `--output-format stream-json` for supervised runs | stdout is the final message under a `> build · <model>` header; `--format json` gives a JSONL event stream with per-step token counts |
+| Isolation | OS sandbox: `-s read-only` / `-s workspace-write` (+ `writable_roots`) | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access | permission mode plus tool allowlist; `plan` is the read-only consultation mode | **none**; permission config, and `--auto` approves everything not explicitly denied |
+| Clean-room | curated prompt; reads repo AGENTS.md | `--no-session --no-extensions --no-skills --no-context-files` | `--safe-mode --disable-slash-commands --no-session-persistence` with a curated stdin prompt | `--pure` drops external plugins only; AGENTS.md and `~/.config/opencode/skills` still load |
+| Resume | `codex exec resume --last` | `--session <id>` / `-c` / `--fork` | `--resume <session-id>` | `-c` / `-s <id>` / `--fork` |
+| Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota | Claude subscription through the first-party client | Conditional OpenCode Go subscription — a third pool metered in usage dollars ($12/5h, $30/week, $60/month), locally readable via `opencode stats`. Limit signature unprobed |
 
 Backend selection between the two GPT routes:
 
@@ -313,7 +313,29 @@ Backend selection between the two GPT routes:
 - Liveness, watchdog, and one-prompt-source stdin rules below apply to
   every backend. pi's stdin behavior under `-p` is unprobed: apply the
   same `< /dev/null` discipline defensively.
-- opencode: **unprobed** — run the contract checklist before first use.
+- **opencode reaches a third quota pool, on the condition that it is paid
+  for.** Its `opencode-go` provider draws on neither the Claude window nor
+  the Codex credit schedule, which makes it capacity the other two backends
+  cannot substitute for. That is also its whole reason to exist here: on
+  capability it offers nothing the roster lacks. Availability is a payment
+  state no manifest can observe, so every route through it is experimental,
+  opt-in, and fails closed; confirm the credential before routing and treat
+  its absence as a stop rather than a fallback.
+- **Reach Luna-on-Go through opencode, not pi.** pi's bundled `opencode-go`
+  catalog carries 16 of the 17 Go models and omits exactly `gpt-5.6-luna`,
+  with no refresh path — `pi update models` fails outright. For the other 16
+  either backend works.
+- **Some Go models refuse to run pending a data-residency opt-in.** DeepSeek
+  V4 Flash returns "only available hosted in China and requires explicit opt
+  in" with a workspace URL. That consent governs where delegated code and
+  repo context are sent, so it is the user's call and is never taken on their
+  behalf; route around the model until they decide.
+- opencode has no OS sandbox and `--auto` approves everything not explicitly
+  denied, so write mode carries pi's exposure without pi's tool allowlist.
+  Its dollar-denominated window also makes context discipline a cost
+  question: `--pure` drops external plugins only, and AGENTS.md plus
+  `~/.config/opencode/skills` still load on every launch — a bare probe
+  prompt wrote 16.3k cache tokens before doing any work.
 - Claude is the first-party backend for `design` and taste-axis review. It is
   not a substitute for Pi's native provider route; its subscription entitlement
   belongs to the Claude client.
