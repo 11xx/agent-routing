@@ -4,7 +4,7 @@
 
 [meta]
 schema = "routing-profiles/1"
-updated = "2026-08-01"
+updated = "2026-08-02"
 
 [[profile]]
 id = "extract"
@@ -45,8 +45,8 @@ backends = ["codex", "pi"]
   id = "luna-trial"
   provider = "openai-codex"
   model = "gpt-5.6-luna"
-  effort = "high"
-  stability = "probationary"
+  effort = "max"
+  stability = "experimental"
   backends = ["codex", "pi"]
 
   [[profile.variant]]
