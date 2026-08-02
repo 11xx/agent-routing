@@ -83,11 +83,11 @@ logs:
 
 ```sh
 agent-routing resolve extract --backend pi --json
-agent-routing resolve implement --backend pi --variant deepseek \
-  --allow-experimental --json
+agent-routing resolve generate --backend pi --allow-experimental --json
 ```
 
-Profiles stay on one axis: extraction, exploration, bounded implementation,
+Profiles stay on one axis: extraction, exploration, candidate generation,
+bounded implementation,
 broad execution, planning, review, design, or an interactive harness default.
 Backend sandboxing, tool fences, output capture, and
 liveness remain adapter behavior in `DELEGATION.md` and the backend skills.

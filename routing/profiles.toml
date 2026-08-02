@@ -50,20 +50,21 @@ backends = ["codex", "pi"]
   backends = ["codex", "pi"]
 
   [[profile.variant]]
-  id = "deepseek"
-  provider = "deepseek"
-  model = "deepseek-v4-flash"
-  effort = "max"
-  stability = "experimental"
-  backends = ["pi"]
-
-  [[profile.variant]]
   id = "opencode-go-trial"
   provider = "opencode-go"
   model = "gpt-5.6-luna"
   effort = "max"
   stability = "experimental"
   backends = ["opencode"]
+
+[[profile]]
+id = "generate"
+purpose = "high-volume or heavily steered candidate generation whose output is raw material rather than a deliverable: drafts to mine, options to sweep, defect candidates to adjudicate. Everything it returns is unverified until a lead or reviewer-tier model checks it against source, and nothing resolved here is the last model to touch shipped work"
+provider = "deepseek"
+model = "deepseek-v4-flash"
+effort = "max"
+stability = "experimental"
+backends = ["pi"]
 
 [[profile]]
 id = "interactive"

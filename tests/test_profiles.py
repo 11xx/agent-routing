@@ -31,7 +31,14 @@ class RoutingProfilesTest(unittest.TestCase):
 
     def test_experimental_variant_fails_closed(self):
         with self.assertRaisesRegex(ValueError, "--allow-experimental"):
-            resolve(ROOT, "implement", "pi", variant_id="deepseek")
+            resolve(ROOT, "implement", "opencode", variant_id="opencode-go-trial")
+
+    def test_experimental_base_profile_fails_closed(self):
+        """A whole profile can be experimental, not only a variant of a stable one."""
+        with self.assertRaisesRegex(ValueError, "--allow-experimental"):
+            resolve(ROOT, "generate", "pi")
+        route = resolve(ROOT, "generate", "pi", allow_experimental=True)
+        self.assertEqual(route["stability"], "experimental")
 
     def test_backend_mismatch_fails(self):
         with self.assertRaisesRegex(ValueError, "does not support backend"):
@@ -52,8 +59,8 @@ class RoutingProfilesTest(unittest.TestCase):
         root = self.fixture_root()
         path = root / "routing" / "profiles.toml"
         text = path.read_text().replace(
-            'id = "deepseek"\n  provider = "deepseek"\n  model = "deepseek-v4-flash"\n  effort = "max"\n  stability = "experimental"',
-            'id = "deepseek"\n  provider = "deepseek"\n  model = "deepseek-v4-flash"\n  effort = "max"\n  stability = "stable"',
+            'model = "deepseek-v4-flash"\neffort = "max"\nstability = "experimental"',
+            'model = "deepseek-v4-flash"\neffort = "max"\nstability = "stable"',
         )
         path.write_text(text)
         self.assertTrue(any("experimental model" in problem for problem in validation_problems(root)))

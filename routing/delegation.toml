@@ -89,7 +89,7 @@ policy = "resolve the extract profile for fixed-shape calls and the explicitly o
 [[rule]]
 id = "deepseek-experimental-invocation"
 harness = "pi"
-policy = "invoke the generally available V4 Flash 0731 with `--provider deepseek --model deepseek-v4-flash`; it is an experimental independent-pool executor, not a reviewer or default route. The callable V4 Pro endpoint remains preview and is retained only for its measured defect-generation niche until the final release"
+policy = "invoke the generally available V4 Flash 0731 with `--provider deepseek --model deepseek-v4-flash`, and resolve it through the `generate` profile only. It is a steered generator on an independent pool: never the implementer of record, never a reviewer, never a planner, never a default route, and never the last model to touch shipped work. Its output is unverified raw material — treat every claim and identifier as a candidate until checked against source, because it fabricates confidently rather than visibly. The callable V4 Pro endpoint remains preview and is retained only for its measured defect-generation niche until the final release"
 
 [[rule]]
 id = "sandboxed-executors"
