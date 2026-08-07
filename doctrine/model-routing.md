@@ -34,9 +34,10 @@ in `agent-routing eras`.
 | opus-4.8 · high | 52% | 4.28 | 50k | **Superseded by Opus 5**; never select. Opus 5 beats it by 21 points at high. |
 | fable-5 · high | 69% | 9.18 | 57k | **Retired.** No subscription route — credit billing only, at a cost ruled prohibitive. Never route to it, never offer it as an escalation; "still accessible" is not available. |
 | gpt-5.5 · any | ≤67% | — | — | **Deprecated.** Every row is dominated by a cheaper 5.6 tier; never select it. |
-| grok-4.5 · high | 54% | 2.42 | 36k | Benchmarked but unreachable — no probed backend. Dominated by Sol medium. |
-| kimi-k3 · max | 69% | 4.65 | 81k | Benchmarked but unreachable — no probed backend. The strongest inactive row: Sol-high band for more cash and 2.9× the tokens. |
-| deepseek-v4-flash · max | — | — | — | **Steered generator, never an implementer.** Fast, cheap, million-token context, and genuinely strong at coding — and a confident fabricator. Independent testing has it inventing answers on every run of an agentic task across all efforts and temperatures, ignoring a plan's first explicit instruction, and writing far more code than better-scoring models. A pre-resolved brief is no protection, because the brief is what it disregarded. Use it to produce raw material a lead mines; never let it be the last model to touch shipped work, and check every identifier it emits against source. The 0731 build is generally available; DeepSeek's own 54.4% came from an unreleased minimal harness and is availability evidence, not a comparable pass@1. Pools differ in retention posture, not capability — the opencode-go route stays unrouted behind its China-hosting opt-in. |
+| grok-4.5 · high | 54% | 2.42 | 36k | Benchmarked but unreachable — no probed backend, though a first-party one exists (the Grok Build CLI). Dominated by Sol medium, and field-placed with the short-horizon models. |
+| kimi-k3 · max | 69% | 4.65 | 81k | Benchmarked but unreachable — no probed backend. The strongest inactive row: Sol-high band for more cash and 2.9× the tokens, and independently field-credited with holding a long autonomous arc. |
+| muse-spark-1.2 · — | — | — | — | **Released, unmeasured here.** No probed backend and no independent pass@1; third-party index scoring puts it level with Grok 4.5 and the Opus 4.8 band, which Sol medium dominates. Every launch number is vendor-run — that harness scores Terra high at 64.8% and Opus 5 at 65.0% where this matrix measures 54% and 73%, and its predecessor's published Terminal-Bench figure verified 3.8 points low. Hosted-only, 1M context; the 21×-cheaper contributor tier is paid for in training rights over your code. Activation needs an independent measurement first, then a backend probe. |
+| deepseek-v4-flash · max | — | — | — | **Steered generator, never an implementer.** Fast, cheap, million-token context, and genuinely strong at coding — and a confident fabricator. Independent testing has it inventing answers on every run of an agentic task across all efforts and temperatures, ignoring a plan's first explicit instruction, and writing far more code than better-scoring models. A pre-resolved brief is no protection, because the brief is what it disregarded. Use it to produce raw material a lead mines; never let it be the last model to touch shipped work, and check every identifier it emits against source. Steer it with style exemplars rather than prohibitions — its raw output is functional and graceless, and showing it the target is what fixes that. The 0731 build is generally available; DeepSeek's own 54.4% came from an unreleased minimal harness and is availability evidence, not a comparable pass@1. Hosted pools differ in retention posture, not capability — the opencode-go route stays unrouted behind its China-hosting opt-in — and because the weights are open, running it locally removes the third party entirely. It is also the practical route for authorized security work, where hosted frontier models refuse or degrade; authorization is the operator's to establish. None of this buys trust: a locally hosted fabricator fabricates identically. |
 | deepseek-v4-pro · max | 8% | — | — | **Preview-only briefed defect generator, never a peer reviewer.** Its April endpoint remains callable, but the final Pro release has not shipped. Retain the measured defect-generation niche. Both DeepSeek models are now generators only; neither implements. |
 | small-model class | ≤49% | — | — | Never for anything that ships. Not uniformly weak any more (gemini-3.6-flash reaches 49%), but every row is dominated by a cheaper or better 5.6 tier. |
 
@@ -99,6 +100,20 @@ Orchestration mechanics are a separate weak axis. A proxy subagent it spawned
 improvised a poll loop on a status file the harness never writes, and hung —
 fatal in an unattended run. Drive long delegations with a directly backgrounded
 call, never through a proxy agent free to invent its own wait.
+
+**Task distance is a routing axis the pass@1 column cannot carry.** A model's
+error is set at the start, in how it reads what the target actually is, and the
+longer the arc the further a small misreading compounds. The same
+misinterpretation that is harmless over a five-line change lands somewhere
+unrecognisable at the end of an unattended hour — plausibly complete, green on
+its gates, and not what was asked for. Cheap tiers are therefore safe over short
+distances almost regardless of how well they interpret, which is why bounded
+slices route down and broad ambiguous arcs do not; and the cost of an
+underspecified target is paid in proportion to arc length, so specification
+effort belongs where the arc is long rather than where the task is hard. This is
+the same quantity the delegation ladder prices as residual risk after the gate.
+Naming the axis keeps the reason legible at the moment a cheap tier looks
+tempting for a long run.
 
 **Two co-equal leads, not one default.** Opus 5 medium and Sol high both score
 69% at roughly the same cash, on *different quota pools* — Claude and Codex.
