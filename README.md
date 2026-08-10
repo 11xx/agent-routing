@@ -4,6 +4,7 @@ Which model to pick, at which effort, reached by which mechanism — as data,
 with one accessor, for every harness and tool on this machine.
 
 ```sh
+agent-routing                         # the routing guide: start here
 agent-routing models                  # the model/effort matrix
 agent-routing profiles                # named task-shape routes
 agent-routing resolve implement --backend codex --json
@@ -45,20 +46,27 @@ synchronisation step.
 | path | status |
 | :-- | :-- |
 | `routing/*.toml` | machine-readable source of truth — edit here |
-| `doctrine/model-routing.md` | authored routing doctrine composed into every harness instruction file |
+| `doctrine/guide.md` | the routing guide, printed by the bare invocation |
+| `doctrine/model-routing.md` | authored routing doctrine, read on demand via `agent-routing doctrine` |
 | `DELEGATION.md` | authored mechanism prose — how work reaches an executor |
 | `eras/` | history; why a roster changed, kept when the roster moves on |
 
 ## The propagation path
 
+A harness instruction file carries a short pointer to this CLI rather than a copy
+of the roster, so the policy is read when a routing decision is actually in front
+of an agent instead of occupying every context window.
+
 ```
-doctrine/model-routing.md
-    └─ agent-routing doctrine ─→ external fragment in ai-agent-instructions
-                                    └─ bin/build writes ~/.claude/CLAUDE.md,
-                                       ~/.codex/AGENTS.md,
-                                       ~/.config/opencode/AGENTS.md,
-                                       ~/.pi/agent/
+routing/*.toml             ─→ agent-routing resolve   one caller-selected route
+doctrine/guide.md          ─→ agent-routing           the guide, bare invocation
+doctrine/model-routing.md  ─→ agent-routing doctrine  the policy in full
 ```
+
+`ai-agent-instructions` composes that pointer into `~/.claude/CLAUDE.md`,
+`~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and
+`~/.pi/agent/AGENTS.md`. Nothing downstream embeds the roster, which is what
+`agent-routing lint-consumers` exists to enforce.
 
 The doctrine and manifest intentionally are not generated from each other: the
 manifest keeps one queryable row per effort, while the doctrine compresses and

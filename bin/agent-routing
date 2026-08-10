@@ -13,6 +13,9 @@ usage() {
   cat <<'EOF'
 usage: agent-routing <verb> [args]
 
+Run `agent-routing` with no verb for the routing guide.
+
+  guide               print the routing guide (also the bare invocation)
   models              print the model/effort matrix (models.toml)
   profiles            print the named delegation profiles (profiles.toml)
   delegation          print the delegation mechanism matrix (delegation.toml)
@@ -39,6 +42,9 @@ check() {
 }
 
 case "${1:-}" in
+  "")         cat "$root/doctrine/guide.md" ;;
+  guide)      cat "$root/doctrine/guide.md" ;;
+  help|-h|--help) usage ;;
   models)     cat "$routing_dir/models.toml" ;;
   profiles)   cat "$routing_dir/profiles.toml" ;;
   delegation) cat "$routing_dir/delegation.toml" ;;
@@ -52,5 +58,5 @@ case "${1:-}" in
   all)        cat "$routing_dir/models.toml"; echo; cat "$routing_dir/profiles.toml"; echo; cat "$routing_dir/delegation.toml" ;;
   check)      shift; check "$@" ;;
   resolve)    shift; exec "$root/bin/resolve-route" "$@" ;;
-  *)          usage; exit 2 ;;
+  *)          usage >&2; exit 2 ;;
 esac
