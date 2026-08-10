@@ -1,33 +1,13 @@
-# Active delegation surfaces. Keep repository names and paths here so a
-# consumer move changes configuration, not the checker’s control flow.
+# Active delegation surfaces. Skill consumers are declared here; a repository
+# owning harness configuration publishes its own source contract through the
+# accessor below so moving its tree does not require a second path inventory.
 
 [repository]
-instructions = "ai-agent-instructions"
 skills = "ai-agent-skills"
 
-[[consumer]]
-id = "instructions-settings"
-repository = "instructions"
-path = "config/pi-settings.json"
-checks = ["roster-literals", "pi-route"]
-
-[[consumer]]
-id = "instructions-fragments"
-repository = "instructions"
-path = "fragments"
-checks = ["roster-literals", "agent-frontmatter"]
-
-[[consumer]]
-id = "instructions-agents"
-repository = "instructions"
-path = "agents"
-checks = ["roster-literals", "agent-frontmatter"]
-
-[[consumer]]
-id = "instructions-subagent"
-repository = "instructions"
-path = "extensions/subagent"
-checks = ["roster-literals", "agent-frontmatter"]
+[[accessor]]
+id = "instructions"
+command = ["agent-harness", "delegation-sources"]
 
 [[consumer]]
 id = "codex-delegate"

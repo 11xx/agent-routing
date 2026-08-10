@@ -10,28 +10,52 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
 class ConsumerLintTest(unittest.TestCase):
-    def repository(self, name):
+    def config(self):
         with (ROOT / "routing" / "consumers.toml").open("rb") as handle:
-            return tomllib.load(handle)["repository"][name]
+            return tomllib.load(handle)
 
     def fixture_code_root(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         code = pathlib.Path(temporary.name)
-        instructions = self.repository("instructions")
-        skills = self.repository("skills")
+        skills = self.config()["repository"]["skills"]
+        instructions = code / "declared-harness"
+        source_specs = [
+            ("settings", instructions / "harnesses" / "pi" / "settings.json", ["roster-literals", "pi-route"]),
+            ("shared-fragments", instructions / "shared" / "fragments", ["roster-literals", "agent-frontmatter"]),
+            ("claude-fragments", instructions / "harnesses" / "claude" / "fragments", ["roster-literals", "agent-frontmatter"]),
+            ("codex-fragments", instructions / "harnesses" / "codex" / "fragments", ["roster-literals", "agent-frontmatter"]),
+            ("pi-fragments", instructions / "harnesses" / "pi" / "fragments", ["roster-literals", "agent-frontmatter"]),
+            ("pi-agents", instructions / "harnesses" / "pi" / "agents", ["roster-literals", "agent-frontmatter"]),
+            ("pi-subagent", instructions / "harnesses" / "pi" / "extensions" / "subagent", ["roster-literals", "agent-frontmatter"]),
+        ]
+        sources = [
+            {"id": source_id, "path": str(path), "checks": checks}
+            for source_id, path, checks in source_specs
+        ]
+        for _, path, _ in source_specs:
+            if path.suffix:
+                path.parent.mkdir(parents=True, exist_ok=True)
+            else:
+                path.mkdir(parents=True, exist_ok=True)
+        harness = code / "agent-harness"
+        harness.write_text(f"#!/usr/bin/env python3\nprint({json.dumps(sources)!r})\n")
+        harness.chmod(0o700)
+        self.harness = harness
+        self.settings = instructions / "harnesses" / "pi" / "settings.json"
+        skills_root = code / skills
         files = {
-            f"{instructions}/config/pi-settings.json": json.dumps({"$route": "interactive"}),
-            f"{skills}/skills/codex-delegate/agents/codex.md": "model: sonnet\neffort: low\n",
-            f"{skills}/skills/pi-delegate/agents/pi.md": "model: sonnet\neffort: low\n",
-            f"{skills}/skills/opencode-delegate/agents/opencode.md": "model: sonnet\neffort: low\n",
+            str(self.settings): json.dumps({"$route": "interactive"}),
+            str(skills_root / "skills/codex-delegate/agents/codex.md"): "model: sonnet\neffort: low\n",
+            str(skills_root / "skills/pi-delegate/agents/pi.md"): "model: sonnet\neffort: low\n",
+            str(skills_root / "skills/opencode-delegate/agents/opencode.md"): "model: sonnet\neffort: low\n",
         }
         directories = [
             f"{instructions}/fragments",
             f"{instructions}/agents",
             f"{instructions}/extensions/subagent",
-            f"{skills}/skills/plan-for-codex",
-            f"{skills}/skills/multi-wargame",
+            str(skills_root / "skills/plan-for-codex"),
+            str(skills_root / "skills/multi-wargame"),
         ]
         for directory in directories:
             (code / directory).mkdir(parents=True)
@@ -42,13 +66,17 @@ class ConsumerLintTest(unittest.TestCase):
         return code
 
     def run_lint(self, code):
-        environment = {**os.environ, "AI_AGENT_CODE_ROOT": str(code)}
+        environment = {
+            **os.environ,
+            "AI_AGENT_CODE_ROOT": str(code),
+            "AGENT_HARNESS_BIN": str(self.harness),
+        }
         return subprocess.run([ROOT / "bin" / "lint-consumers"], capture_output=True, text=True, env=environment)
 
     def test_clean_proxy_exception_is_exact(self):
         code = self.fixture_code_root()
         self.assertEqual(self.run_lint(code).returncode, 0)
-        proxy = code / "ai-agent-skills/skills/codex-delegate/agents/codex.md"
+        proxy = code / self.config()["repository"]["skills"] / "skills/codex-delegate/agents/codex.md"
         proxy.write_text("model: opus\neffort: low\n")
         result = self.run_lint(code)
         self.assertEqual(result.returncode, 1)
@@ -56,16 +84,15 @@ class ConsumerLintTest(unittest.TestCase):
 
     def test_static_pi_default_is_rejected(self):
         code = self.fixture_code_root()
-        settings = code / self.repository("instructions") / "config/pi-settings.json"
-        settings.write_text(json.dumps({"defaultModel": "future-model"}))
+        self.settings.write_text(json.dumps({"defaultModel": "future-model"}))
         result = self.run_lint(code)
         self.assertEqual(result.returncode, 1)
         self.assertIn("Pi default must use $route", result.stdout)
 
     def test_renamed_consumer_is_not_silently_dropped(self):
         code = self.fixture_code_root()
-        instructions = code / self.repository("instructions")
-        (instructions / "config/pi-settings.json").write_text(json.dumps({"defaultModel": "future-model"}))
+        instructions = self.settings.parents[2]
+        self.settings.write_text(json.dumps({"defaultModel": "future-model"}))
         renamed = code / "renamed-consumer"
         instructions.rename(renamed)
         result = self.run_lint(code)
