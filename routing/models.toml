@@ -1,6 +1,7 @@
 # Model/effort routing matrix: the machine-readable view of the roster.
-# The authored view is doctrine/model-routing.md, which is what lands in every
-# harness's instruction files. Neither is generated from the other — each keeps
+# The authored view is doctrine/model-routing.md, which `agent-routing doctrine`
+# prints on demand; harness instruction files name that verb rather than
+# embedding its output. Neither is generated from the other — each keeps
 # something the other cannot express — so `agent-routing lint` reports where
 # they disagree rather than asking anyone to remember to sync them.
 # Access without a path: `agent-routing models`.

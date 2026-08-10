@@ -11,8 +11,9 @@ RESOLVE A ROUTE
 
   The caller chooses the profile. resolve never reads a prompt and never
   classifies work; it maps that recorded choice to the current provider, model,
-  effort, and stability, with a route version naming the manifest the answer came
-  from. Probationary and experimental variants need --allow-experimental, so a
+  effort, and stability, with a route version fingerprinting all three manifests
+  so an answer can be tied to the exact data that produced it. Probationary and
+  experimental variants need --allow-experimental, so a
   route that is not ready cannot be reached by accident.
 
 CHOOSE A PROFILE BY THE SHAPE OF THE WORK
