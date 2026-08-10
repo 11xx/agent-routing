@@ -24,6 +24,38 @@ def files_under(path):
             yield member
 
 
+def configured_consumers():
+    config = load(ROOT / "routing" / "consumers.toml")
+    repositories = config.get("repository", {})
+    consumers = config.get("consumer", [])
+    by_id = {}
+    entries = []
+    for consumer in consumers:
+        consumer_id = consumer["id"]
+        if consumer_id in by_id:
+            raise SystemExit(f"duplicate delegation consumer: {consumer_id}")
+        repository = consumer["repository"]
+        if repository not in repositories:
+            raise SystemExit(f"unknown delegation repository {repository!r} for {consumer_id}")
+        entry = {
+            **consumer,
+            "root": CODE / repositories[repository] / consumer["path"],
+        }
+        by_id[consumer_id] = entry
+        entries.append(entry)
+
+    proxy_pins = {}
+    for proxy in config.get("proxy", []):
+        consumer_id = proxy["consumer"]
+        if consumer_id not in by_id:
+            raise SystemExit(f"unknown proxy consumer: {consumer_id}")
+        path = by_id[consumer_id]["root"] / proxy["path"]
+        if path in proxy_pins:
+            raise SystemExit(f"duplicate delegation proxy: {path}")
+        proxy_pins[path] = (proxy["model"], proxy["effort"])
+    return entries, proxy_pins
+
+
 def main():
     models = load(ROOT / "routing" / "models.toml").get("model", [])
     profiles = load(ROOT / "routing" / "profiles.toml").get("profile", [])
@@ -33,46 +65,39 @@ def main():
             if route.get("backend_model"):
                 literals.add(route["backend_model"])
 
-    roots = [
-        CODE / "ai-agent-instructions" / "config" / "pi-settings.json",
-        CODE / "ai-agent-instructions" / "fragments",
-        CODE / "ai-agent-instructions" / "agents",
-        CODE / "ai-agent-instructions" / "extensions" / "subagent",
-        CODE / "ai-agent-skills" / "skills" / "codex-delegate",
-        CODE / "ai-agent-skills" / "skills" / "pi-delegate",
-        CODE / "ai-agent-skills" / "skills" / "opencode-delegate",
-        CODE / "ai-agent-skills" / "skills" / "plan-for-codex",
-        CODE / "ai-agent-skills" / "skills" / "multi-wargame",
-    ]
-    missing = [path for path in roots if not path.exists()]
+    consumers, proxy_pins = configured_consumers()
+    missing = [consumer["root"] for consumer in consumers if not consumer["root"].exists()]
     if missing:
         for path in missing:
             print(f"missing delegation consumer: {path}")
         return 2
 
-    proxy_pins = {
-        CODE / "ai-agent-skills" / "skills" / "codex-delegate" / "agents" / "codex.md",
-        CODE / "ai-agent-skills" / "skills" / "pi-delegate" / "agents" / "pi.md",
-        CODE / "ai-agent-skills" / "skills" / "opencode-delegate" / "agents" / "opencode.md",
-    }
+    missing_proxies = [path for path in proxy_pins if not path.is_file()]
+    if missing_proxies:
+        for path in missing_proxies:
+            print(f"missing delegation proxy: {path}")
+        return 2
+
     problems = []
-    for root in roots:
-        for path in files_under(root):
+    for consumer in consumers:
+        checks = set(consumer.get("checks", []))
+        for path in files_under(consumer["root"]):
             try:
                 text = path.read_text()
             except UnicodeDecodeError:
                 continue
             for line_number, line in enumerate(text.splitlines(), 1):
-                found = sorted(literal for literal in literals if literal in line)
-                if found:
-                    problems.append(f"{path}:{line_number}: concrete route literal: {', '.join(found)}")
+                if "roster-literals" in checks:
+                    found = sorted(literal for literal in literals if literal in line)
+                    if found:
+                        problems.append(f"{path}:{line_number}: concrete route literal: {', '.join(found)}")
                 stripped = line.strip()
-                if path.suffix == ".md" and stripped.startswith("model:"):
-                    if path not in proxy_pins or stripped != "model: sonnet":
+                if "agent-frontmatter" in checks and path.suffix == ".md" and stripped.startswith("model:"):
+                    if path not in proxy_pins or stripped != f"model: {proxy_pins[path][0]}":
                         problems.append(f"{path}:{line_number}: delegation source pins model frontmatter")
-                if path in proxy_pins and stripped.startswith("effort:") and stripped != "effort: low":
+                if path in proxy_pins and stripped.startswith("effort:") and stripped != f"effort: {proxy_pins[path][1]}":
                     problems.append(f"{path}:{line_number}: proxy shell changed its centrally recorded effort")
-                if path.name == "pi-settings.json" and '"defaultModel"' in stripped:
+                if "pi-route" in checks and '"defaultModel"' in stripped:
                     problems.append(f"{path}:{line_number}: Pi default must use $route, not defaultModel")
 
     for problem in problems:
@@ -80,7 +105,7 @@ def main():
     if problems:
         print(f"\n{len(problems)} consumer routing pin(s); use a named agent-routing profile")
         return 1
-    print(f"delegation consumers contain no concrete roster pins across {len(roots)} source roots")
+    print(f"delegation consumers contain no concrete roster pins across {len(consumers)} declared consumer entries")
     return 0
 
 

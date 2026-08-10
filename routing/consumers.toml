@@ -1,0 +1,80 @@
+# Active delegation surfaces. Keep repository names and paths here so a
+# consumer move changes configuration, not the checker’s control flow.
+
+[repository]
+instructions = "ai-agent-instructions"
+skills = "ai-agent-skills"
+
+[[consumer]]
+id = "instructions-settings"
+repository = "instructions"
+path = "config/pi-settings.json"
+checks = ["roster-literals", "pi-route"]
+
+[[consumer]]
+id = "instructions-fragments"
+repository = "instructions"
+path = "fragments"
+checks = ["roster-literals", "agent-frontmatter"]
+
+[[consumer]]
+id = "instructions-agents"
+repository = "instructions"
+path = "agents"
+checks = ["roster-literals", "agent-frontmatter"]
+
+[[consumer]]
+id = "instructions-subagent"
+repository = "instructions"
+path = "extensions/subagent"
+checks = ["roster-literals", "agent-frontmatter"]
+
+[[consumer]]
+id = "codex-delegate"
+repository = "skills"
+path = "skills/codex-delegate"
+checks = ["roster-literals", "agent-frontmatter"]
+
+[[consumer]]
+id = "pi-delegate"
+repository = "skills"
+path = "skills/pi-delegate"
+checks = ["roster-literals", "agent-frontmatter"]
+
+[[consumer]]
+id = "opencode-delegate"
+repository = "skills"
+path = "skills/opencode-delegate"
+checks = ["roster-literals", "agent-frontmatter"]
+
+[[consumer]]
+id = "plan-for-codex"
+repository = "skills"
+path = "skills/plan-for-codex"
+checks = ["roster-literals", "agent-frontmatter"]
+
+[[consumer]]
+id = "multi-wargame"
+repository = "skills"
+path = "skills/multi-wargame"
+checks = ["roster-literals", "agent-frontmatter"]
+
+# Claude’s static agent frontmatter requires this version-agnostic alias. The
+# proxy must remain a relay and therefore keeps the centrally recorded effort.
+[[proxy]]
+consumer = "codex-delegate"
+path = "agents/codex.md"
+model = "sonnet"
+effort = "low"
+
+[[proxy]]
+consumer = "pi-delegate"
+path = "agents/pi.md"
+model = "sonnet"
+effort = "low"
+
+[[proxy]]
+consumer = "opencode-delegate"
+path = "agents/opencode.md"
+model = "sonnet"
+effort = "low"
