@@ -40,8 +40,8 @@ Queryable judgment lives inside the manifest as `role`, `character`,
 `weaknesses`, and the `[policy]` block. The authored doctrine carries the
 reader-oriented ordering and context that the manifest cannot express. They
 are two representations of one policy; `agent-routing lint` makes their shared
-model coverage and their pass@1 and cost cells a mechanical check rather than a
-remembered synchronisation step.
+model coverage, their pass@1 and cost cells, and route structure a mechanical
+check rather than a remembered synchronisation step.
 
 | path | status |
 | :-- | :-- |
