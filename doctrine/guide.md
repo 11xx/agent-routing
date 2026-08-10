@@ -13,8 +13,8 @@ RESOLVE A ROUTE
   classifies work; it maps that recorded choice to the current provider, model,
   effort, and stability, with a route version fingerprinting all three manifests
   so an answer can be tied to the exact data that produced it. Probationary and
-  experimental variants need --allow-experimental, so a
-  route that is not ready cannot be reached by accident.
+  experimental routes need --allow-experimental — a whole profile as much as a
+  variant — so a route that is not ready cannot be reached by accident.
 
 CHOOSE A PROFILE BY THE SHAPE OF THE WORK
   extract      one fixed-input, fixed-output classification, extraction,

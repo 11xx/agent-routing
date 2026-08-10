@@ -26,7 +26,7 @@ Run `agent-routing` with no verb for the routing guide.
   eras                list the model-era history files
   dir                 print the routing data directory
   root                print the repository root
-  all                 print both manifests
+  all                 print all three manifests
   check <model> [eff] exit non-zero if that model/effort is prohibited
   resolve <profile> --backend <backend> [--variant <name>] [--allow-experimental] --json
                       resolve a caller-selected task profile
