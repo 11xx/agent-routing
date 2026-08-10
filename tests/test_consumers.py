@@ -23,7 +23,6 @@ class ConsumerLintTest(unittest.TestCase):
             "ai-agent-instructions/fragments",
             "ai-agent-instructions/agents",
             "ai-agent-instructions/extensions/subagent",
-            "ai-agent-skills/skills/consultant",
             "ai-agent-skills/skills/plan-for-codex",
             "ai-agent-skills/skills/multi-wargame",
         ]
