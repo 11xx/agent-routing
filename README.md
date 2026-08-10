@@ -4,6 +4,7 @@ Which model to pick, at which effort, reached by which mechanism — as data,
 with one accessor, for every harness and tool on this machine.
 
 ```sh
+agent-routing                         # the routing guide: start here
 agent-routing models                  # the model/effort matrix
 agent-routing profiles                # named task-shape routes
 agent-routing resolve implement --backend codex --json
@@ -11,7 +12,7 @@ agent-routing delegation              # the mechanism matrix
 agent-routing mechanism               # DELEGATION.md, the mechanism prose canon
 agent-routing check opus-5 xhigh      # exits 1: prohibited
 agent-routing doctrine                # authored prose used by every harness
-agent-routing lint                    # check doctrine/manifest agreement
+agent-routing lint                    # pass@1/cost cells, coverage, routes
 agent-routing lint-consumers          # reject roster pins in active consumers
 ```
 
@@ -39,32 +40,43 @@ Queryable judgment lives inside the manifest as `role`, `character`,
 `weaknesses`, and the `[policy]` block. The authored doctrine carries the
 reader-oriented ordering and context that the manifest cannot express. They
 are two representations of one policy; `agent-routing lint` makes their shared
-model coverage and numbers a mechanical check rather than a remembered
-synchronisation step.
+model coverage, their pass@1 and cost cells, and route structure a mechanical
+check rather than a remembered synchronisation step.
 
 | path | status |
 | :-- | :-- |
 | `routing/*.toml` | machine-readable source of truth — edit here |
-| `doctrine/model-routing.md` | authored routing doctrine composed into every harness instruction file |
+| `doctrine/guide.md` | the routing guide, printed by the bare invocation |
+| `doctrine/model-routing.md` | authored routing doctrine, read on demand via `agent-routing doctrine` |
 | `DELEGATION.md` | authored mechanism prose — how work reaches an executor |
 | `eras/` | history; why a roster changed, kept when the roster moves on |
 
 ## The propagation path
 
+A harness instruction file carries a short pointer to this CLI rather than a copy
+of the roster, so the policy is read when a routing decision is actually in front
+of an agent instead of occupying every context window.
+
 ```
-doctrine/model-routing.md
-    └─ agent-routing doctrine ─→ external fragment in ai-agent-instructions
-                                    └─ bin/build writes ~/.claude/CLAUDE.md,
-                                       ~/.codex/AGENTS.md,
-                                       ~/.config/opencode/AGENTS.md,
-                                       ~/.pi/agent/
+routing/*.toml             ─→ agent-routing resolve   one caller-selected route
+doctrine/guide.md          ─→ agent-routing           the guide, bare invocation
+doctrine/model-routing.md  ─→ agent-routing doctrine  the policy in full
 ```
+
+`ai-agent-instructions` composes that pointer into `~/.claude/CLAUDE.md`,
+`~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and
+`~/.pi/agent/AGENTS.md`. Nothing downstream embeds the roster, which is what
+`agent-routing lint-consumers` exists to enforce.
 
 The doctrine and manifest intentionally are not generated from each other: the
 manifest keeps one queryable row per effort, while the doctrine compresses and
-orders rows for a reader. `agent-routing lint` checks model coverage and every
-number represented in both, so disagreement is detected before the instruction
-build runs.
+orders rows for a reader. `agent-routing lint` checks model coverage, route
+structure, and the pass@1 and cost cells the doctrine table restates, so a
+number that drifts is caught before anything reads it.
+
+It does not read the doctrine's prose, nor the table's other columns. A rule
+stated wrongly in sentences is caught by review or not at all, which is why an
+authored change here carries a reviewer rather than only a green gate.
 
 `agent-routing lint-consumers` scans the active delegation surfaces in the two
 direct consumer repositories. It rejects concrete model IDs and static agent
@@ -91,8 +103,8 @@ bounded implementation,
 broad execution, planning, review, design, or an interactive harness default.
 Backend sandboxing, tool fences, output capture, and
 liveness remain adapter behavior in `DELEGATION.md` and the backend skills.
-Probationary and experimental variants fail closed unless the caller explicitly
-passes `--allow-experimental`.
+Probationary and experimental routes fail closed unless the caller explicitly
+passes `--allow-experimental`, a whole profile as much as a variant.
 
 ## What this repository will not do
 
@@ -111,7 +123,10 @@ decision legible and the prohibitions unambiguous.
    leave a field out rather than guessing it — an absent number is honest, an
    invented one is load-bearing.
 2. Note what changed and why in `eras/` when a roster seat moves.
-3. Run `agent-routing lint`, then `bin/build` from ai-agent-instructions.
+3. Run `agent-routing lint`. The harness instruction files name the verb
+   rather than embedding the roster, so a roster edit needs no rebuild there.
+   Changing the `interactive` profile is the exception: Pi's settings name that
+   route, so `bin/build` in ai-agent-instructions has to materialize it.
 
 Prohibitions carry a `use` string starting with `prohibited`; `check` keys on
 that prefix, so the explanation and the enforcement stay in one place.

@@ -13,17 +13,20 @@ usage() {
   cat <<'EOF'
 usage: agent-routing <verb> [args]
 
+Run `agent-routing` with no verb for the routing guide.
+
+  guide               print the routing guide (also the bare invocation)
   models              print the model/effort matrix (models.toml)
   profiles            print the named delegation profiles (profiles.toml)
   delegation          print the delegation mechanism matrix (delegation.toml)
   mechanism           print the mechanism-routing prose canon (DELEGATION.md)
-  doctrine            print the authored routing doctrine (goes into instructions)
-  lint                report where doctrine and manifest disagree
+  doctrine            print the authored routing policy in full
+  lint                check pass@1/cost cells, model coverage, and routes
   lint-consumers      reject concrete roster pins in delegation consumers
   eras                list the model-era history files
   dir                 print the routing data directory
   root                print the repository root
-  all                 print both manifests
+  all                 print all three manifests
   check <model> [eff] exit non-zero if that model/effort is prohibited
   resolve <profile> --backend <backend> [--variant <name>] [--allow-experimental] --json
                       resolve a caller-selected task profile
@@ -39,6 +42,9 @@ check() {
 }
 
 case "${1:-}" in
+  "")         cat "$root/doctrine/guide.md" ;;
+  guide)      cat "$root/doctrine/guide.md" ;;
+  help|-h|--help) usage ;;
   models)     cat "$routing_dir/models.toml" ;;
   profiles)   cat "$routing_dir/profiles.toml" ;;
   delegation) cat "$routing_dir/delegation.toml" ;;
@@ -52,5 +58,5 @@ case "${1:-}" in
   all)        cat "$routing_dir/models.toml"; echo; cat "$routing_dir/profiles.toml"; echo; cat "$routing_dir/delegation.toml" ;;
   check)      shift; check "$@" ;;
   resolve)    shift; exec "$root/bin/resolve-route" "$@" ;;
-  *)          usage; exit 2 ;;
+  *)          usage >&2; exit 2 ;;
 esac
