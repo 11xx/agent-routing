@@ -1,8 +1,9 @@
 agent-routing — which model runs a task, and on which subscription.
 
-The manifests in this repository are the single owner of the roster, the named
-delegation profiles, and the mechanism rules. This CLI is how every harness,
-skill, and script reads them without knowing where they live, so routing policy
+This repository is the single owner of the roster, the named delegation
+profiles, and the mechanism rules: the manifests hold the queryable view, and
+the authored documents hold what a table cannot say. This CLI is how every
+harness, skill, and script reads them without knowing where they live, so policy
 is read when a decision is actually in front of you rather than carried in every
 context window on the chance that one appears.
 
@@ -24,7 +25,8 @@ CHOOSE A PROFILE BY THE SHAPE OF THE WORK
   implement    bounded production work whose targets and probes are already named
   execute      broad or multi-slice work where technical judgment and long-horizon
                persistence remain material
-  review       read-only correctness and regression review of a bounded change
+  review       read-only correctness and regression review of a bounded,
+               behavior-affecting change
   design       read-only judgment on UX, copy, API ergonomics, or simplicity
   generate     candidate generation whose output is raw material rather than a
                deliverable, and never the last model to touch shipped work
@@ -61,7 +63,8 @@ READ THE POLICY IN FULL
   agent-routing eras         model-era history
 
 KEEP CONSUMERS HONEST
-  agent-routing lint             report where doctrine and manifest disagree
+  agent-routing lint             compare the doctrine table's pass@1 and cost
+                                 cells against the manifest, and check coverage
   agent-routing lint-consumers   reject concrete roster pins in consumers
 
   A roster copied into a consumer is a roster that goes stale, and one transition

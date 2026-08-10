@@ -12,7 +12,7 @@ agent-routing delegation              # the mechanism matrix
 agent-routing mechanism               # DELEGATION.md, the mechanism prose canon
 agent-routing check opus-5 xhigh      # exits 1: prohibited
 agent-routing doctrine                # authored prose used by every harness
-agent-routing lint                    # check doctrine/manifest agreement
+agent-routing lint                    # check the doctrine's numbers and coverage
 agent-routing lint-consumers          # reject roster pins in active consumers
 ```
 
@@ -70,9 +70,13 @@ doctrine/model-routing.md  ─→ agent-routing doctrine  the policy in full
 
 The doctrine and manifest intentionally are not generated from each other: the
 manifest keeps one queryable row per effort, while the doctrine compresses and
-orders rows for a reader. `agent-routing lint` checks model coverage and every
-number represented in both, so disagreement is detected before the instruction
-build runs.
+orders rows for a reader. `agent-routing lint` checks model coverage, route
+structure, and the pass@1 and cost cells the doctrine table restates, so a
+number that drifts is caught before anything reads it.
+
+It does not read the doctrine's prose, nor the table's other columns. A rule
+stated wrongly in sentences is caught by review or not at all, which is why an
+authored change here carries a reviewer rather than only a green gate.
 
 `agent-routing lint-consumers` scans the active delegation surfaces in the two
 direct consumer repositories. It rejects concrete model IDs and static agent
@@ -99,8 +103,8 @@ bounded implementation,
 broad execution, planning, review, design, or an interactive harness default.
 Backend sandboxing, tool fences, output capture, and
 liveness remain adapter behavior in `DELEGATION.md` and the backend skills.
-Probationary and experimental variants fail closed unless the caller explicitly
-passes `--allow-experimental`.
+Probationary and experimental routes fail closed unless the caller explicitly
+passes `--allow-experimental`, a whole profile as much as a variant.
 
 ## What this repository will not do
 
@@ -119,7 +123,8 @@ decision legible and the prohibitions unambiguous.
    leave a field out rather than guessing it — an absent number is honest, an
    invented one is load-bearing.
 2. Note what changed and why in `eras/` when a roster seat moves.
-3. Run `agent-routing lint`, then `bin/build` from ai-agent-instructions.
+3. Run `agent-routing lint`. The harness instruction files name the verb
+   rather than embedding the roster, so a roster edit needs no rebuild there.
 
 Prohibitions carry a `use` string starting with `prohibited`; `check` keys on
 that prefix, so the explanation and the enforcement stay in one place.
