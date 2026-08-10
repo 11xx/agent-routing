@@ -63,10 +63,12 @@ doctrine/guide.md          ─→ agent-routing           the guide, bare invoca
 doctrine/model-routing.md  ─→ agent-routing doctrine  the policy in full
 ```
 
-`ai-agent-instructions` composes that pointer into `~/.claude/CLAUDE.md`,
+`ai-agent-harnesses` composes that pointer into `~/.claude/CLAUDE.md`,
 `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and
-`~/.pi/agent/AGENTS.md`. Nothing downstream embeds the roster, which is what
-`agent-routing lint-consumers` exists to enforce.
+`~/.pi/agent/AGENTS.md`. Its `agent-harness delegation-sources` accessor
+declares the instruction and agent surfaces to `agent-routing lint-consumers`;
+nothing downstream embeds the roster, which is what that guard exists to
+enforce.
 
 The doctrine and manifest intentionally are not generated from each other: the
 manifest keeps one queryable row per effort, while the doctrine compresses and
@@ -126,7 +128,8 @@ decision legible and the prohibitions unambiguous.
 3. Run `agent-routing lint`. The harness instruction files name the verb
    rather than embedding the roster, so a roster edit needs no rebuild there.
    Changing the `interactive` profile is the exception: Pi's settings name that
-   route, so `bin/build` in ai-agent-instructions has to materialize it.
+   route, so `~/code/ai-agent-harnesses/bin/agent-harness build` has to
+   materialize it.
 
 Prohibitions carry a `use` string starting with `prohibited`; `check` keys on
 that prefix, so the explanation and the enforcement stay in one place.
