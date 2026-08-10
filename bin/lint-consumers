@@ -41,7 +41,6 @@ def main():
         CODE / "ai-agent-skills" / "skills" / "codex-delegate",
         CODE / "ai-agent-skills" / "skills" / "pi-delegate",
         CODE / "ai-agent-skills" / "skills" / "opencode-delegate",
-        CODE / "ai-agent-skills" / "skills" / "consultant",
         CODE / "ai-agent-skills" / "skills" / "plan-for-codex",
         CODE / "ai-agent-skills" / "skills" / "multi-wargame",
     ]
