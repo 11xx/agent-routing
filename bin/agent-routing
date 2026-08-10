@@ -21,7 +21,7 @@ Run `agent-routing` with no verb for the routing guide.
   delegation          print the delegation mechanism matrix (delegation.toml)
   mechanism           print the mechanism-routing prose canon (DELEGATION.md)
   doctrine            print the authored routing policy in full
-  lint                check the doctrine's pass@1/cost cells and coverage
+  lint                check pass@1/cost cells, model coverage, and routes
   lint-consumers      reject concrete roster pins in delegation consumers
   eras                list the model-era history files
   dir                 print the routing data directory

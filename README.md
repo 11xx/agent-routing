@@ -12,7 +12,7 @@ agent-routing delegation              # the mechanism matrix
 agent-routing mechanism               # DELEGATION.md, the mechanism prose canon
 agent-routing check opus-5 xhigh      # exits 1: prohibited
 agent-routing doctrine                # authored prose used by every harness
-agent-routing lint                    # check the doctrine's pass@1/cost cells
+agent-routing lint                    # pass@1/cost cells, coverage, routes
 agent-routing lint-consumers          # reject roster pins in active consumers
 ```
 
