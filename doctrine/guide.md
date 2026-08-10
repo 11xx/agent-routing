@@ -38,8 +38,10 @@ WHAT BINDS BEFORE ANY QUERY
   route by which window has headroom, and by axis.
 
   Prohibited tiers stay prohibited when asked for by name, because every family
-  stops paying before its top tier. Effort is never an escalation path — a slice
-  the working tier cannot land gets decomposed, given better context, or a
+  stops paying before its top tier. Escalating a delegated route is ordinary —
+  a workhorse tier upward, or across to the technical peer where judgment
+  remains — but the head model's own effort is not an escalation path: a slice
+  its working tier cannot land gets decomposed, given better context, or a
   sideways second opinion.
 
     agent-routing check <model> [effort]   exit non-zero if that pair is banned
