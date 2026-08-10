@@ -14,9 +14,10 @@ and what context it receives.
 Machine-readable form: `agent-routing delegation`; the model/effort ladder is
 `agent-routing models`, and caller-selected task profiles resolve through
 `agent-routing resolve <profile> --backend <backend> --json`.
-`agent-routing lint` reports where the authored
-doctrine and the manifest disagree, so drift is detected rather than
-remembered.
+`agent-routing lint` compares the numbers the doctrine
+table restates against the manifest, so numeric drift is detected rather than
+remembered. It does not read prose, so a rule stated wrongly in sentences is
+caught by review or not at all.
 
 ## Routing matrix
 

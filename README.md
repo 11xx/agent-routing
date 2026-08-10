@@ -125,6 +125,8 @@ decision legible and the prohibitions unambiguous.
 2. Note what changed and why in `eras/` when a roster seat moves.
 3. Run `agent-routing lint`. The harness instruction files name the verb
    rather than embedding the roster, so a roster edit needs no rebuild there.
+   Changing the `interactive` profile is the exception: Pi's settings name that
+   route, so `bin/build` in ai-agent-instructions has to materialize it.
 
 Prohibitions carry a `use` string starting with `prohibited`; `check` keys on
 that prefix, so the explanation and the enforcement stay in one place.

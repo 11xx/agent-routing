@@ -3,16 +3,18 @@
 
 Two representations of the roster exist on purpose. `routing/models.toml` is
 data — queryable, complete, one row per effort. `doctrine/model-routing.md` is
-the text that lands in every harness's instructions, and it is *authored*: it
+the text `agent-routing doctrine` prints on demand, and it is *authored*: it
 compresses adjacent tiers into one row, orders rows for a reader rather than a
 parser, and phrases each role in prose. Generating either from the other
 destroys the other's reason to exist; earlier attempts to do so lost the
 compression, the ordering, and the wording in turn.
 
-What can be mechanised is agreement. This reports where they disagree instead
-of asking anyone to remember: an unknown model in the doctrine, a model in the
-manifest that the doctrine never mentions, or a number that appears in both and
-differs. It does not rewrite anything.
+What can be mechanised is a narrow agreement, and only that: an unknown model
+in the doctrine, a model in the manifest the doctrine never mentions, or a
+pass@1 or cost cell that appears in both and differs. Every other column, and
+all prose in either document, is outside its reach — a rule stated wrongly in
+sentences passes here and is caught by review or not at all. It rewrites
+nothing.
 """
 
 import pathlib
