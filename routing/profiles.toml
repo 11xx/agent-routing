@@ -110,6 +110,26 @@ backends = ["codex", "pi"]
   stability = "stable"
   backends = ["codex", "pi"]
 
+  # Luna max reviews at 2 points below Sol high for a fraction of its cost, on
+  # 2.8x the steps. Both variants below are the controlled trial that decides
+  # whether a review verdict may come from that tier at all; until it concludes,
+  # a Luna verdict is evidence about the route as much as about the change.
+  [[profile.variant]]
+  id = "opencode-go"
+  provider = "opencode-go"
+  model = "gpt-5.6-luna"
+  effort = "max"
+  stability = "experimental"
+  backends = ["opencode"]
+
+  [[profile.variant]]
+  id = "luna-max"
+  provider = "openai-codex"
+  model = "gpt-5.6-luna"
+  effort = "max"
+  stability = "experimental"
+  backends = ["codex", "pi"]
+
 [[profile]]
 id = "design"
 purpose = "read-only judgment on UX, copy, API ergonomics, or architectural simplicity"
