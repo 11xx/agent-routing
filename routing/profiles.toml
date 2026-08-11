@@ -97,10 +97,25 @@ backends = ["codex", "pi"]
 id = "review"
 purpose = "read-only correctness and regression review of a bounded behavior-affecting change"
 provider = "openai-codex"
-model = "gpt-5.6-sol"
-effort = "medium"
+model = "gpt-5.6-luna"
+effort = "max"
 stability = "stable"
 backends = ["codex", "pi"]
+
+  # Review is the one profile where Luna max's cost shape is the right trade:
+  # nobody waits on a read-only pass, so 2.8x the steps buy thoroughness, and it
+  # scores 6 points over the Sol medium tier it replaces at a third of the cost.
+  # The two Sol variants stay reachable for the cases that shape does not fit.
+
+  # When the verdict is on the critical path. Sol medium answers in a fraction
+  # of Luna max's 20-40 minutes on a large diff.
+  [[profile.variant]]
+  id = "fast"
+  provider = "openai-codex"
+  model = "gpt-5.6-sol"
+  effort = "medium"
+  stability = "stable"
+  backends = ["codex", "pi"]
 
   [[profile.variant]]
   id = "high-stakes"
@@ -110,10 +125,10 @@ backends = ["codex", "pi"]
   stability = "stable"
   backends = ["codex", "pi"]
 
-  # Luna max reviews at 2 points below Sol high for a fraction of its cost, on
-  # 2.8x the steps. Both variants below are the controlled trial that decides
-  # whether a review verdict may come from that tier at all; until it concludes,
-  # a Luna verdict is evidence about the route as much as about the change.
+  # The same model off both standing windows, for when capacity rather than
+  # capability is the constraint. Experimental because the pool is: opencode has
+  # no unattended-approval mode, so a permission prompt ends a non-interactive
+  # run with exit 0 and no verdict.
   [[profile.variant]]
   id = "opencode-go"
   provider = "opencode-go"
@@ -121,14 +136,6 @@ backends = ["codex", "pi"]
   effort = "max"
   stability = "experimental"
   backends = ["opencode"]
-
-  [[profile.variant]]
-  id = "luna-max"
-  provider = "openai-codex"
-  model = "gpt-5.6-luna"
-  effort = "max"
-  stability = "experimental"
-  backends = ["codex", "pi"]
 
 [[profile]]
 id = "design"

@@ -123,18 +123,17 @@ subscription_credits_per_million = { input = 50.0, cached_input = 5.0, output = 
 [[model]]
 id = "gpt-5.6-luna"
 family = "gpt-5.6"
-role = "credit-efficient family with the steepest effort cliff on the board: low/medium stay fixed-shape workflow tiers, while high and above are non-stable planned-execution options pending controlled field evidence rather than leads, reviewers, or ambient defaults"
+role = "credit-efficient family with the steepest effort cliff on the board: low/medium stay fixed-shape workflow tiers; high and xhigh remain non-stable planned-execution options pending field evidence; max carries the review default on measured evidence, and is still not a lead or an ambient implementation default"
 api_price_per_million = { input = 0.2, cached_input = 0.02, output = 1.2 }
 subscription_credits_per_million = { input = 5.0, cached_input = 0.5, output = 30.0 }
 notes = "reachable on two pools. The prices above are the Codex route. The same model also answers on the conditional opencode-go subscription through the opencode CLI, where capability rows transfer unchanged because the model is identical, but the quota accounting does not — see [quota].opencode_go_pool. pi cannot reach that route: its bundled opencode-go catalog carries the other 16 Go models and omits this one."
   [[model.effort]]
   effort = "max"
-  status = "experimental"
   pass_at_1 = 0.67
   usd_per_task = 0.61
   out_tokens = "73k"
   steps = 102
-  use = "an experimental cheap but slow planned-execution option: 2 points below Sol high for about one-sixth of its benchmark cash and subscription-credit cost, but 2.6x the output tokens and 2.8x the steps. Use only in controlled trials when the task is fully specified, latency is secondary, and lead review is available"
+  use = "the review tier: 6 points over Sol medium at a third of its cost, and 2 points under Sol high for a sixth of it. Field-measured over one multi-change arc — fourteen findings, thirteen accepted, several of them silent-omission defects the author had missed, and one correct rebuttal of the lead. Read-only review is where its cost shape wins, because 2.6x the output tokens and 2.8x the steps buy thoroughness against a diff nobody is waiting on. Not a lead, not an ambient implementation default, and not for interactive work: a large-diff round runs 20-40 minutes. One failure mode is still unmeasured — whether it approves something it should not — because every approval observed so far was independently confirmed"
   [[model.effort]]
   effort = "xhigh"
   status = "experimental"
