@@ -3,7 +3,7 @@
 # accessor below so moving its tree does not require a second path inventory.
 
 [repository]
-skills = "ai-agent-skills"
+skills = "ai-agent-harnesses"
 
 [[accessor]]
 id = "instructions"
