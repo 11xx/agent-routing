@@ -105,7 +105,9 @@ backends = ["codex", "pi"]
   # Review is the one profile where Luna max's cost shape is the right trade:
   # nobody waits on a read-only pass, so 2.8x the steps buy thoroughness, and it
   # scores 6 points over the Sol medium tier it replaces at a third of the cost.
-  # The two Sol variants stay reachable for the cases that shape does not fit.
+  # This is the first gate and its verdict discharges review; the two Sol
+  # variants are named exceptions — a waiting verdict, or a second pass where a
+  # wrong approval is expensive.
 
   # When the verdict is on the critical path. Sol medium answers in a fraction
   # of Luna max's 20-40 minutes on a large diff.
