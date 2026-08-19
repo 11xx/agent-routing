@@ -33,12 +33,6 @@ repository = "skills"
 path = "skills/plan-for-codex"
 checks = ["roster-literals", "agent-frontmatter"]
 
-[[consumer]]
-id = "multi-wargame"
-repository = "skills"
-path = "skills/multi-wargame"
-checks = ["roster-literals", "agent-frontmatter"]
-
 # Claude’s static agent frontmatter requires this version-agnostic alias. The
 # proxy must remain a relay and therefore keeps the centrally recorded effort.
 [[proxy]]
