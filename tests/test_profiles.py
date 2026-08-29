@@ -145,10 +145,6 @@ backends = ["claude"]
             path.write_text(original)
         self.assertEqual(len(set(versions)), 4)
 
-
-if __name__ == "__main__":
-    unittest.main()
-
     def cross_pool_root(self):
         """A fixture whose review profile routes Sol through the small plan."""
         root = self.fixture_root()
@@ -205,3 +201,29 @@ if __name__ == "__main__":
         with self.assertRaises(RouteRefusal) as caught:
             resolve(ROOT, "design", "codex")
         self.assertEqual(caught.exception.kind, "unsupported-backend")
+
+
+
+    def test_a_manifest_that_cannot_be_read_still_answers_with_a_payload(self):
+        """A refusal raised before a route exists is still a refusal a caller
+        must classify, so an unreadable manifest answers in the same shape."""
+        root = self.fixture_root()
+        (root / "bin").mkdir()
+        shutil.copy(ROOT / "bin" / "resolve-route", root / "bin" / "resolve-route")
+        shutil.copytree(ROOT / "lib", root / "lib")
+        models = root / "routing" / "models.toml"
+        models.write_text(models.read_text() + "\nnot toml [[[\n")
+        completed = subprocess.run(
+            [root / "bin" / "resolve-route", "implement", "--backend", "codex", "--json"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        payload = json.loads(completed.stderr.strip().splitlines()[-1])
+        self.assertEqual(payload["schema"], "agent-routing-refusal/1")
+        self.assertEqual(payload["kind"], "manifest-invalid")
+
+
+if __name__ == "__main__":
+    unittest.main()

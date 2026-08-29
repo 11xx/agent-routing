@@ -41,8 +41,24 @@ def main() -> int:
         print(f"agent-routing: cannot resolve profile {args.profile!r} for backend {args.backend!r}: {refusal}", file=sys.stderr)
         print(dumps(refusal.payload()), file=sys.stderr)
         return 1
-    except ValueError as error:
+    except Exception as error:
+        # Every refusal ends with a payload, including the ones raised before a
+        # RouteRefusal could be built: malformed TOML and a missing manifest key
+        # fail while the manifests are being read, and a caller that has to
+        # decide what to do cannot be asked to parse prose for those alone.
         print(f"agent-routing: cannot resolve profile {args.profile!r} for backend {args.backend!r}: {error}", file=sys.stderr)
+        print(
+            dumps(
+                {
+                    "schema": "agent-routing-refusal/1",
+                    "kind": "manifest-invalid",
+                    "message": str(error),
+                    "profile": args.profile,
+                    "backend": args.backend,
+                }
+            ),
+            file=sys.stderr,
+        )
         return 1
     print(dumps(route))
     return 0
