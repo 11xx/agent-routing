@@ -177,6 +177,19 @@ backends = ["codex", "pi"]
   stability = "stable"
   backends = ["pi"]
 
+  # The cheap lane's other half, as a reviewer. It argues rather than
+  # complying, which is the trait a review wants, and it draws the same third
+  # subscription — so a review and the implementation it judges can run on one
+  # pool without either touching a standing window. Never route it onto work
+  # it authored: the pairing is that each reviews the other.
+  [[profile.variant]]
+  id = "goat-glm"
+  provider = "commandcode"
+  model = "glm-5.3-flash"
+  effort = "high"
+  stability = "stable"
+  backends = ["pi"]
+
 [[profile]]
 id = "design"
 purpose = "read-only judgment on UX, copy, API ergonomics, or architectural simplicity"
