@@ -57,6 +57,30 @@ backends = ["codex", "pi"]
   stability = "experimental"
   backends = ["opencode"]
 
+  # The cheap lane off a third subscription: GLM 5.3 Flash matches Luna in
+  # taste and capability and costs a fraction, and neither draws the Claude
+  # window or the Codex schedule. Pi reaches it; provider stays explicit
+  # because the model name is authenticated on more than one. The roster id
+  # is the vendor-less `glm-5.3-flash`, which pi resolves as a pattern against
+  # its own `z-ai/glm-5.3-flash` — probed, so no id translation is needed.
+  [[profile.variant]]
+  id = "goat-glm"
+  provider = "commandcode"
+  model = "glm-5.3-flash"
+  effort = "high"
+  stability = "stable"
+  backends = ["pi"]
+
+  # Luna max off the GOAT subscription, for a slice whose brief is tight
+  # enough that literal instruction-following is the deciding trait.
+  [[profile.variant]]
+  id = "goat"
+  provider = "commandcode"
+  model = "gpt-5.6-luna"
+  effort = "max"
+  stability = "stable"
+  backends = ["pi"]
+
 [[profile]]
 id = "generate"
 purpose = "high-volume or heavily steered candidate generation whose output is raw material rather than a deliverable: drafts to mine, options to sweep, defect candidates to adjudicate. Everything it returns is unverified until a lead or reviewer-tier model checks it against source, and nothing resolved here is the last model to touch shipped work"
@@ -138,6 +162,20 @@ backends = ["codex", "pi"]
   effort = "max"
   stability = "experimental"
   backends = ["opencode"]
+
+  # Luna max off the GOAT subscription instead of the Codex window, when
+  # capacity rather than capability is the constraint. Same model and effort,
+  # a third pool, and pi is the only backend that reaches it. Max effort is
+  # genuinely applied here rather than clamped: the provider catalog maps the
+  # extended levels explicitly, verified by reasoning-token counts moving with
+  # the lever.
+  [[profile.variant]]
+  id = "goat"
+  provider = "commandcode"
+  model = "gpt-5.6-luna"
+  effort = "max"
+  stability = "stable"
+  backends = ["pi"]
 
 [[profile]]
 id = "design"

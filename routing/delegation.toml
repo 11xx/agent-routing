@@ -131,17 +131,17 @@ default_for = "all GPT delegation; mandatory default for write mode (real sandbo
 [[backend]]
 id = "pi"
 status = "verified"
-providers = ["openai-codex", "deepseek"]
-version_probed = "0.83.0 (2026-07-31)"
+providers = ["openai-codex", "deepseek", "commandcode"]
+version_probed = "0.84.3 (2026-08-29)"
 entrypoint = "pi -p \"<prompt>\" (also @file args to inline specs)"
-model_flag = "GPT: --provider openai-codex --model gpt-5.6-{sol,terra,luna}; DeepSeek: --provider deepseek --model deepseek-v4-{flash,pro}"
-effort_flag = "--thinking off|minimal|low|medium|high|xhigh|max (or :level model suffix)"
+model_flag = "GPT: --provider openai-codex --model gpt-5.6-{sol,terra,luna}; DeepSeek: --provider deepseek --model deepseek-v4-{flash,pro}; GOAT: --provider commandcode --model gpt-5.6-{sol,terra,luna} or z-ai/glm-5.3-flash. --provider is never optional: a model name authenticated on two providers aborts the run"
+effort_flag = "--thinking off|minimal|low|medium|high|xhigh|max (or :level model suffix). xhigh and max reach the provider only when the model definition maps them; an unmapped model drops both from its supported set and clamps a requested max to high without reporting it"
 workdir_flag = "none; cd first"
 capture = "stdout is exactly the final message"
 isolation = "NONE; read-only ~= --tools read,grep,find,ls (excludes bash: no git/shell); write mode unsandboxed"
 clean_room = "--no-session --no-extensions --no-skills --no-context-files"
 resume = "--session <id> | -c | --fork"
-quota_pool = "provider-dependent: openai-codex shares the codex CLI's ChatGPT subscription and is not a quota fallback; deepseek uses separate API billing and quota"
+quota_pool = "provider-dependent: openai-codex shares the codex CLI's ChatGPT subscription and is not a quota fallback; deepseek uses separate API billing and quota; commandcode is the GOAT subscription, a third pool that draws on neither standing window and is the reason to route here for capacity"
 default_for = "provider-plural clean-room delegation, leads without codex access, and experimental DeepSeek work; GPT write mode only when codex CLI itself is the blocker, and only in a dedicated worktree"
 
 [[backend]]
