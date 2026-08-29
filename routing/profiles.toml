@@ -192,18 +192,6 @@ backends = ["codex", "pi"]
   stability = "stable"
   backends = ["pi"]
 
-  # Sol high off the third subscription, for a verdict that must come from
-  # neither the model that wrote the diff nor the one that repaired it. The
-  # effort lever is real here: the GOAT catalog now declares Sol a reasoning
-  # model, measured by reasoning tokens moving with the level.
-  [[profile.variant]]
-  id = "goat-sol"
-  provider = "commandcode"
-  model = "gpt-5.6-sol"
-  effort = "high"
-  stability = "stable"
-  backends = ["pi"]
-
   # The cheap lane's other half, as a reviewer. It argues rather than
   # complying, which is the trait a review wants, and it draws the same third
   # subscription — so a review and the implementation it judges can run on one
