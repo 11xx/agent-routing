@@ -175,8 +175,11 @@ backends = ["codex", "pi"]
   stability = "experimental"
   backends = ["opencode"]
 
-  # Luna max off the GOAT subscription instead of the Codex window, when
-  # capacity rather than capability is the constraint. Same model and effort,
+  # Luna max off the GOAT subscription instead of the Codex window, while that
+  # pool is open. Its allowance is smaller than the Codex schedule and carries
+  # a weekly limit as well as a five-hour one, so this is complementary
+  # capacity to take when available rather than a lane to plan a sweep around.
+  # Same model and effort,
   # a third pool, and pi is the only backend that reaches it. Max effort is
   # genuinely applied here rather than clamped: the provider catalog maps the
   # extended levels explicitly, verified by reasoning-token counts moving with

@@ -141,7 +141,7 @@ capture = "stdout is exactly the final message"
 isolation = "NONE; read-only ~= --tools read,grep,find,ls (excludes bash: no git/shell); write mode unsandboxed"
 clean_room = "--no-session --no-extensions --no-skills --no-context-files"
 resume = "--session <id> | -c | --fork"
-quota_pool = "provider-dependent: openai-codex shares the codex CLI's ChatGPT subscription and is not a quota fallback; deepseek uses separate API billing and quota; commandcode is the GOAT subscription, a third pool that draws on neither standing window and is the reason to route here for capacity"
+quota_pool = "provider-dependent: openai-codex shares the codex CLI's ChatGPT subscription and is not a quota fallback; deepseek uses separate API billing and quota; commandcode is the GOAT subscription, a third pool that draws on neither standing window. Its allowance is smaller than the Codex schedule and it carries both a five-hour and a weekly limit, so it is complementary rather than high-volume: worth taking while it is open, and not a fallback to plan a sweep around. GLM 5.3 Flash is the cheap tier by API price, which is a separate axis from how much of this pool remains"
 default_for = "provider-plural clean-room delegation, leads without codex access, and experimental DeepSeek work; GPT write mode only when codex CLI itself is the blocker, and only in a dedicated worktree"
 
 [[backend]]
