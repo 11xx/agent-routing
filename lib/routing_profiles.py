@@ -35,6 +35,7 @@ def validation_problems(root: pathlib.Path) -> list[str]:
     delegation = load_toml(root / "routing" / "delegation.toml")
     by_model = {model["id"]: model for model in models}
     by_backend = {backend["id"]: backend for backend in delegation.get("backend", [])}
+    by_pool = {pool["provider"]: pool for pool in delegation.get("pool", [])}
 
     problems: list[str] = []
     for model in models:
@@ -100,6 +101,16 @@ def validation_problems(root: pathlib.Path) -> list[str]:
                     problems.append(f"{label}: backend {backend_id!r} is not verified")
                 if provider not in backend.get("providers", []):
                     problems.append(f"{label}: provider {provider!r} is unsupported by backend {backend_id!r}")
+            # A pool is priced for a tier. Routing a model a pool does not
+            # serve spends that allowance on work another subscription has
+            # already paid for, so the pairing is a lint error rather than a
+            # judgment call left to whoever writes the variant.
+            pool = by_pool.get(provider)
+            if pool and model_id not in pool.get("serves", []):
+                problems.append(
+                    f"{label}: {pool.get('plan', provider)} does not serve {model_id!r}; "
+                    f"it is paid for by {pool.get('pays_for', 'another subscription')}"
+                )
     return problems
 
 

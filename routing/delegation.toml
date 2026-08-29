@@ -191,3 +191,39 @@ why = "measured live on 2026-08-01: gpt-5.6-luna returned on the first call, dee
 [[rule]]
 id = "quota-bidirectional"
 policy = "usage-limit errors are routine: report and fall back to the other subscription or wait for the stated reset; never retry-loop; hand off mid-arc via the handoff skills"
+
+# Which models a pool may serve. A subscription is priced for a tier, and a
+# route that ignores that spends an allowance on work another subscription has
+# already paid for — measured on 2026-08-29, when five Sol-high passes through
+# the GOAT plan took its five-hour and then its weekly limit inside a day while
+# the identical work continued on the Codex window. `serves` is the closed set
+# of models a pool may be routed to; `pays_for` names where the models it
+# refuses belong, so a refusal can say what to do instead. Providers absent
+# from this table are unconstrained.
+[[pool]]
+provider = "commandcode"
+plan = "GOAT, a small flat subscription"
+serves = ["gpt-5.6-luna", "glm-5.3-flash"]
+pays_for = "openai-codex for the GPT frontier tiers, anthropic for the Claude models"
+why = "the allowance is generous for the tiers it is priced for and a frontier tier drains it in a handful of calls; an expensive third-party model such as kimi-k3 is the same waste by another name"
+
+[[pool]]
+provider = "opencode-go"
+plan = "OpenCode Go, an optional flat subscription"
+serves = ["gpt-5.6-luna", "glm-5.3-flash"]
+pays_for = "openai-codex for the GPT frontier tiers, anthropic for the Claude models"
+why = "the same shape as GOAT — a dollar-metered small plan whose value is cheap-tier capacity off both standing windows, not a cheaper way to buy a frontier tier"
+
+[[pool]]
+provider = "openai-codex"
+plan = "the Codex subscription"
+serves = ["gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra"]
+pays_for = "itself: Sol runs here and nowhere else"
+why = "Sol belongs to the subscription that already covers it. pi and opencode reach it with the same OpenAI login, so the backend is never a reason to route Sol elsewhere"
+
+[[pool]]
+provider = "anthropic"
+plan = "the Claude subscription"
+serves = ["opus-5", "fable-5", "sonnet-5", "haiku-4.5"]
+pays_for = "itself: never reach a Claude model through metered credits when the subscription covers it"
+why = "the same rule as Sol, on the other window"
