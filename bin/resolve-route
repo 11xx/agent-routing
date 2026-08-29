@@ -8,7 +8,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 
-from routing_profiles import dumps, resolve  # noqa: E402
+from routing_profiles import RouteRefusal, dumps, resolve  # noqa: E402
 
 
 def main() -> int:
@@ -17,6 +17,11 @@ def main() -> int:
     parser.add_argument("--backend", required=True)
     parser.add_argument("--variant")
     parser.add_argument("--allow-experimental", action="store_true")
+    parser.add_argument(
+        "--allow-cross-pool",
+        action="store_true",
+        help="spend a pool's allowance on a model another subscription already pays for",
+    )
     parser.add_argument("--json", action="store_true", required=True, help="emit the stable JSON route contract")
     args = parser.parse_args()
     try:
@@ -26,7 +31,16 @@ def main() -> int:
             args.backend,
             variant_id=args.variant,
             allow_experimental=args.allow_experimental,
+            allow_cross_pool=args.allow_cross_pool,
         )
+    except RouteRefusal as refusal:
+        # Stdout carries the route contract and nothing else, so a caller can
+        # parse it without first deciding whether it succeeded. The refusal
+        # goes to stderr: prose for a person, then the payload alone on the
+        # final line for the caller that has to decide what to do about it.
+        print(f"agent-routing: cannot resolve profile {args.profile!r} for backend {args.backend!r}: {refusal}", file=sys.stderr)
+        print(dumps(refusal.payload()), file=sys.stderr)
+        return 1
     except ValueError as error:
         print(f"agent-routing: cannot resolve profile {args.profile!r} for backend {args.backend!r}: {error}", file=sys.stderr)
         return 1

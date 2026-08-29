@@ -1,3 +1,4 @@
+import json
 import pathlib
 import shutil
 import subprocess
@@ -8,7 +9,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 
-from routing_profiles import resolve, validation_problems
+from routing_profiles import RouteRefusal, pool_problems, resolve, validation_problems
 
 
 class RoutingProfilesTest(unittest.TestCase):
@@ -115,6 +116,11 @@ backends = ["claude"]
         self.assertEqual(unknown.returncode, 1)
         self.assertEqual(unknown.stdout, "")
         self.assertIn("unknown profile", unknown.stderr)
+        # Prose for a person, then the payload alone on the last line for the
+        # caller that has to classify the refusal.
+        payload = json.loads(unknown.stderr.splitlines()[-1])
+        self.assertEqual(payload["schema"], "agent-routing-refusal/1")
+        self.assertEqual(payload["kind"], "unknown-profile")
         missing_backend = subprocess.run([command, "implement", "--json"], capture_output=True, text=True)
         self.assertEqual(missing_backend.returncode, 2)
         self.assertEqual(missing_backend.stdout, "")
@@ -142,3 +148,60 @@ backends = ["claude"]
 
 if __name__ == "__main__":
     unittest.main()
+
+    def cross_pool_root(self):
+        """A fixture whose review profile routes Sol through the small plan."""
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        start = text.index('id = "review"')
+        head, tail = text[:start], text[start:]
+        tail = tail.replace(
+            '''  id = "goat"
+  provider = "commandcode"
+  model = "gpt-5.6-luna"
+  effort = "max"''',
+            '''  id = "goat-sol"
+  provider = "commandcode"
+  model = "gpt-5.6-sol"
+  effort = "high"''',
+            1,
+        )
+        profiles.write_text(head + tail)
+        return root
+
+    def test_a_pool_refusal_names_the_subscription_that_pays(self):
+        root = self.cross_pool_root()
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(root, "review", "pi", variant_id="goat-sol")
+        refusal = caught.exception
+        self.assertEqual(refusal.kind, "pool")
+        payload = refusal.payload()
+        self.assertEqual(payload["model"], "gpt-5.6-sol")
+        self.assertEqual(payload["override"], "--allow-cross-pool")
+        self.assertIn("openai-codex", payload["alternative"])
+
+    def test_crossing_a_pool_is_opt_in_and_recorded(self):
+        root = self.cross_pool_root()
+        route = resolve(root, "review", "pi", variant_id="goat-sol", allow_cross_pool=True)
+        self.assertEqual(route["model"], "gpt-5.6-sol")
+        self.assertIn("cross_pool", route)
+
+    def test_one_pool_violation_does_not_block_an_unrelated_route(self):
+        """A pool pairing is a property of one route. Blocking every other
+        resolution would make a single bad variant an outage."""
+        root = self.cross_pool_root()
+        self.assertEqual(resolve(root, "review", "codex")["model"], "gpt-5.6-luna")
+        self.assertEqual(len(pool_problems(root)), 1)
+
+    def test_a_refusal_carries_its_kind(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "nosuch", "pi")
+        self.assertEqual(caught.exception.kind, "unknown-profile")
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "generate", "pi")
+        self.assertEqual(caught.exception.kind, "stability")
+        self.assertEqual(caught.exception.payload()["override"], "--allow-experimental")
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "design", "codex")
+        self.assertEqual(caught.exception.kind, "unsupported-backend")
