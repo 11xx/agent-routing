@@ -4,28 +4,26 @@
 
 [repository]
 skills = "ai-agent-harnesses"
+delegate = "ai-agent-delegate"
 
 [[accessor]]
 id = "instructions"
 command = ["agent-harness", "delegation-sources"]
 
+# The delegation mechanism is a CLI rather than three skills; what remains
+# routing-sensitive is the proxy agents it ships and its own sources, which
+# must name a profile and never a concrete model.
 [[consumer]]
-id = "codex-delegate"
-repository = "skills"
-path = "skills/codex-delegate"
+id = "delegate-agents"
+repository = "delegate"
+path = "agents"
 checks = ["roster-literals", "agent-frontmatter"]
 
 [[consumer]]
-id = "pi-delegate"
-repository = "skills"
-path = "skills/pi-delegate"
-checks = ["roster-literals", "agent-frontmatter"]
-
-[[consumer]]
-id = "opencode-delegate"
-repository = "skills"
-path = "skills/opencode-delegate"
-checks = ["roster-literals", "agent-frontmatter"]
+id = "delegate-sources"
+repository = "delegate"
+path = "src"
+checks = ["roster-literals"]
 
 [[consumer]]
 id = "plan-for-codex"
@@ -36,19 +34,19 @@ checks = ["roster-literals", "agent-frontmatter"]
 # Claude’s static agent frontmatter requires this version-agnostic alias. The
 # proxy must remain a relay and therefore keeps the centrally recorded effort.
 [[proxy]]
-consumer = "codex-delegate"
-path = "agents/codex.md"
+consumer = "delegate-agents"
+path = "codex.md"
 model = "sonnet"
 effort = "low"
 
 [[proxy]]
-consumer = "pi-delegate"
-path = "agents/pi.md"
+consumer = "delegate-agents"
+path = "pi.md"
 model = "sonnet"
 effort = "low"
 
 [[proxy]]
-consumer = "opencode-delegate"
-path = "agents/opencode.md"
+consumer = "delegate-agents"
+path = "opencode.md"
 model = "sonnet"
 effort = "low"
