@@ -217,7 +217,7 @@ why = "the same shape as GOAT — a dollar-metered small plan whose value is che
 [[pool]]
 provider = "openai-codex"
 plan = "the Codex subscription"
-serves = ["gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra"]
+serves = ["gpt-5.6-sol", "gpt-5.6-luna"]
 pays_for = "itself: Sol runs here and nowhere else"
 why = "Sol belongs to the subscription that already covers it. pi and opencode reach it with the same OpenAI login, so the backend is never a reason to route Sol elsewhere"
 

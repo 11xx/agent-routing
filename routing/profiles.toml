@@ -38,28 +38,28 @@ backends = ["codex", "pi"]
 [[profile]]
 id = "explore"
 purpose = "read-only codebase reconnaissance and source mapping without a verdict"
+# Reconnaissance is bounded reading rather than judgment, so it takes the same
+# workhorse as implementation. Luna's high tier is still probationary, so the
+# stable seat is max — which costs less here than the Terra tier it replaces
+# and keeps one workhorse across both read and write profiles.
 provider = "openai-codex"
-model = "gpt-5.6-terra"
-effort = "high"
+model = "gpt-5.6-luna"
+effort = "max"
 stability = "stable"
 backends = ["codex", "pi"]
 
 [[profile]]
 id = "implement"
 purpose = "bounded production work whose targets and acceptance probes are already named"
+# Terra held this seat until Luna's price reset. Luna max measures 67% at
+# $0.61 a task where Terra high costs several times that for a comparable
+# tier, and a full day of delegated implementation went to Luna without once
+# reaching for Terra.
 provider = "openai-codex"
-model = "gpt-5.6-terra"
-effort = "high"
+model = "gpt-5.6-luna"
+effort = "max"
 stability = "stable"
 backends = ["codex", "pi"]
-
-  [[profile.variant]]
-  id = "luna-trial"
-  provider = "openai-codex"
-  model = "gpt-5.6-luna"
-  effort = "max"
-  stability = "experimental"
-  backends = ["codex", "pi"]
 
   [[profile.variant]]
   id = "opencode-go-trial"
