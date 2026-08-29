@@ -32,21 +32,14 @@ class RoutingProfilesTest(unittest.TestCase):
     def test_experimental_variant_fails_closed(self):
         with self.assertRaisesRegex(ValueError, "--allow-experimental"):
             resolve(ROOT, "implement", "opencode", variant_id="opencode-go-trial")
-        with self.assertRaisesRegex(ValueError, "--allow-experimental"):
-            resolve(ROOT, "implement", "codex", variant_id="luna-trial")
 
-    def test_luna_trial_uses_max_effort(self):
-        route = resolve(
-            ROOT,
-            "implement",
-            "codex",
-            variant_id="luna-trial",
-            allow_experimental=True,
-        )
-        self.assertEqual(route["profile"], "implement:luna-trial")
+    def test_implement_takes_the_stable_workhorse_at_max(self):
+        """Luna holds the seat Terra held before its price reset, so the
+        primary is the measured implementer rather than a trial variant."""
+        route = resolve(ROOT, "implement", "codex")
         self.assertEqual(route["model"], "gpt-5.6-luna")
         self.assertEqual(route["effort"], "max")
-        self.assertEqual(route["stability"], "experimental")
+        self.assertEqual(route["stability"], "stable")
 
     def test_experimental_base_profile_fails_closed(self):
         """A whole profile can be experimental, not only a variant of a stable one."""

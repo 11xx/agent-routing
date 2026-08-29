@@ -44,11 +44,13 @@ class ConsumerLintTest(unittest.TestCase):
         self.harness = harness
         self.settings = instructions / "harnesses" / "pi" / "settings.json"
         skills_root = code / skills
+        delegate_root = code / self.config()["repository"]["delegate"]
+        self.proxy = delegate_root / "agents/codex.md"
         files = {
             str(self.settings): json.dumps({"$route": "interactive"}),
-            str(skills_root / "skills/codex-delegate/agents/codex.md"): "model: sonnet\neffort: low\n",
-            str(skills_root / "skills/pi-delegate/agents/pi.md"): "model: sonnet\neffort: low\n",
-            str(skills_root / "skills/opencode-delegate/agents/opencode.md"): "model: sonnet\neffort: low\n",
+            str(self.proxy): "model: sonnet\neffort: low\n",
+            str(delegate_root / "agents/pi.md"): "model: sonnet\neffort: low\n",
+            str(delegate_root / "agents/opencode.md"): "model: sonnet\neffort: low\n",
         }
         directories = [
             f"{instructions}/fragments",
@@ -56,6 +58,7 @@ class ConsumerLintTest(unittest.TestCase):
             f"{instructions}/extensions/subagent",
             str(skills_root / "skills/plan-for-codex"),
             str(skills_root / "skills/multi-wargame"),
+            str(delegate_root / "src"),
         ]
         for directory in directories:
             (code / directory).mkdir(parents=True)
@@ -76,8 +79,7 @@ class ConsumerLintTest(unittest.TestCase):
     def test_clean_proxy_exception_is_exact(self):
         code = self.fixture_code_root()
         self.assertEqual(self.run_lint(code).returncode, 0)
-        proxy = code / self.config()["repository"]["skills"] / "skills/codex-delegate/agents/codex.md"
-        proxy.write_text("model: opus\neffort: low\n")
+        self.proxy.write_text("model: opus\neffort: low\n")
         result = self.run_lint(code)
         self.assertEqual(result.returncode, 1)
         self.assertIn("pins model frontmatter", result.stdout)
