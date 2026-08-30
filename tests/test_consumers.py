@@ -101,6 +101,12 @@ class ConsumerLintTest(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("missing delegation consumer", result.stdout)
         self.assertIn(str(instructions), result.stdout)
+    def test_accessor_naming_nothing_is_a_failure(self):
+        code = self.fixture_code_root()
+        self.harness.write_text("#!/usr/bin/env python3\nprint('[]')\n")
+        result = self.run_lint(code)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("reported no delegation sources", result.stderr)
 
 
 if __name__ == "__main__":
