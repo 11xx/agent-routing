@@ -64,6 +64,11 @@ def configured_consumers():
             raise SystemExit(f"{accessor_id}: invalid delegation source JSON: {error}")
         if not isinstance(sources, list):
             raise SystemExit(f"{accessor_id}: delegation source output must be a JSON array")
+        # An accessor that names nothing has not found its subject, and a lint
+        # that cannot find its subject has not passed. Absence here would drop
+        # every surface the accessor owns from the count below, silently.
+        if not sources:
+            raise SystemExit(f"{accessor_id}: reported no delegation sources to check")
         for source in sources:
             source_id = source["id"]
             consumer_id = f"{accessor_id}/{source_id}"
