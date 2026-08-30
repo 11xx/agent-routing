@@ -31,8 +31,30 @@ class RoutingProfilesTest(unittest.TestCase):
         self.assertTrue(route["route_version"])
 
     def test_experimental_variant_fails_closed(self):
+        """A variant carries its own stability, independent of its profile's.
+
+        No shipped profile declares an experimental variant, so this builds one
+        rather than pinning the test to whichever route happens to be a trial.
+        """
+        root = self.fixture_root()
+        manifest = root / "routing" / "profiles.toml"
+        variant = (
+            '\n  [[profile.variant]]\n'
+            '  id = "trial"\n'
+            '  provider = "openai-codex"\n'
+            '  model = "gpt-5.6-luna"\n'
+            '  effort = "max"\n'
+            '  stability = "experimental"\n'
+            '  backends = ["codex"]\n'
+        )
+        text = manifest.read_text()
+        anchor = text.index('id = "implement"')
+        insert = text.index("\n\n", anchor)
+        manifest.write_text(text[:insert] + "\n" + variant + text[insert:])
         with self.assertRaisesRegex(ValueError, "--allow-experimental"):
-            resolve(ROOT, "implement", "opencode", variant_id="opencode-go-trial")
+            resolve(root, "implement", "codex", variant_id="trial")
+        route = resolve(root, "implement", "codex", variant_id="trial", allow_experimental=True)
+        self.assertEqual(route["stability"], "experimental")
 
     def test_implement_takes_the_stable_workhorse_at_max(self):
         """Luna holds the seat Terra held before its price reset, so the
