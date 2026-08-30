@@ -1,10 +1,28 @@
 # Named delegation routes. Callers choose a task-shape profile; this table
 # deterministically supplies the current provider, model, and effort.
 # Access without a path: `agent-routing profiles`.
+#
+# No profile routes to the OpenCode backend. The provider declares no model
+# variants, so effort is unreachable there by any syntax: a model reference
+# carrying one is refused with `Variant unavailable`, and the same tiers
+# declared through the runtime plugin and through a static provider block both
+# failed to reach the resolver. A route that names an effort the backend
+# silently drops is a route that lies about what ran, so `agent-delegate`
+# refuses one rather than downgrading it — which left every OpenCode route
+# here unrunnable. Pi reaches the same models and honours effort, so it
+# carries the capacity these variants were offering.
+#
+# Reinstate them if the provider starts declaring variants: add the variant
+# back with `backends = ["opencode"]`, and confirm the effort actually arrives
+# by checking that reasoning-token counts move with the lever rather than by
+# trusting the flag was accepted. The OpenCode backend also has no
+# unattended-approval mode, so a permission prompt ends a non-interactive run
+# with exit 0 and no verdict; that limitation is independent of variants and
+# has to be solved separately before an unattended route is safe.
 
 [meta]
 schema = "routing-profiles/1"
-updated = "2026-08-02"
+updated = "2026-08-30"
 
 [[profile]]
 id = "extract"
@@ -14,14 +32,6 @@ model = "gpt-5.6-luna"
 effort = "low"
 stability = "stable"
 backends = ["codex", "pi"]
-
-  [[profile.variant]]
-  id = "opencode-go"
-  provider = "opencode-go"
-  model = "gpt-5.6-luna"
-  effort = "low"
-  stability = "experimental"
-  backends = ["opencode"]
 
   # Fixed-shape extraction is high-volume enough to spend a separate pool:
   # choose this when the Codex window is the constraint, and keep the primary
@@ -60,14 +70,6 @@ model = "gpt-5.6-luna"
 effort = "max"
 stability = "stable"
 backends = ["codex", "pi"]
-
-  [[profile.variant]]
-  id = "opencode-go-trial"
-  provider = "opencode-go"
-  model = "gpt-5.6-luna"
-  effort = "max"
-  stability = "experimental"
-  backends = ["opencode"]
 
   # The cheap lane off a third subscription: GLM 5.3 Flash matches Luna in
   # taste and capability and costs a fraction, and neither draws the Claude
@@ -162,18 +164,6 @@ backends = ["codex", "pi"]
   effort = "high"
   stability = "stable"
   backends = ["codex", "pi"]
-
-  # The same model off both standing windows, for when capacity rather than
-  # capability is the constraint. Experimental because the pool is: opencode has
-  # no unattended-approval mode, so a permission prompt ends a non-interactive
-  # run with exit 0 and no verdict.
-  [[profile.variant]]
-  id = "opencode-go"
-  provider = "opencode-go"
-  model = "gpt-5.6-luna"
-  effort = "max"
-  stability = "experimental"
-  backends = ["opencode"]
 
   # Luna max off the GOAT subscription instead of the Codex window, while that
   # pool is open. Its allowance is smaller than the Codex schedule and carries
