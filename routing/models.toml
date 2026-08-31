@@ -133,7 +133,7 @@ notes = "reachable on two pools. The prices above are the Codex route. The same 
   usd_per_task = 0.61
   out_tokens = "73k"
   steps = 102
-use = "the stable bounded-implementation and review tier: 6 points over Sol medium at a third of its cost, and 2 points under Sol high for a sixth of it. Field-measured over one multi-change arc — fourteen findings, thirteen accepted, several of them silent-omission defects the author had missed, and one correct rebuttal of the lead. Read-only review is where its cost shape wins, because 2.6x the output tokens and 2.8x the steps buy thoroughness against a diff nobody is waiting on. Not a lead or an interactive tier: a large-diff round runs 20-40 minutes. One failure mode is still unmeasured — whether it approves something it should not — because every approval observed so far was independently confirmed"
+  use = "the stable bounded-implementation and review tier: 6 points over Sol medium at a third of its cost, and 2 points under Sol high for a sixth of it. Field-measured over one multi-change arc — fourteen findings, thirteen accepted, several of them silent-omission defects the author had missed, and one correct rebuttal of the lead. Read-only review is where its cost shape wins, because 2.6x the output tokens and 2.8x the steps buy thoroughness against a diff nobody is waiting on. Not a lead or an interactive tier: a large-diff round runs 20-40 minutes. One failure mode is still unmeasured — whether it approves something it should not — because every approval observed so far was independently confirmed"
   [[model.effort]]
   effort = "xhigh"
   status = "experimental"

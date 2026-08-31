@@ -8,6 +8,17 @@ import pathlib
 import tomllib
 
 STABILITIES = {"stable", "probationary", "experimental"}
+
+#: Every key a route table may carry. A manifest is data an author edits by
+#: hand, so a misspelling has to be a refusal: an unrecognised key is silently
+#: ignored by every reader, which makes the route it was meant to change look
+#: as though the edit never happened.
+PROFILE_KEYS = frozenset(
+    {"id", "purpose", "provider", "model", "backend_model", "effort", "stability", "backends", "variant"}
+)
+VARIANT_KEYS = frozenset(
+    {"id", "provider", "model", "backend_model", "effort", "stability", "backends", "default_for_backend"}
+)
 UNROUTABLE_MODEL_STATUSES = {"deprecated", "inactive", "restricted", "retired", "superseded"}
 MODEL_STATUSES = UNROUTABLE_MODEL_STATUSES | {"experimental"}
 EFFORT_STATUSES = {"explicit-only", "experimental", "probationary"}
@@ -125,6 +136,9 @@ def structural_problems(root: pathlib.Path) -> list[str]:
         for route in [profile, *variants]:
             variant_id = route.get("id", "<missing>")
             label = profile_id if route is profile else f"{profile_id}:{variant_id}"
+            allowed = PROFILE_KEYS if route is profile else VARIANT_KEYS
+            for key in sorted(set(route) - allowed):
+                problems.append(f"{label}: unknown key {key!r}")
             if route is not profile:
                 if variant_id in variant_ids:
                     problems.append(f"duplicate variant {label!r}")
@@ -136,6 +150,17 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                     )
                 elif default_for_backend:
                     for backend_id in route.get("backends", []):
+                        # A default is reachable only where the primary route
+                        # does not serve the backend itself. One that names a
+                        # backend the primary already serves can never be
+                        # selected, so it is refused rather than left to look
+                        # effective.
+                        if backend_id in profile.get("backends", []):
+                            problems.append(
+                                f"{label}: backend {backend_id!r} is served by {profile_id} itself, "
+                                "so this default is unreachable"
+                            )
+                            continue
                         previous = backend_defaults.get(backend_id)
                         if previous:
                             problems.append(
@@ -232,6 +257,10 @@ def resolve(
             )
         resolved_profile = f"{profile_id}:{variant_id}"
     elif backend not in profile.get("backends", []):
+        # The primary route wins wherever it serves the backend; a backend
+        # default answers only for a backend the primary excludes. The lint
+        # refuses a default that names a backend the primary already serves,
+        # so this precedence cannot silently shadow one.
         backend_default = next(
             (
                 entry

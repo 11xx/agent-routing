@@ -72,6 +72,55 @@ class RoutingProfilesTest(unittest.TestCase):
             any("already defaults" in problem for problem in validation_problems(root))
         )
 
+    def test_a_default_the_primary_route_would_shadow_is_refused(self):
+        """A default is reachable only where the primary excludes the backend.
+
+        The resolver consults a backend default only when the primary route
+        does not serve that backend, so one naming a backend the primary
+        already serves can never be selected. Left unchecked it reads as an
+        effective override while the primary keeps answering.
+        """
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        anchor = text.index('id = "implement"')
+        insert = text.index("\n\n", anchor)
+        shadowed = '''
+  [[profile.variant]]
+  id = "shadowed"
+  provider = "openai-codex"
+  model = "gpt-5.6-luna"
+  effort = "max"
+  stability = "stable"
+  backends = ["codex"]
+  default_for_backend = true
+'''
+        profiles.write_text(text[:insert] + "\n" + shadowed + text[insert:])
+
+        self.assertTrue(
+            any("is unreachable" in problem for problem in validation_problems(root))
+        )
+
+    def test_an_unknown_route_key_is_refused(self):
+        """A misspelled key is ignored by every reader, so it must be refused.
+
+        `default_for_backend` written at profile level, or spelled
+        `default_for_backends` on a variant, would otherwise leave the route
+        resolving exactly as it did before the edit.
+        """
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        anchor = text.index('id = "implement"')
+        insert = text.index("\n", anchor)
+        profiles.write_text(
+            text[:insert] + "\ndefault_for_backend = true" + text[insert:]
+        )
+
+        self.assertTrue(
+            any("unknown key" in problem for problem in validation_problems(root))
+        )
+
     def test_cli_exposes_the_named_claude_review_route(self):
         command = ROOT / "bin" / "agent-routing"
         completed = subprocess.run(

@@ -30,7 +30,7 @@ rules = "never skip review or merge automatically from an implementation prompt"
 actor = "lead"
 task = "select a reviewer"
 mechanism = "stakes-based reviewer line (full policy: models.toml [policy].review)"
-rules = "the verdict never comes from the authoring model; reviewer tiers are exactly opus-5 medium, sol high, and sol medium; GPT-authored diffs use the stable review:opus Claude variant, while the default Codex/Pi review route remains Luna max; docs-only work by the head model needs no external review; high-stakes work (migrations, schema/breaking, destructive, security) always gets sol high, and waits for the codex quota reset rather than being self-issued when that pool is exhausted"
+rules = "the verdict never comes from the authoring model; reviewer tiers are exactly luna max, opus-5 medium, sol high, and sol medium; GPT-authored diffs use the stable review:opus Claude variant, while the default Codex/Pi review route remains Luna max; docs-only work by the head model needs no external review; high-stakes work (migrations, schema/breaking, destructive, security) always gets sol high, and waits for the codex quota reset rather than being self-issued when that pool is exhausted"
 
 [[route]]
 actor = "codex"
@@ -164,22 +164,22 @@ status = "verified"
 providers = ["opencode-go"]
 version_probed = "1.18.10 (2026-08-01)"
 requires = "an active OpenCode Go subscription. Probed status describes the CLI contract, not the pool: confirm `opencode auth list` shows OpenCode Go before routing, and treat an absent credential as a stop rather than a fallback to another pool"
-entrypoint = "opencode run \"<prompt>\""
+entrypoint = "opencode run \"<prompt>\" — this row describes the v1 CLI at the probed version. agent-delegate drives `opencode2`, whose provider declares no model variants, so the effort row below does not transfer to it"
 model_flag = "-m opencode-go/<model>"
-effort_flag = "--variant low|high|max — HONORED BUT UNVALIDATED: a misspelled or unsupported value is silently accepted and falls back to the default effort rather than erroring. Confirm the tier took by reading `reasoning` in the --format json token counts (max reported 30 reasoning tokens where low and a nonsense value both reported 0)"
+effort_flag = "--variant low|high|max on v1 — HONORED BUT UNVALIDATED: a misspelled or unsupported value is silently accepted and falls back to the default effort rather than erroring. Confirm the tier took by reading `reasoning` in the --format json token counts (max reported 30 reasoning tokens where low and a nonsense value both reported 0)"
 workdir_flag = "--dir <dir>"
 capture = "stdout is the final message under a `> build · <model>` header; --format json emits a JSONL event stream carrying per-step token counts"
 isolation = "NONE; permission config plus --auto, which auto-approves everything not explicitly denied"
 clean_room = "--pure drops external plugins only; AGENTS.md and ~/.config/opencode/skills still load, so a delegated call pays that prefix on every launch"
 resume = "-c | -s <session-id> | --fork"
 quota_pool = "opencode-go subscription: an independent third pool drawing on neither the Claude window nor the Codex credit schedule"
-default_for = "controlled trials of pool-independent cheap execution when the Claude and Codex windows are the constraint"
+default_for = "nothing: no profile resolves to this pool. Its capacity is carried by pi, which reaches the same models and honours effort. Reaching it takes a hand-written route rather than a profile"
 notes = "the only Go route with no pi equivalent is gpt-5.6-luna: pi's bundled opencode-go catalog carries 16 of the 17 models and omits exactly that one, with no catalog refresh path (`pi update models` fails). Reach Luna-on-Go through this backend"
 
 [[rule]]
 id = "opencode-go-availability"
 harness = "opencode"
-policy = "opencode-go routes are conditional, never ambient. Every profile that resolves to this pool is experimental and fails closed without explicit opt-in; a lapsed or missing subscription is reported and the work stays on Claude or Codex. The pool holds no roster seat, so nothing degrades to it automatically when another window runs out"
+policy = "opencode-go routes are conditional, never ambient. No profile resolves to this pool at all, so a caller naming one gets unknown-variant rather than a run; a lapsed or missing subscription is reported and the work stays on Claude or Codex. The pool holds no roster seat, so nothing degrades to it automatically when another window runs out"
 why = "the pool is an optional $10/month subscription, unlike the two standing ones. Treating it as always-present would make routing depend on a payment state the manifests cannot observe"
 
 [[rule]]
