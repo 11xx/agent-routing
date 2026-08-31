@@ -30,6 +30,113 @@ class RoutingProfilesTest(unittest.TestCase):
         self.assertEqual(route["stability"], "stable")
         self.assertTrue(route["route_version"])
 
+    def test_claude_opus_variant_is_a_stable_first_party_review_route(self):
+        route = resolve(ROOT, "review", "claude", variant_id="opus")
+        self.assertEqual(route["profile"], "review:opus")
+        self.assertEqual(route["backend"], "claude")
+        self.assertEqual(route["provider"], "anthropic")
+        self.assertEqual(route["model"], "claude-opus-5")
+        self.assertEqual(route["effort"], "medium")
+        self.assertEqual(route["stability"], "stable")
+
+    def test_claude_backend_defaults_to_opus_medium_for_work_and_review(self):
+        for profile in ("implement", "execute", "review"):
+            route = resolve(ROOT, profile, "claude")
+            self.assertEqual(route["profile"], f"{profile}:opus")
+            self.assertEqual(route["backend"], "claude")
+            self.assertEqual(route["provider"], "anthropic")
+            self.assertEqual(route["model"], "claude-opus-5")
+            self.assertEqual(route["effort"], "medium")
+            self.assertEqual(route["stability"], "stable")
+
+    def test_only_one_variant_can_default_for_each_backend(self):
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        anchor = text.index('id = "implement"')
+        insert = text.index("\n\n", anchor)
+        duplicate = '''
+  [[profile.variant]]
+  id = "second-claude-default"
+  provider = "anthropic"
+  model = "opus-5"
+  backend_model = "claude-opus-5"
+  effort = "medium"
+  stability = "stable"
+  backends = ["claude"]
+  default_for_backend = true
+'''
+        profiles.write_text(text[:insert] + "\n" + duplicate + text[insert:])
+
+        self.assertTrue(
+            any("already defaults" in problem for problem in validation_problems(root))
+        )
+
+    def test_a_default_the_primary_route_would_shadow_is_refused(self):
+        """A default is reachable only where the primary excludes the backend.
+
+        The resolver consults a backend default only when the primary route
+        does not serve that backend, so one naming a backend the primary
+        already serves can never be selected. Left unchecked it reads as an
+        effective override while the primary keeps answering.
+        """
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        anchor = text.index('id = "implement"')
+        insert = text.index("\n\n", anchor)
+        shadowed = '''
+  [[profile.variant]]
+  id = "shadowed"
+  provider = "openai-codex"
+  model = "gpt-5.6-luna"
+  effort = "max"
+  stability = "stable"
+  backends = ["codex"]
+  default_for_backend = true
+'''
+        profiles.write_text(text[:insert] + "\n" + shadowed + text[insert:])
+
+        self.assertTrue(
+            any("is unreachable" in problem for problem in validation_problems(root))
+        )
+
+    def test_an_unknown_route_key_is_refused(self):
+        """A misspelled key is ignored by every reader, so it must be refused.
+
+        `default_for_backend` written at profile level, or spelled
+        `default_for_backends` on a variant, would otherwise leave the route
+        resolving exactly as it did before the edit.
+        """
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        anchor = text.index('id = "implement"')
+        insert = text.index("\n", anchor)
+        profiles.write_text(
+            text[:insert] + "\ndefault_for_backend = true" + text[insert:]
+        )
+
+        self.assertTrue(
+            any("unknown key" in problem for problem in validation_problems(root))
+        )
+
+    def test_cli_exposes_the_named_claude_review_route(self):
+        command = ROOT / "bin" / "agent-routing"
+        completed = subprocess.run(
+            [command, "resolve", "review", "--backend", "claude", "--json"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stderr, "")
+        route = json.loads(completed.stdout)
+        self.assertEqual(route["profile"], "review:opus")
+        self.assertEqual(route["backend"], "claude")
+        self.assertEqual(route["model"], "claude-opus-5")
+        self.assertEqual(route["effort"], "medium")
+        self.assertEqual(route["stability"], "stable")
+
     def test_experimental_variant_fails_closed(self):
         """A variant carries its own stability, independent of its profile's.
 
@@ -79,6 +186,20 @@ class RoutingProfilesTest(unittest.TestCase):
         route = resolve(ROOT, "review", "codex", variant_id="high-stakes")
         self.assertEqual(route["profile"], "review:high-stakes")
         self.assertEqual(route["stability"], "stable")
+
+    def test_review_default_and_named_sol_variants_remain_unchanged(self):
+        for backend in ("codex", "pi"):
+            route = resolve(ROOT, "review", backend)
+            self.assertEqual(route["profile"], "review")
+            self.assertEqual(route["provider"], "openai-codex")
+            self.assertEqual(route["model"], "gpt-5.6-luna")
+            self.assertEqual(route["effort"], "max")
+            self.assertEqual(route["stability"], "stable")
+
+        fast = resolve(ROOT, "review", "codex", variant_id="fast")
+        self.assertEqual((fast["model"], fast["effort"]), ("gpt-5.6-sol", "medium"))
+        high_stakes = resolve(ROOT, "review", "pi", variant_id="high-stakes")
+        self.assertEqual((high_stakes["model"], high_stakes["effort"]), ("gpt-5.6-sol", "high"))
 
     def test_interactive_parent_route_is_pi_only(self):
         route = resolve(ROOT, "interactive", "pi")

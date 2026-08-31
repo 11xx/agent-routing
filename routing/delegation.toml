@@ -30,7 +30,7 @@ rules = "never skip review or merge automatically from an implementation prompt"
 actor = "lead"
 task = "select a reviewer"
 mechanism = "stakes-based reviewer line (full policy: models.toml [policy].review)"
-rules = "the verdict never comes from the authoring model; reviewer tiers are exactly opus-5 medium, sol high, and sol medium; docs-only work by the head model needs no external review; high-stakes work (migrations, schema/breaking, destructive, security) always gets sol high, and waits for the codex quota reset rather than being self-issued when that pool is exhausted"
+rules = "the verdict never comes from the authoring model; reviewer tiers are exactly luna max, opus-5 medium, sol high, and sol medium; GPT-authored diffs use the stable review:opus Claude variant, while the default Codex/Pi review route remains Luna max; docs-only work by the head model needs no external review; high-stakes work (migrations, schema/breaking, destructive, security) always gets sol high, and waits for the codex quota reset rather than being self-issued when that pool is exhausted"
 
 [[route]]
 actor = "codex"
@@ -53,7 +53,7 @@ rules = "one writer per branch/worktree; local-only executor prompts; the lead o
 [[rule]]
 id = "native-subagent-fence"
 policy = "do not route work through harness-native subagent defaults; invoke executors explicitly with stated model, effort, and a curated self-contained brief"
-why = "Codex 5.6 native subagents inherit the full conversation plus the parent's model family and reasoning level: the ladder deliberately routes fixed-shape calls to Luna low/medium, bounded implementation to Terra high, controlled Luna-max trials to fully pre-resolved work, and lead judgment to Sol high, while whole-conversation inheritance is unscoped context transfer"
+why = "Codex 5.6 native subagents inherit the full conversation plus the parent's model family and reasoning level: the ladder deliberately routes fixed-shape calls to Luna low/medium, bounded implementation to Luna max, and lead judgment to Sol high, while whole-conversation inheritance is unscoped context transfer"
 revisit = "if a harness ships reliable per-subagent model/effort/context controls"
 
 [[rule]]
@@ -84,7 +84,7 @@ policy = "backend proxy shells (codex and pi agent types) stay at sonnet low; th
 [[rule]]
 id = "luna-invocation"
 harness = "codex"
-policy = "resolve the extract profile for fixed-shape calls and the explicitly opted-in implement:luna-trial variant at max effort for controlled pre-resolved trials; do not pin a Luna model id or assume native mixed-model subagents"
+policy = "resolve the extract profile for fixed-shape calls and the stable implement profile for bounded production work; do not pin a Luna model id or assume native mixed-model subagents"
 
 [[rule]]
 id = "deepseek-experimental-invocation"
@@ -152,11 +152,11 @@ entrypoint = "claude -p \"<prompt>\""
 model_flag = "--model claude-opus-5"
 effort_flag = "--effort low|medium|high"
 workdir_flag = "none; cd first"
-capture = "--output-format stream-json for supervised runs; plain stdout for one-shot calls"
-isolation = "permission-mode and tool allowlist; use plan mode for read-only consultations"
-resume = "--resume <session-id>"
+capture = "--output-format stream-json --verbose; retain the final result as the report"
+isolation = "no OS sandbox: plan mode for read-only work, bypassPermissions for write work in a dedicated explicit repository"
+resume = "--resume <session-id>; fork adds --fork-session"
 quota_pool = "claude-subscription"
-default_for = "taste, UX, copy, API ergonomics, and landing-quality review through the first-party Claude client"
+default_for = "Opus 5 medium implementation, execution, review, taste, UX, copy, API ergonomics, and landing quality through the first-party Claude client"
 
 [[backend]]
 id = "opencode"
@@ -164,22 +164,22 @@ status = "verified"
 providers = ["opencode-go"]
 version_probed = "1.18.10 (2026-08-01)"
 requires = "an active OpenCode Go subscription. Probed status describes the CLI contract, not the pool: confirm `opencode auth list` shows OpenCode Go before routing, and treat an absent credential as a stop rather than a fallback to another pool"
-entrypoint = "opencode run \"<prompt>\""
+entrypoint = "opencode run \"<prompt>\" — this row describes the v1 CLI at the probed version. agent-delegate drives `opencode2`, whose provider declares no model variants, so the effort row below does not transfer to it"
 model_flag = "-m opencode-go/<model>"
-effort_flag = "--variant low|high|max — HONORED BUT UNVALIDATED: a misspelled or unsupported value is silently accepted and falls back to the default effort rather than erroring. Confirm the tier took by reading `reasoning` in the --format json token counts (max reported 30 reasoning tokens where low and a nonsense value both reported 0)"
-workdir_flag = "--dir <dir>"
-capture = "stdout is the final message under a `> build · <model>` header; --format json emits a JSONL event stream carrying per-step token counts"
-isolation = "NONE; permission config plus --auto, which auto-approves everything not explicitly denied"
-clean_room = "--pure drops external plugins only; AGENTS.md and ~/.config/opencode/skills still load, so a delegated call pays that prefix on every launch"
-resume = "-c | -s <session-id> | --fork"
+effort_flag = "--variant low|high|max on v1 — HONORED BUT UNVALIDATED: a misspelled or unsupported value is silently accepted and falls back to the default effort rather than erroring. Confirm the tier took by reading `reasoning` in the --format json token counts (max reported 30 reasoning tokens where low and a nonsense value both reported 0)"
+workdir_flag = "--dir <dir> on v1; v2 has no such flag and the child runs in the caller's directory"
+capture = "on v1, stdout is the final message under a `> build · <model>` header and --format json emits a JSONL event stream carrying per-step token counts; v2 capture is unmeasured"
+isolation = "NONE. On v1, permission config plus --auto auto-approves everything not explicitly denied. v2 has no unattended-approval mode, so a permission prompt ends a non-interactive run at exit 0 with no verdict"
+clean_room = "on v1, --pure drops external plugins only; AGENTS.md and ~/.config/opencode/skills still load, so a delegated call pays that prefix on every launch"
+resume = "-c | -s <session-id> | --fork on v1; v2 uses --session <id> and --session <id> --fork"
 quota_pool = "opencode-go subscription: an independent third pool drawing on neither the Claude window nor the Codex credit schedule"
-default_for = "controlled trials of pool-independent cheap execution when the Claude and Codex windows are the constraint"
+default_for = "nothing: no profile resolves to this pool. Pi carries its capacity for every model but gpt-5.6-luna, which pi's bundled catalog omits — see notes below. Reaching any of it takes a hand-written route rather than a profile"
 notes = "the only Go route with no pi equivalent is gpt-5.6-luna: pi's bundled opencode-go catalog carries 16 of the 17 models and omits exactly that one, with no catalog refresh path (`pi update models` fails). Reach Luna-on-Go through this backend"
 
 [[rule]]
 id = "opencode-go-availability"
 harness = "opencode"
-policy = "opencode-go routes are conditional, never ambient. Every profile that resolves to this pool is experimental and fails closed without explicit opt-in; a lapsed or missing subscription is reported and the work stays on Claude or Codex. The pool holds no roster seat, so nothing degrades to it automatically when another window runs out"
+policy = "opencode-go routes are conditional, never ambient. No profile resolves to this pool at all, so a caller naming one gets unknown-variant rather than a run; a lapsed or missing subscription is reported and the work stays on Claude or Codex. The pool holds no roster seat, so nothing degrades to it automatically when another window runs out"
 why = "the pool is an optional $10/month subscription, unlike the two standing ones. Treating it as always-present would make routing depend on a payment state the manifests cannot observe"
 
 [[rule]]
