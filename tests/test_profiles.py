@@ -39,10 +39,43 @@ class RoutingProfilesTest(unittest.TestCase):
         self.assertEqual(route["effort"], "medium")
         self.assertEqual(route["stability"], "stable")
 
+    def test_claude_backend_defaults_to_opus_medium_for_work_and_review(self):
+        for profile in ("implement", "execute", "review"):
+            route = resolve(ROOT, profile, "claude")
+            self.assertEqual(route["profile"], f"{profile}:opus")
+            self.assertEqual(route["backend"], "claude")
+            self.assertEqual(route["provider"], "anthropic")
+            self.assertEqual(route["model"], "claude-opus-5")
+            self.assertEqual(route["effort"], "medium")
+            self.assertEqual(route["stability"], "stable")
+
+    def test_only_one_variant_can_default_for_each_backend(self):
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        anchor = text.index('id = "implement"')
+        insert = text.index("\n\n", anchor)
+        duplicate = '''
+  [[profile.variant]]
+  id = "second-claude-default"
+  provider = "anthropic"
+  model = "opus-5"
+  backend_model = "claude-opus-5"
+  effort = "medium"
+  stability = "stable"
+  backends = ["claude"]
+  default_for_backend = true
+'''
+        profiles.write_text(text[:insert] + "\n" + duplicate + text[insert:])
+
+        self.assertTrue(
+            any("already defaults" in problem for problem in validation_problems(root))
+        )
+
     def test_cli_exposes_the_named_claude_review_route(self):
         command = ROOT / "bin" / "agent-routing"
         completed = subprocess.run(
-            [command, "resolve", "review", "--backend", "claude", "--variant", "opus", "--json"],
+            [command, "resolve", "review", "--backend", "claude", "--json"],
             capture_output=True,
             text=True,
         )

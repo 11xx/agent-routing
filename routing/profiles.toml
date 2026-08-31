@@ -71,6 +71,19 @@ effort = "max"
 stability = "stable"
 backends = ["codex", "pi"]
 
+  # The first-party Claude subscription has one production implementation
+  # tier in this model era. Opus medium is the backend default; low rarely
+  # saves enough window to justify replacing the much cheaper Luna workhorse.
+  [[profile.variant]]
+  id = "opus"
+  provider = "anthropic"
+  model = "opus-5"
+  backend_model = "claude-opus-5"
+  effort = "medium"
+  stability = "stable"
+  backends = ["claude"]
+  default_for_backend = true
+
   # The cheap lane off a third subscription: GLM 5.3 Flash matches Luna in
   # taste and capability and costs a fraction, and neither draws the Claude
   # window or the Codex schedule. Pi reaches it; provider stays explicit
@@ -131,6 +144,16 @@ effort = "high"
 stability = "stable"
 backends = ["codex", "pi"]
 
+  [[profile.variant]]
+  id = "opus"
+  provider = "anthropic"
+  model = "opus-5"
+  backend_model = "claude-opus-5"
+  effort = "medium"
+  stability = "stable"
+  backends = ["claude"]
+  default_for_backend = true
+
 [[profile]]
 id = "review"
 purpose = "read-only correctness and regression review of a bounded behavior-affecting change"
@@ -159,6 +182,7 @@ backends = ["codex", "pi"]
   effort = "medium"
   stability = "stable"
   backends = ["claude"]
+  default_for_backend = true
 
   # When the verdict is on the critical path. Sol medium answers in a fraction
   # of Luna max's 20-40 minutes on a large diff.

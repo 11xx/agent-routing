@@ -46,13 +46,13 @@ weaknesses = ["medium is the routing ceiling: high buys only 4 points for +85% c
   pass_at_1 = 0.69
   usd_per_task = 3.29
   out_tokens = "37k"
-  use = "THE DEFAULT LEAD TIER AND ROUTING CEILING. Matches sol high's 69% at 37k output tokens against opus-5 high's 64k, so on a cost-shaped window it does the same class of work for roughly half the consumption. Planning, orchestration, delegation, ceremony, review, cleanup, novel UX/copy, and API shape all stay here unless the user explicitly asks for high"
+  use = "THE DEFAULT LEAD TIER, CLAUDE IMPLEMENTATION TIER, AND ROUTING CEILING. Matches sol high's 69% at 37k output tokens against opus-5 high's 64k, so on a cost-shaped window it does the same class of work for roughly half the consumption. Planning, orchestration, implementation through the first-party Claude backend, ceremony, review, cleanup, novel UX/copy, and API shape all stay here unless the user explicitly asks for high"
   [[model.effort]]
   effort = "low"
   pass_at_1 = 0.58
   usd_per_task = 1.66
   out_tokens = "20k"
-  use = "a legitimate Claude-pool workhorse, and NOT dominated by sol medium: 58% at $1.66 against sol medium's 61% at $1.86 is three points cheaper, not worse on both axes as this row previously claimed. It draws the Claude window rather than the codex pool, so it is capacity the codex tiers cannot substitute for. Use it for specified labor when the Claude window has headroom and the codex pool is the binding constraint"
+  use = "available but not routed. It is a legitimate Claude-pool workhorse and not dominated by sol medium, but it rarely saves enough of the scarce Claude window to beat sending bounded labor to much cheaper Luna max. Claude implementation defaults to medium; add a low route only for an explicit measured capacity need"
 
 [[model]]
 id = "gpt-5.6-sol"

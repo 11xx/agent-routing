@@ -121,6 +121,7 @@ def structural_problems(root: pathlib.Path) -> list[str]:
         profile_ids.add(profile_id)
         variants = profile.get("variant", [])
         variant_ids: set[str] = set()
+        backend_defaults: dict[str, str] = {}
         for route in [profile, *variants]:
             variant_id = route.get("id", "<missing>")
             label = profile_id if route is profile else f"{profile_id}:{variant_id}"
@@ -128,6 +129,20 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                 if variant_id in variant_ids:
                     problems.append(f"duplicate variant {label!r}")
                 variant_ids.add(variant_id)
+                default_for_backend = route.get("default_for_backend", False)
+                if not isinstance(default_for_backend, bool):
+                    problems.append(
+                        f"{label}: default_for_backend must be true or false"
+                    )
+                elif default_for_backend:
+                    for backend_id in route.get("backends", []):
+                        previous = backend_defaults.get(backend_id)
+                        if previous:
+                            problems.append(
+                                f"{label}: backend {backend_id!r} already defaults to {previous}"
+                            )
+                        else:
+                            backend_defaults[backend_id] = label
             stability = route.get("stability")
             if stability not in STABILITIES:
                 problems.append(f"{label}: unknown stability {stability!r}")
@@ -216,6 +231,19 @@ def resolve(
                 backend=backend,
             )
         resolved_profile = f"{profile_id}:{variant_id}"
+    elif backend not in profile.get("backends", []):
+        backend_default = next(
+            (
+                entry
+                for entry in profile.get("variant", [])
+                if entry.get("default_for_backend") is True
+                and backend in entry.get("backends", [])
+            ),
+            None,
+        )
+        if backend_default is not None:
+            selected = backend_default
+            resolved_profile = f"{profile_id}:{selected['id']}"
     if backend not in selected.get("backends", []):
         raise RouteRefusal(
             "unsupported-backend",
