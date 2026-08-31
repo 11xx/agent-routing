@@ -143,9 +143,22 @@ backends = ["codex", "pi"]
   # Review is the one profile where Luna max's cost shape is the right trade:
   # nobody waits on a read-only pass, so 2.8x the steps buy thoroughness, and it
   # scores 6 points over the Sol medium tier it replaces at a third of the cost.
-  # This is the first gate and its verdict discharges review; the two Sol
-  # variants are named exceptions — a waiting verdict, or a second pass where a
-  # wrong approval is expensive.
+  # This is the first gate and its verdict discharges review; the named Sol
+  # variants are exceptions — a waiting verdict, or a second pass where a wrong
+  # approval is expensive. The Claude variant is the cross-provider path for
+  # GPT-authored diffs.
+
+  # GPT-authored diffs need a reviewer outside the Codex pool. Keep the roster
+  # id separate from the first-party Claude client id so the route records both
+  # the policy model and the callable backend model.
+  [[profile.variant]]
+  id = "opus"
+  provider = "anthropic"
+  model = "opus-5"
+  backend_model = "claude-opus-5"
+  effort = "medium"
+  stability = "stable"
+  backends = ["claude"]
 
   # When the verdict is on the critical path. Sol medium answers in a fraction
   # of Luna max's 20-40 minutes on a large diff.

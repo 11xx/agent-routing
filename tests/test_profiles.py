@@ -30,6 +30,31 @@ class RoutingProfilesTest(unittest.TestCase):
         self.assertEqual(route["stability"], "stable")
         self.assertTrue(route["route_version"])
 
+    def test_claude_opus_variant_is_a_stable_first_party_review_route(self):
+        route = resolve(ROOT, "review", "claude", variant_id="opus")
+        self.assertEqual(route["profile"], "review:opus")
+        self.assertEqual(route["backend"], "claude")
+        self.assertEqual(route["provider"], "anthropic")
+        self.assertEqual(route["model"], "claude-opus-5")
+        self.assertEqual(route["effort"], "medium")
+        self.assertEqual(route["stability"], "stable")
+
+    def test_cli_exposes_the_named_claude_review_route(self):
+        command = ROOT / "bin" / "agent-routing"
+        completed = subprocess.run(
+            [command, "resolve", "review", "--backend", "claude", "--variant", "opus", "--json"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stderr, "")
+        route = json.loads(completed.stdout)
+        self.assertEqual(route["profile"], "review:opus")
+        self.assertEqual(route["backend"], "claude")
+        self.assertEqual(route["model"], "claude-opus-5")
+        self.assertEqual(route["effort"], "medium")
+        self.assertEqual(route["stability"], "stable")
+
     def test_experimental_variant_fails_closed(self):
         """A variant carries its own stability, independent of its profile's.
 
@@ -79,6 +104,20 @@ class RoutingProfilesTest(unittest.TestCase):
         route = resolve(ROOT, "review", "codex", variant_id="high-stakes")
         self.assertEqual(route["profile"], "review:high-stakes")
         self.assertEqual(route["stability"], "stable")
+
+    def test_review_default_and_named_sol_variants_remain_unchanged(self):
+        for backend in ("codex", "pi"):
+            route = resolve(ROOT, "review", backend)
+            self.assertEqual(route["profile"], "review")
+            self.assertEqual(route["provider"], "openai-codex")
+            self.assertEqual(route["model"], "gpt-5.6-luna")
+            self.assertEqual(route["effort"], "max")
+            self.assertEqual(route["stability"], "stable")
+
+        fast = resolve(ROOT, "review", "codex", variant_id="fast")
+        self.assertEqual((fast["model"], fast["effort"]), ("gpt-5.6-sol", "medium"))
+        high_stakes = resolve(ROOT, "review", "pi", variant_id="high-stakes")
+        self.assertEqual((high_stakes["model"], high_stakes["effort"]), ("gpt-5.6-sol", "high"))
 
     def test_interactive_parent_route_is_pi_only(self):
         route = resolve(ROOT, "interactive", "pi")
