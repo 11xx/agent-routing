@@ -35,13 +35,13 @@ class RouteRefusal(ValueError):
     payload is for the tool that has to decide what to do next.
     """
 
-    def __init__(self, kind: str, message: str, **fields: str) -> None:
+    def __init__(self, kind: str, message: str, **fields: str | list[str]) -> None:
         super().__init__(message)
         self.kind = kind
         self.message = message
         self.fields = {key: value for key, value in fields.items() if value is not None}
 
-    def payload(self) -> dict[str, str]:
+    def payload(self) -> dict[str, str | list[str]]:
         return {"schema": REFUSAL_SCHEMA, "kind": self.kind, "message": self.message, **self.fields}
 
 
@@ -274,11 +274,25 @@ def resolve(
             selected = backend_default
             resolved_profile = f"{profile_id}:{selected['id']}"
     if backend not in selected.get("backends", []):
+        requested_routes = [selected] if variant_id else [profile, *profile.get("variant", [])]
+        profile_backends = sorted(
+            {backend_id for route in requested_routes for backend_id in route.get("backends", [])}
+        )
+        backend_routes = sorted(
+            profile_entry["id"]
+            if route is profile_entry
+            else f"{profile_entry['id']}:{route['id']}"
+            for profile_entry in profiles
+            for route in [profile_entry, *profile_entry.get("variant", [])]
+            if backend in route.get("backends", [])
+        )
         raise RouteRefusal(
             "unsupported-backend",
             f"profile {resolved_profile!r} does not support backend {backend!r}",
             profile=resolved_profile,
             backend=backend,
+            profile_backends=profile_backends,
+            backend_routes=backend_routes,
         )
     stability = selected["stability"]
     if stability != "stable" and not allow_experimental:

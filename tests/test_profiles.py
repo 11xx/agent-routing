@@ -345,6 +345,36 @@ backends = ["claude"]
             resolve(ROOT, "design", "codex")
         self.assertEqual(caught.exception.kind, "unsupported-backend")
 
+    def test_claude_backend_coverage_is_stated(self):
+        route = resolve(ROOT, "explore", "claude")
+        self.assertEqual(route["profile"], "explore:opus")
+        self.assertEqual(route["provider"], "anthropic")
+        self.assertEqual(route["model"], "claude-opus-5")
+        self.assertEqual(route["effort"], "medium")
+        self.assertEqual(route["stability"], "stable")
+
+        for profile in ("extract", "plan", "generate", "interactive"):
+            with self.subTest(profile=profile):
+                with self.assertRaises(RouteRefusal) as caught:
+                    resolve(ROOT, profile, "claude")
+                self.assertEqual(caught.exception.kind, "unsupported-backend")
+
+    def test_an_unsupported_backend_refusal_names_the_alternatives(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "design", "codex")
+        payload = caught.exception.payload()
+        self.assertEqual(payload["profile_backends"], ["claude"])
+        self.assertIn("implement", payload["backend_routes"])
+        self.assertIn("review", payload["backend_routes"])
+        self.assertNotIn("design", payload["backend_routes"])
+
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "explore", "opencode")
+        self.assertEqual(
+            caught.exception.payload()["profile_backends"],
+            ["claude", "codex", "pi"],
+        )
+
 
 
     def test_a_manifest_that_cannot_be_read_still_answers_with_a_payload(self):

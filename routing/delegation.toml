@@ -156,7 +156,7 @@ capture = "--output-format stream-json --verbose; retain the final result as the
 isolation = "no OS sandbox: plan mode for read-only work, bypassPermissions for write work in a dedicated explicit repository"
 resume = "--resume <session-id>; fork adds --fork-session"
 quota_pool = "claude-subscription"
-default_for = "Opus 5 medium implementation, execution, review, taste, UX, copy, API ergonomics, and landing quality through the first-party Claude client"
+default_for = "Opus 5 medium read-only reconnaissance, implementation, execution, review, taste, UX, copy, API ergonomics, and landing quality through the first-party Claude client"
 
 [[backend]]
 id = "opencode"
