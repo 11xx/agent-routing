@@ -11,8 +11,9 @@ id = "instructions"
 command = ["agent-harness", "delegation-sources"]
 
 # The delegation mechanism is a CLI rather than three skills; what remains
-# routing-sensitive is the proxy agents it ships and its own sources, which
-# must name a profile and never a concrete model.
+# routing-sensitive is the agent definitions it ships — relay shells and the
+# pinned native implementers below — and its own sources, which must name a
+# profile and never a concrete model.
 [[consumer]]
 id = "delegate-agents"
 repository = "delegate"
@@ -50,3 +51,19 @@ consumer = "delegate-agents"
 path = "opencode.md"
 model = "sonnet"
 effort = "low"
+
+# A harness-native agent definition whose frontmatter carries a route the
+# roster resolves. Claude reads model and effort from static frontmatter and
+# loads definitions only at session start, so the route is pinned in the file
+# and recorded here; lint resolves the named profile on the named backend and
+# fails when the file's model or effort drifts from what the resolver returns.
+# A tier the roster prohibits gets no definition, which is how a ban reaches
+# the harness's own subagent tool.
+[[pin]]
+consumer = "delegate-agents"
+path = "implement-opus.md"
+model = "opus"
+effort = "medium"
+profile = "implement"
+variant = "opus"
+backend = "claude"

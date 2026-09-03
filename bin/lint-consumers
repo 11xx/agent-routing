@@ -94,7 +94,36 @@ def configured_consumers():
         if path in proxy_pins:
             raise SystemExit(f"duplicate delegation proxy: {path}")
         proxy_pins[path] = (proxy["model"], proxy["effort"])
-    return entries, proxy_pins
+
+    route_pins = {}
+    for pin in config.get("pin", []):
+        consumer_id = pin["consumer"]
+        if consumer_id not in by_id:
+            raise SystemExit(f"unknown pin consumer: {consumer_id}")
+        path = by_id[consumer_id]["root"] / pin["path"]
+        if path in proxy_pins or path in route_pins:
+            raise SystemExit(f"duplicate delegation pin: {path}")
+        proxy_pins[path] = (pin["model"], pin["effort"])
+        route_pins[path] = pin
+    return entries, proxy_pins, route_pins
+
+
+def resolved_route(pin):
+    """What the resolver returns for the profile a pinned definition claims."""
+    command = [
+        str(ROOT / "bin" / "agent-routing"),
+        "resolve",
+        pin["profile"],
+        "--backend",
+        pin["backend"],
+        "--variant",
+        pin["variant"],
+        "--json",
+    ]
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        raise SystemExit(f"cannot resolve pin {pin['path']}: {result.stderr.strip() or result.stdout.strip()}")
+    return json.loads(result.stdout)
 
 
 def main():
@@ -106,7 +135,7 @@ def main():
             if route.get("backend_model"):
                 literals.add(route["backend_model"])
 
-    consumers, proxy_pins = configured_consumers()
+    consumers, proxy_pins, route_pins = configured_consumers()
     missing = [consumer["root"] for consumer in consumers if not consumer["root"].exists()]
     if missing:
         for path in missing:
@@ -120,6 +149,16 @@ def main():
         return 2
 
     problems = []
+    for path, pin in route_pins.items():
+        route = resolved_route(pin)
+        if route["effort"] != pin["effort"]:
+            problems.append(
+                f"{path}: pinned effort {pin['effort']} but {pin['profile']}:{pin['variant']} resolves to {route['effort']}"
+            )
+        if not route["model"].startswith(f"{pin['backend']}-{pin['model']}"):
+            problems.append(
+                f"{path}: pinned model alias {pin['model']} but {pin['profile']}:{pin['variant']} resolves to {route['model']}"
+            )
     for consumer in consumers:
         checks = set(consumer.get("checks", []))
         for path in files_under(consumer["root"]):
@@ -137,7 +176,7 @@ def main():
                     if path not in proxy_pins or stripped != f"model: {proxy_pins[path][0]}":
                         problems.append(f"{path}:{line_number}: delegation source pins model frontmatter")
                 if path in proxy_pins and stripped.startswith("effort:") and stripped != f"effort: {proxy_pins[path][1]}":
-                    problems.append(f"{path}:{line_number}: proxy shell changed its centrally recorded effort")
+                    problems.append(f"{path}:{line_number}: definition changed its centrally recorded effort")
                 if "pi-route" in checks and '"defaultModel"' in stripped:
                     problems.append(f"{path}:{line_number}: Pi default must use $route, not defaultModel")
 
