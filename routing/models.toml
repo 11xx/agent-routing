@@ -9,12 +9,12 @@
 # Access without a path: `agent-routing models`.
 
 [meta]
-benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-07-27"
+benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-09-02"
 metric = "pass@1 / avg $ / output tokens"
-updated = "2026-08-07"
+updated = "2026-09-03"
 pricing_update = "OpenAI cut standard short-context Terra token prices by 20% and Luna by 80% on 2026-07-30. Per-task costs below apply the uniform price change to the measured benchmark token mix; capability and output-token results did not change."
-era_notes = "Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held. OpenAI's 2026-07-30 Terra/Luna price and credit reset moved the workhorse roles. DeepSeek V4 Flash 0731 reached general availability on 2026-07-31 while V4 Pro remained preview. Meta released Muse Spark 1.2 and the Muse Code harness on 2026-08-05, which enters as an unreachable future row rather than a routable tier. The Luna-implements/Sol-reviews cost share was measured on 2026-08-26 and changes no seat, only how many review passes are bought. History in eras/"
-vendor_benchmarks = "a vendor's own harness produces its own scale, not a row on this one. Meta's launch numbers score Terra high at 64.8% and Opus 5 at 65.0% on nominally the same DeepSWE v1.1 where this matrix measures 54% and 73%; DeepSeek's 54.4% came from an unreleased minimal harness. Vendor figures are recorded as availability and direction-of-travel evidence and never merged into the pass@1 column"
+era_notes = "Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held. OpenAI's 2026-07-30 Terra/Luna price and credit reset moved the workhorse roles. DeepSeek V4 Flash 0731 reached general availability on 2026-07-31 while V4 Pro remained preview. Meta released Muse Spark 1.2 and the Muse Code harness on 2026-08-05, which enters as an unreachable future row rather than a routable tier. The Luna-implements/Sol-reviews cost share was measured on 2026-08-26 and changes no seat, only how many review passes are bought. The September 2026 releases entered on 2026-09-03: Fable 5.1 returned a Fable to the subscription as an unmeasured head candidate; Gemini 3.8 Flash, GLM 5.3, Grok 4.6, DeepSeek V4 Pro 0813, Muse Spark 1.2, DeepSeek V4 Flash, and GLM 5.3 Flash gained independent rows from the Datacurve board; Muse Spark 1.3 and Astra entered unmeasured or unreleased, and every seat stayed where it was. History in eras/"
+vendor_benchmarks = "a vendor's own harness produces its own scale, not a row on this one, and so does an aggregator board: the mini-swe-agent public board scores Opus 5 at 68.8% and Terra at 70.0% where this matrix measures 74% and 70% at max, so an aggregator figure is recorded as third_party_reported_deepswe and never as pass@1. The pass@1 column holds only rows the Datacurve board measured under its own harness — the one every existing row came from. Meta's launch numbers score Terra high at 64.8% and Opus 5 at 65.0% on nominally the same DeepSWE v1.1 where this matrix measures 54% and 73%; DeepSeek's 54.4% came from an unreleased minimal harness. Vendor figures are recorded as availability and direction-of-travel evidence and never merged into the pass@1 column"
 
 [[model]]
 id = "opus-5"
@@ -53,6 +53,20 @@ weaknesses = ["medium is the routing ceiling: high buys only 4 points for +85% c
   usd_per_task = 1.66
   out_tokens = "20k"
   use = "available but not routed. It is a legitimate Claude-pool workhorse and not dominated by sol medium, but it rarely saves enough of the scarce Claude window to beat sending bounded labor to much cheaper Luna max. Claude implementation defaults to medium; add a low route only for an explicit measured capacity need"
+
+[[model]]
+id = "fable-5.1"
+family = "claude"
+status = "experimental"
+role = "head-model candidate on the subscription, unmeasured here. Reachable interactively in Claude Code and through the first-party backend on Pro and Max; no profile routes to it until an independent pass@1 row and a quota measurement on this plan exist"
+character = "the vendor's positioning is Fable-level reasoning at a lower cost per task than Fable 5, and the ceiling on genuinely novel hard reasoning that the field credited Fable 5 with is the reason to want it in the seat. None of that is measured on this matrix: the Datacurve board carries Fable 5 at 70% for $21.63 per task and has no row for 5.1"
+weaknesses = ["no independent pass@1. The vendor's own comparisons are against Fable 5 and Opus 5 on its harness, and on the vendor's own numbers it trails Opus 5 on Terminal-Bench-Science (24.7% against 29.0%)", "quota weight is unmeasured on this plan. Fable 5 drew roughly twice the window Opus 5 draws for the same tokens; Fable 5.1 is metered like Fable 5 and capped at half of a Max plan's weekly allowance, so it cannot be the only head model even if it wins the seat", "no generational calibration. Every frontier release needs its own field record of how it fails, and this one has none; carrying Opus 5's forward would be wrong, and carrying none is worse than it looks"]
+api_price_per_million = { input = 10.0, cached_input = 0.25, output = 50.0 }
+notes = "Released 2026-09-01 as `claude-fable-5-1` with five effort levels (low, medium, high, xhigh, max; Claude Code defaults to high). Reachable on the subscription through Claude Code and the first-party `claude` backend, and by credit billing on the API, OpenRouter, and commandcode — the subscription route is the only one this roster will ever route to. Promotion bar, in order: a Datacurve row, an observed quota ratio against Opus 5 on this plan, then one field arc under a lead role before any profile names it. A person selecting it interactively is a choice the harness records and the roster does not make."
+  [[model.effort]]
+  effort = "high"
+  status = "explicit-only"
+  use = "explicit selection only, as an interactive head model or through a route a person names. Unmeasured: no profile resolves here and no automatic escalation reaches it"
 
 [[model]]
 id = "gpt-5.6-sol"
@@ -177,7 +191,7 @@ role = "replaced by opus-5 on 2026-07-25 across every role it held; never select
 id = "fable-5"
 family = "claude"
 status = "retired"
-role = "no subscription route: reachable only by direct credit billing, at a cost the user has ruled prohibitive. Never route to it, never offer it as an escalation, and do not treat 'still accessible' as available. opus-5 holds the taste/intent/orchestration seat it used to."
+role = "superseded on the subscription by fable-5.1 and never selected: the 5.0 retirement was for cost, and 5.1 is the row that carries any future Fable claim. Never route to it, never offer it as an escalation, and do not treat 'still accessible' as available. opus-5 holds the taste/intent/orchestration seat it used to."
 notes = "kept as a row so its retirement is not relitigated. Retirement costs nothing on the benchmark: opus-5 beats fable at every comparable effort (73% vs 69% high, 74% vs 70% max) for roughly a third of the cash and half the subscription quota. The user's field read that Fable held a ceiling on genuinely novel hard reasoning is not contradicted by this — deepswe measures bounded SWE tasks, not that ceiling — but no accessible model exposes it any more."
 
 [[model]]
@@ -190,24 +204,33 @@ role = "every tier dominated by a cheaper 5.6 tier; never select"
 # routable; they activate only when the OpenCode backend is probed and
 # real benchmark rows replace the band estimates.
 [[model]]
-id = "grok-4.5"
+id = "grok-4.6"
 family = "xai"
 status = "inactive"
-role = "benchmarked but unreachable: no probed backend. high scores 54% at $2.42 / 36k out — the opus-4.8-high band the earlier estimate predicted, and dominated by sol medium (61% at $1.86). Activating it would add a cheap second-opinion voice, not a new capability tier"
-notes = "a first-party harness exists — the Grok Build CLI, field-reported as among the better frontier-lab CLIs — so the blocker is an unrun probe rather than an absent mechanism. Field reports also place it with the short-horizon models: fast, cheap, and reliable across small distances, falling off over long autonomous arcs. Probing it would be onboarding a backend, which the checklist in `agent-routing delegation` governs; the capability case for doing so remains weak"
+role = "benchmarked but unprobed: xhigh scores 67% at $5.50 / 71k out on the Datacurve board — Luna max's score at nine times Luna's cash, and six points over Sol medium for three times its cash. Reachable through pi on the openrouter and opencode-go providers, neither probed for it; no pool serves it"
+api_price_per_million = { input = 2.0, output = 6.0 }
+notes = "Released 2026-08-12, replacing the 4.5 row (high: 54% at $2.42 / 36k). List price is $2 input and $6 output per million, with a fast variant at twice that. Field reports on the 4.5 generation placed it with the short-horizon models — fast and reliable across small distances, falling off over long autonomous arcs — and nothing measured here says otherwise for 4.6. Activation is a backend probe governed by the checklist in `agent-routing delegation`; the capability case is a second-opinion voice rather than a new tier, because Luna max reaches the same score for a ninth of the cash on a pool already paid for"
+  [[model.effort]]
+  effort = "xhigh"
+  pass_at_1 = 0.67
+  usd_per_task = 5.50
+  out_tokens = "71k"
+  steps = 87
+  use = "not routed: no probed backend"
 
 [[model]]
 id = "kimi-k3"
 family = "moonshot"
 status = "inactive"
 role = "benchmarked but unreachable: no probed backend. max scores 69% at $4.65 / 81k out — sol-high band for more cash and 2.9x the tokens, better than the earlier variable-Fable-band guess. The strongest inactive row, and the one worth probing the OpenCode backend for"
-notes = "field reports independently place it among the few models that hold a long autonomous arc, and attribute that to raw scale. That is the axis the pass@1 column cannot see, and it is why this row outranks the other inactive ones for a probe"
+api_price_per_million = { input = 3.0, cached_input = 0.30, output = 15.0 }
+notes = "field reports independently place it among the few models that hold a long autonomous arc, and attribute that to raw scale. That is the axis the pass@1 column cannot see, and it is why this row outranks the other inactive ones for a probe. Open weights at 2.8T parameters; reachable through pi on opencode-go, opencode, and commandcode, none of which serve it by pool policy, so a probe goes through a provider this table does not constrain"
 
 [[model]]
 id = "muse-spark-1.2"
 family = "meta"
 status = "experimental"
-role = "probationary adversarial reviewer on the free contributor tier, never the reviewer of record alone. Still no probed implementation backend and no independent pass@1; what changed is one measured review arc, not the capability estimate. Third-party index scoring places it level with grok-4.5 and the opus-4.8 band, which sol medium dominates at 61% for $1.86"
+role = "probationary adversarial reviewer on the free contributor tier, never the reviewer of record alone. The Datacurve board carries it at 55% for $3.70 at xhigh — the opus-4.8 band the third-party index predicted, which sol medium dominates at 61% for $1.86 — so the capability estimate is confirmed rather than changed; what earned the seat is one measured review arc. Superseded by muse-spark-1.3 on 2026-09-02, which inherits nothing here until re-probed"
 character = "FIELD-MEASURED, 2026-08-23, review only: it graded a defect BLOCKING that a second independent reviewer, reading the same diff under the same brief, graded merely medium — and the stricter grade was right. The defect was a derived view built on the newest verdict rather than the gating one, so any later record silently dropped an outstanding obligation. It reasoned to the failure from the diff alone, with no repository access, and wrote the concrete state sequence that produced it. On the following round it named a residual that turned out to be a live hole when the states were actually run. Its willingness to grade BLOCKING is the trait worth routing for: an agreeable reviewer is worth nothing. Separately, a coding-specialised model on a fast release cadence — third at four-month intervals, with its index score climbing steadily across them. Direction of travel is the interesting part; the current position is not"
 weaknesses = ["FIELD-MEASURED, 2026-08-23: verbose to the point where the report costs more to read than it saves. On the same task it emitted roughly twice the reviewer peer's output, much of it re-quoting the diff back with inline evidence labels on every clause. Budget reading time, and prefer it where thoroughness beats brevity", "FIELD-MEASURED, 2026-08-23: seven independent discussion positions, all `amend`, none `for` or `against` — the identical uniform stance the other probationary model produced on the same seven questions. Two unrelated models hedging the same way is evidence about the prompt or about the discussions, not about either model; until that separates, a lone `amend` from either is weak evidence", "unmeasured in the direction that matters most for a reviewer: it has produced no approval whose correctness another reviewer confirmed, so whether it approves what it should not is untested", "every launch number is vendor-run in a vendor harness whose own methodology says its tools and prompts may not suit third-party models. That harness scores Terra high at 64.8% and Opus 5 at 65.0% on nominally the same DeepSWE v1.1 where this matrix measures 54% and 73%, so its 59.3% is not a row on this scale", "the preceding version published a Terminal-Bench figure that verified 3.8 points lower — a gap wider than the reported confidence interval — so vendor numbers here have a measured optimism, not merely a theoretical one", "the cheap tier is paid for in training rights over the code sent to it, which is a licensing decision rather than a routing one and cannot be made per-task", "the harness is closed and login-gated, with no published account of what leaves the machine, and ships for macOS and Linux only"]
 api_price_per_million = { input = 1.25, cached_input = 0.15, output = 4.25 }
@@ -215,14 +238,32 @@ contributor_tier_per_million = { input = 0.10, cached_input = 0.002, output = 0.
   [[model.effort]]
   effort = "xhigh"
   status = "probationary"
+  pass_at_1 = 0.55
+  usd_per_task = 3.70
+  out_tokens = "99k"
+  steps = 101
   use = "probationary adversarial reviewer and discussion participant on the free contributor tier, under an explicit refutation brief. Never the reviewer of record alone: pair it with a second reviewer, or have a lead verify each blocking finding against source. Never an implementer, never a planner. It pairs well with ox-alpha specifically because the two graded the same root defect differently and each found things the other missed"
-notes = "Live-probed through pi on 2026-08-23 via `--provider opencode --model muse-spark-1.2-contributor-free`, free at the point of use, which is why it was run nine times in one session. Promotion out of probation needs an independent pass@1 and a confirmed approval — the bar Luna max cleared. The contributor tier's training-rights cost is a licensing decision the operator has already taken for review work; it is not a routing judgement and is recorded here only so it is not forgotten. Released 2026-08-05 alongside Muse Code, a terminal harness with persistent background agents and an append-only event log for restart-safe replay. Hosted only — weights are not downloadable — reached through the Meta Model API with a 1M-token context, tool calling, structured outputs, batching, and prompt caching. Activation needs an independent measurement and a backend probe, in that order: the capability case is weak enough that the probe is not worth running on vendor evidence alone."
+notes = "Live-probed through pi on 2026-08-23 via `--provider opencode --model muse-spark-1.2-contributor-free`, free at the point of use, which is why it was run nine times in one session. Promotion out of probation needs an independent pass@1 and a confirmed approval — the bar Luna max cleared. The contributor tier's training-rights cost is a licensing decision the operator has already taken for review work; it is not a routing judgement and is recorded here only so it is not forgotten. Released 2026-08-05 alongside Muse Code, a terminal harness with persistent background agents and an append-only event log for restart-safe replay. Hosted only — weights are not downloadable — reached through the Meta Model API with a 1M-token context, tool calling, structured outputs, batching, and prompt caching. The independent measurement landed on the Datacurve board at 55%, which settles the capability estimate at the opus-4.8 band and leaves the review seat exactly where the field arc put it."
+
+[[model]]
+id = "muse-spark-1.3"
+family = "meta"
+status = "experimental"
+role = "successor to the probationary 1.2 reviewer, unmeasured here. It tops an aggregator board at 75.4% under that board's own harness, which is not this scale, and has no Datacurve row. The probationary review seat stays on 1.2, whose field record is the only one there is, until 1.3 is measured on the review arc 1.2 was"
+api_price_per_million = { input = 1.25, cached_input = 0.15, output = 4.25 }
+contributor_tier_per_million = { input = 0.10, cached_input = 0.002, output = 0.20 }
+notes = "Released 2026-09-02 at the same list and contributor prices as 1.2. Reachable through pi as `meta/muse-spark-1.3` on openrouter and, on the contributor tier, as `meta/muse-spark-1.3-contributor` on commandcode — a pool that does not serve it — so the re-probe goes through the provider 1.2 was probed on. The 1.2 weaknesses are inherited until measured otherwise: verbosity, the uniform `amend` hedge, and no confirmed approval. Aggregator and vendor figures stay out of the pass@1 column"
+  [[model.effort]]
+  effort = "xhigh"
+  status = "probationary"
+  third_party_reported_deepswe = 0.754
+  use = "not routed: the review seat is 1.2's until 1.3 is measured on the review arc 1.2 was. A caller who wants 1.3 names it by hand and records that it ran unmeasured"
 
 [[model]]
 id = "small-model-class"
 family = "small"
 status = "restricted"
-role = "never for anything that ships. The class is no longer uniformly weak — gemini-3.6-flash high reaches 49% — but every row is dominated by a cheaper or better 5.6 tier, and the fast-and-cheap ones (kimi-k2.7-code 31%, glm-5.2 high 36%, gemini-3.1-pro 12%) are far below the floor for delegated work"
+role = "never for anything that ships. The class is no longer uniformly weak — qwen3.8-max xhigh measures 57% at $3.73 and gemini-3.7-flash high 65% at $2.18 on the Datacurve board — but every row is dominated by a cheaper or better routed tier, and the fast-and-cheap ones (kimi-k2.7-code 31%, gemini-3.5-flash 36%, glm-5.2 44%, gemini-3.6-flash 47%) are far below the floor for delegated work. Gemini 3.8 Flash left the class on its own row"
 
 [[model]]
 id = "deepseek-v4-flash"
@@ -238,20 +279,27 @@ niches = ["the open-weight route carries no frontier refusal surface, which make
   [[model.effort]]
   effort = "max"
   vendor_reported_deepswe = 0.544
+  pass_at_1 = 0.53
+  usd_per_task = 0.46
+  out_tokens = "108k"
+  steps = 153
   use = "steered generation only, through Pi, under a brief that fences what it may produce. Never the implementer of record, never the reviewer of record, never a planner, and never the last model to touch anything that ships. Every factual claim and every identifier it emits is a candidate until checked against source, because its failure mode is confident fabrication rather than visible error. Do not promote it on vendor results alone"
 
 [[model]]
 id = "deepseek-v4-pro"
 family = "deepseek"
-status = "restricted"
-role = "candidate generator under a brief, never an adjudicator. The callable endpoint remains the April preview and is superseded for normal experiments by the generally available V4 Flash 0731; retain it only for its field-measured defect-generation behavior until the final V4 Pro release"
-character = "far below the floor on autonomous work — 8% pass@1 places it under luna low/medium, not near sonnet — yet under an adversarial review brief it produced six real defects across eight changes that a neutral 'review this' ask from the same model missed entirely. The value came from the brief and from a lead who checked every claim, not from the model. Field-measured 2026-07-27"
+status = "experimental"
+role = "briefed defect generator, never an adjudicator. Generally available since 2026-08-13 as the 0813 build, which the Datacurve board measures at 63% for $1.67 — between glm-5.3-flash and Luna max on score, at three times Luna's cash. The independent row retires the preview's 8%, not the family's fabrication record: the niche stays a briefed generator whose every claim a lead checks, until a field arc on the GA build says otherwise"
+character = "the April preview measured 8% pass@1, under luna low/medium, yet under an adversarial review brief it produced six real defects across eight changes that a neutral 'review this' ask from the same model missed entirely — the value came from the brief and from a lead who checked every claim. Field-measured 2026-07-27 on the preview; the 0813 build has no field record here, and a 55-point jump on the board is a reason to run one, not a reason to skip it"
 weaknesses = ["writes confident, well-argued, entirely false findings: two of eight blocking claims in the measured run described an artifact of a malformed diff rather than the branch, with full failure scenarios attached", "cannot be trusted to notice that its input is wrong, which is the failure a peer-grade reviewer catches first", "recording its verdict through `--on-behalf-of` over-credits, because arc's `--model` field records the invoker's model and there is no field for the subject's"]
-api_price_per_million = { cache_hit_input = 0.003625, cache_miss_input = 0.435, output = 0.87 }
-notes = "Live-probed through pi 0.83.0 on 2026-07-31. Cost per task on this benchmark is unmeasured here; published output pricing is cheap but that was not the deciding factor. DeepSeek says the final V4 Pro release will follow soon."
+api_price_per_million = { input = 1.115, cached_input = 0.037, output = 3.346 }
+notes = "The preview was live-probed through pi 0.83.0 on 2026-07-31 at $0.435 cache-miss input and $0.87 output per million; the 0813 GA build lists input at roughly 2.5x and output at nearly 4x that, and adds low, high, and max reasoning efforts, a native Responses API, and a 384k output ceiling. Reachable through pi on the deepseek, openrouter, opencode, and opencode-go providers; the GA build itself is unprobed here. The 8% preview row is retired by the 63% GA row, and the generator-only posture is retired by nothing yet."
   [[model.effort]]
   effort = "max"
-  pass_at_1 = 0.08
+  pass_at_1 = 0.63
+  usd_per_task = 1.67
+  out_tokens = "106k"
+  steps = 155
   use = "only as a briefed defect generator whose every finding a lead verifies against source before acting. Never the independent reviewer of record, never an implementer, never a planner"
 
 [[model]]
@@ -261,12 +309,58 @@ aliases = ["ox-alpha"]
 role = "cheap-lane implementer and adversarial reviewer. Entered the roster as the stealth route `ox-alpha`, whose identity was disclosed on 2026-08-29 as Z.AI GLM 5.3 Flash; the two are one model and the rows were merged. Reachable through pi as `z-ai/glm-5.3-flash` on the `commandcode` and `openrouter` providers"
 character = "argues, and that is the trait worth routing for. Under an adversarial review brief with repository access it found a real blocking defect in a dangerous-surface change, cited exact source lines, and labelled its own epistemic state honestly, saying HYPOTHESIS where it had not read the code. FIELD-MEASURED 2026-08-29 over a full implementation arc: it built a fork lifecycle command in an unfamiliar Rust codebase — roughly 450 lines plus tests, journal integration, an integration refusal, a policy classification — then repaired thirteen independent review findings across five rounds, ending green at 73 + 672 tests with every repair verified by probe. It disputed the reviewer twice by showing a finding was worse than stated, said unprompted that its own fix was the weaker of two defensible options, and declined a reflog-based heuristic as too fragile with reasons rather than complying. It caught its own acceptance probe passing both before and after a change, rewrote the test so it failed for the right reason, and reported having done so. In taste and capability it is equivalent to Luna max; Luna follows a brief and an instruction more literally, so the two are complementary rather than ranked"
 api_price_per_million = { input = 0.15, cached_input = 0.03, output = 0.50 }
-weaknesses = ["OPERATIONAL, FIELD-MEASURED 2026-08-29: dispatches that never start, silently. Three of seven long-brief runs held a socket, sat in epoll_wait, never appended the prompt to their session file, and never reached the model — one for two hours and three minutes. A healthy run writes its session file in about nine seconds. Never route it onto a critical path without a first-artifact watchdog; ninety seconds without one is dead, and rerouting a run that produced nothing is not a retry", "no independent pass@1 on this matrix. The circulating figure of roughly 63% on DeepSWE is third-party and unverified here, and is recorded as direction-of-travel evidence rather than as a row", "the reviewer failure that matters most is still untested: every measured round had it repairing findings rather than issuing verdicts, so whether it approves something it should not is unmeasured", "FIELD-MEASURED, 2026-08-23: all seven independent discussion positions came back `amend`, with no `for` and no `against`, and the hedge has not been retested since. Treat a lone `amend` as weak evidence and use a stance-diverse panel to get signal", "latency is high on tool-using work and pi buffers to completion, so a timeout loses the whole run rather than returning partial output. Budget generously"]
+weaknesses = ["OPERATIONAL, FIELD-MEASURED 2026-08-29: dispatches that never start, silently. Three of seven long-brief runs held a socket, sat in epoll_wait, never appended the prompt to their session file, and never reached the model — one for two hours and three minutes. A healthy run writes its session file in about nine seconds. Never route it onto a critical path without a first-artifact watchdog; ninety seconds without one is dead, and rerouting a run that produced nothing is not a retry", "the independent row is at max, the routed tier is high, and the two are not the same measurement: the Datacurve board measured 63% at max, which matches the third-party figure that circulated for high, so the high tier keeps its field record and the max tier keeps the number", "the reviewer failure that matters most is still untested: every measured round had it repairing findings rather than issuing verdicts, so whether it approves something it should not is unmeasured", "FIELD-MEASURED, 2026-08-23: all seven independent discussion positions came back `amend`, with no `for` and no `against`, and the hedge has not been retested since. Treat a lone `amend` as weak evidence and use a stance-diverse panel to get signal", "latency is high on tool-using work and pi buffers to completion, so a timeout loses the whole run rather than returning partial output. Budget generously"]
 notes = "Identity disclosed 2026-08-29; previously carried as the stealth row `ox-alpha`, live-probed through pi on 2026-08-23 via `--provider openrouter --model stealth/ox-alpha`. A bare model name is ambiguous when both providers are authenticated and aborts the run, so the provider is always explicit. Also reachable as `opencode-go/ox-alpha-free`, which returned an insufficient-balance error on 2026-08-23. Per-task cost on this benchmark is unmeasured; the listed per-million prices are roughly a quarter of Luna max's input and under half its output, and Luna max measures $0.61 per task here, so the per-task figure lands well below that. Z.AI list pricing is halved by a promotion running to 2026-09-09, and the openrouter route already charges the promotional rate; the row records list price so it does not expire."
+  [[model.effort]]
+  effort = "max"
+  pass_at_1 = 0.63
+  usd_per_task = 0.24
+  out_tokens = "73k"
+  steps = 123
+  use = "the measured tier: the Datacurve board ran it at max, where it lands on Luna max's score for two fifths of Luna's cash. The routed tier is high, below; whether max buys anything over high on this model is unmeasured, and the high tier is the one with the field record"
   [[model.effort]]
   effort = "high"
   third_party_reported_deepswe = 0.634
   use = "delegated implementation and adversarial review in the cheap lane. Prefer it to Luna max when price matters or when the slice's shape is still in question, since it reaches past the letter of a brief; prefer Luna when the slice is tightly specified with a named gate and literal instruction-following is the deciding trait. Pair the two so each reviews the other: they draw independent providers and independent quota, so an implement-and-review loop needs no expensive tier, and the author never reviews its own diff. Give it repository access when reviewing — its unaided claims about source are inference, and it says so"
+
+[[model]]
+id = "gemini-3.8-flash"
+family = "google"
+status = "inactive"
+role = "benchmarked but unprobed, and the row that re-prices the top of the board: high scores 74% at $2.36 / 143k out / 166 steps on the Datacurve board — Opus 5 max's score for a fifth of its cash, and Sol max's for less than a third. Reachable through pi on the openrouter provider, unprobed; no pool serves it"
+character = "the score is real and the shape is many cheap steps: 166 per task and 143k output tokens is the most of any frontier row, against Sol max's 61 steps and 60k. On a per-token meter it is cheap; on a wall-clock or attention meter it is the slowest frontier row, which matters for interactive work and not at all for a review nobody waits on"
+weaknesses = ["no field record on this matrix: no arc, no review, no approval confirmed by anyone", "the effort lever above high is unmeasured here; the vendor's own comparisons publish the high configuration only", "introductory pricing: $0.75 input and $3.75 output per million through 2026-12-31, doubling on 2027-01-01, so the per-task figure roughly doubles then"]
+api_price_per_million = { input = 0.75, output = 3.75 }
+notes = "Released 2026-09-02, the third Flash release in six weeks (3.6 at 47%, 3.7 at 65%, 3.8 at 74% on the same board), the steepest direction of travel on the roster. A separate Cyber variant exists behind an access programme and is not this row. Activation order: one pi probe through openrouter for reachability and the effort lever, then a review arc against the bar Luna max cleared, then a seat decision. The seat it would contest is review, where cost per pass is what is bought"
+  [[model.effort]]
+  effort = "high"
+  pass_at_1 = 0.74
+  usd_per_task = 2.36
+  out_tokens = "143k"
+  steps = 166
+  use = "not routed: no probed backend"
+
+[[model]]
+id = "glm-5.3"
+family = "z-ai"
+status = "inactive"
+role = "benchmarked but unprobed: max scores 69% at $3.99 / 80k out on the Datacurve board, the Sol-high band at slightly more cash than Sol high's $3.47. The Flash sibling is the routed one; this is the same vendor's frontier tier, reachable through pi on opencode-go and commandcode, neither of which serves it by pool policy"
+api_price_per_million = { input = 1.40, cached_input = 0.26, output = 4.40 }
+notes = "Announced 2026-08-14 through the API and the GLM Coding Plan, with weights promised after safety hardening. It buys six points over glm-5.3-flash for seventeen times the per-task cash, which is the same shape as Sol over Luna on the Codex side — and Sol is already paid for. No route until a field arc shows a slice Flash cannot land that this can, at a price the Codex window does not already cover"
+  [[model.effort]]
+  effort = "max"
+  pass_at_1 = 0.69
+  usd_per_task = 3.99
+  out_tokens = "80k"
+  steps = 124
+  use = "not routed: no probed backend, and no pool serves it"
+
+[[model]]
+id = "astra"
+family = "openai"
+status = "inactive"
+role = "announced, unreleased, unpriced. Named on 2026-08-01, designated on 2026-09-01 as the first model at the vendor's Critical cyber-capability threshold, with availability to start from a small alpha; whether it ships as GPT-6, a 5.x release, or another name is unsettled. Nothing to route and nothing to estimate from"
+notes = "Kept so its arrival is a data update. When it reaches the Codex subscription it enters through the evidence bar the Sol seat holds — a Datacurve row and a field arc — never through its launch numbers"
 
 # Narrative that the per-model fields cannot carry: the framing sentence and
 # the vocabulary the matrix is read with. Kept here so the whole prose view has
@@ -283,9 +377,10 @@ closing = "These are **defaults, not limits**, except where a model or effort is
 [quota]
 method = "Claude uses observed share of one rolling window consumed by a session of known token count. OpenAI publishes Codex credits per million input, cached-input, and output tokens plus approximate messages per five-hour window."
 weighting = "MODEL-WEIGHTED on both subscriptions. Claude evidence is observed: the same ~500k uncached tokens consumed ~15% of a window on opus-5 and ~30% on fable-5. Codex evidence is explicit and exactly cost-weighted: every token class for Sol, Terra, and Luna costs 25 credits per API dollar, so task-level credit ratios equal the benchmark cash ratios."
-claude_plan = "Pro $20, 5h rolling window"
+claude_plan = "Max, 5h rolling window plus a weekly cap. The ratios below were observed on Pro $20 and transfer as ratios, not as window sizes"
 claude_opus_5 = "~500k uncached tokens ~= 15% of one window, so roughly 3.3M uncached tokens per window"
 claude_fable_5 = "~500k uncached tokens ~= 30% of one window when it was still on the subscription: opus-5 does the same work for about half the quota"
+claude_fable_5_1 = "metered like Fable 5 and capped at half of a Max plan's weekly allowance; its ratio against opus-5 on this plan is unmeasured, and the Fable 5 figure is the working assumption until it is"
 caching = "these are UNCACHED figures; a cache-warm session stretches the window substantially, which is why long single-context arcs beat repeated cold re-derivation"
 codex_pool = "ChatGPT Work and Codex share one five-hour window across the codex CLI and pi's openai-codex login. Official Plus estimates are Sol 10-100, Terra 25-200, and Luna 250-2,000 local messages per five hours; these approximate ranges are not exact transforms of the credit schedule because use varies with context, reasoning, tools, retrieval, and caching."
 opencode_go_pool = "CONDITIONAL, not standing: an optional $10/month subscription reached through the opencode CLI, drawing on neither of the two pools above. Limits are denominated in usage dollars rather than credits or observed share — $12 per five hours, $30 weekly, $60 monthly — so the benchmark cash column converts directly into per-window capacity instead of needing a separate transform. Alone among the three pools it is locally measurable: `opencode stats` reports cumulative spend and `--format json` reports per-step token counts. Nothing degrades to it automatically; a lapsed subscription is a stop, not a fallback."
