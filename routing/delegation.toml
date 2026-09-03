@@ -5,7 +5,7 @@
 # `harness` field marks harness-specific rows; omit = shared policy.
 
 [meta]
-updated = "2026-08-01"
+updated = "2026-09-03"
 golden_rule = "never tell an executor to delegate to itself"
 
 [[route]]
@@ -89,7 +89,7 @@ policy = "resolve the extract profile for fixed-shape calls and the stable imple
 [[rule]]
 id = "deepseek-experimental-invocation"
 harness = "pi"
-policy = "invoke the generally available V4 Flash 0731 with `--provider deepseek --model deepseek-v4-flash`, and resolve it through the `generate` profile only. It is a steered generator on an independent pool: never the implementer of record, never a reviewer, never a planner, never a default route, and never the last model to touch shipped work. Its output is unverified raw material — treat every claim and identifier as a candidate until checked against source, because it fabricates confidently rather than visibly. The callable V4 Pro endpoint remains preview and is retained only for its measured defect-generation niche until the final release"
+policy = "invoke the generally available V4 Flash 0731 with `--provider deepseek --model deepseek-v4-flash`, and resolve it through the `generate` profile only. It is a steered generator on an independent pool: never the implementer of record, never a reviewer, never a planner, never a default route, and never the last model to touch shipped work. Its output is unverified raw material — treat every claim and identifier as a candidate until checked against source, because it fabricates confidently rather than visibly. V4 Pro 0813 is generally available and measures 63% on the Datacurve board; it keeps the briefed defect-generation niche and no other role until a field arc on the GA build"
 
 [[rule]]
 id = "sandboxed-executors"
@@ -149,8 +149,8 @@ id = "claude"
 status = "verified"
 providers = ["anthropic"]
 entrypoint = "claude -p \"<prompt>\""
-model_flag = "--model claude-opus-5"
-effort_flag = "--effort low|medium|high"
+model_flag = "--model claude-opus-5; claude-fable-5-1 answers on the same login and no profile names it"
+effort_flag = "--effort low|medium|high|xhigh|max; every route resolves medium"
 workdir_flag = "none; cd first"
 capture = "--output-format stream-json --verbose; retain the final result as the report"
 isolation = "no OS sandbox: plan mode for read-only work, bypassPermissions for write work in a dedicated explicit repository"
@@ -224,6 +224,6 @@ why = "Sol belongs to the subscription that already covers it. pi and opencode r
 [[pool]]
 provider = "anthropic"
 plan = "the Claude subscription"
-serves = ["opus-5", "fable-5", "sonnet-5", "haiku-4.5"]
+serves = ["opus-5", "fable-5.1", "fable-5", "sonnet-5", "haiku-4.5"]
 pays_for = "itself: never reach a Claude model through metered credits when the subscription covers it"
 why = "the same rule as Sol, on the other window"

@@ -22,7 +22,7 @@
 
 [meta]
 schema = "routing-profiles/1"
-updated = "2026-08-30"
+updated = "2026-09-03"
 
 [[profile]]
 id = "extract"
@@ -83,6 +83,19 @@ backends = ["codex", "pi"]
   stability = "stable"
   backends = ["claude"]
   default_for_backend = true
+
+  # Sol at low is the most output-token-efficient row on the board, and the
+  # only reason to spend the Codex window on it below Luna max is that
+  # efficiency: a small, fully specified slice whose result a person reads,
+  # where Luna's 73k-token habit is the cost. Never a default — a caller
+  # names it, and the roster row says why that is rarely the right call.
+  [[profile.variant]]
+  id = "sol-low"
+  provider = "openai-codex"
+  model = "gpt-5.6-sol"
+  effort = "low"
+  stability = "stable"
+  backends = ["codex", "pi"]
 
   # The cheap lane off a third subscription: GLM 5.3 Flash matches Luna in
   # taste and capability and costs a fraction, and neither draws the Claude

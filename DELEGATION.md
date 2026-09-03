@@ -67,10 +67,11 @@ left: routine and behavior-affecting work may proceed on its judgment, but
 a high-stakes verdict waits for the reset instead of being self-issued.
 
 Futures, listed so activation is a data update rather than a policy
-rewrite: Grok 4.5 (roughly the Opus-4.8-high band) and Kimi K3 (Fable
-medium/high band on good days, variable) are reachable through the
-OpenCode subscription but stay inactive until that backend is probed and
-real benchmark rows land in the model matrix.
+rewrite: Gemini 3.8 Flash (Opus-5-max score at a fifth of its cash), GLM
+5.3, Grok 4.6, and Kimi K3 all hold independent rows in the model matrix
+and are reachable through pi on providers no pool serves; each stays
+inactive until a backend probe and a field arc. Fable 5.1 is on the Claude
+subscription and unmeasured; Astra is announced and unreleased.
 
 ## Golden rule
 
@@ -307,7 +308,8 @@ Backend selection between the two GPT routes:
   callable and adapted for Codex/Responses, but its vendor-reported 54.4
   DeepSWE result used DeepSeek's unreleased minimal harness. Use it only for
   bounded implementation with an exact brief, discriminating probes, and lead
-  review. V4 Pro's callable endpoint remains preview until its final release.
+  review. V4 Pro 0813 is generally available and measures 63% on the Datacurve
+  board; it keeps the briefed defect-generation niche until a field arc.
 - pi "read-only" (`--tools read,grep,find,ls`) is tool-level, not
   OS-level, and excludes bash entirely: file reading and search work,
   `git log`/build commands do not. Investigations needing shell stay on
