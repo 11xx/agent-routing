@@ -9,11 +9,11 @@
 # Access without a path: `agent-routing models`.
 
 [meta]
-benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-09-02"
+benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-09-02, with operator evidence added for Astra on 2026-09-05"
 metric = "pass@1 / avg $ / output tokens"
-updated = "2026-09-03"
+updated = "2026-09-05"
 pricing_update = "OpenAI cut standard short-context Terra token prices by 20% and Luna by 80% on 2026-07-30. Per-task costs below apply the uniform price change to the measured benchmark token mix; capability and output-token results did not change."
-era_notes = "Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held. OpenAI's 2026-07-30 Terra/Luna price and credit reset moved the workhorse roles. DeepSeek V4 Flash 0731 reached general availability on 2026-07-31 while V4 Pro remained preview. Meta released Muse Spark 1.2 and the Muse Code harness on 2026-08-05, which enters as an unreachable future row rather than a routable tier. The Luna-implements/Sol-reviews cost share was measured on 2026-08-26 and changes no seat, only how many review passes are bought. The September 2026 releases entered on 2026-09-03: Fable 5.1 returned a Fable to the subscription as an unmeasured head candidate; Gemini 3.8 Flash, GLM 5.3, Grok 4.6, DeepSeek V4 Pro 0813, Muse Spark 1.2, DeepSeek V4 Flash, and GLM 5.3 Flash gained independent rows from the Datacurve board; Muse Spark 1.3 and Astra entered unmeasured or unreleased, and every seat stayed where it was. History in eras/"
+era_notes = "Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held. OpenAI's 2026-07-30 Terra/Luna price and credit reset moved the workhorse roles. DeepSeek V4 Flash 0731 reached general availability on 2026-07-31 while V4 Pro remained preview. Meta released Muse Spark 1.2 and the Muse Code harness on 2026-08-05, which enters as an unreachable future row rather than a routable tier. The Luna-implements/Sol-reviews cost share was measured on 2026-08-26 and changes no seat, only how many review passes are bought. The September 2026 releases entered on 2026-09-03: Fable 5.1 returned a Fable to the subscription as an unmeasured head candidate; Gemini 3.8 Flash, GLM 5.3, Grok 4.6, DeepSeek V4 Pro 0813, Muse Spark 1.2, DeepSeek V4 Flash, and GLM 5.3 Flash gained independent rows from the Datacurve board. Astra is now reported as available to the operator but remains unprobed here; operator evidence says low/medium may cover Sol-max-class work, medium looks most efficient, and high is the deliberate try-harder tier. No Astra route is promoted until a field arc records how it behaves. History in eras/"
 vendor_benchmarks = "a vendor's own harness produces its own scale, not a row on this one, and so does an aggregator board: the mini-swe-agent public board scores Opus 5 at 68.8% and Terra at 70.0% where this matrix measures 74% and 70% at max, so an aggregator figure is recorded as third_party_reported_deepswe and never as pass@1. The pass@1 column holds only rows the Datacurve board measured under its own harness — the one every existing row came from. Meta's launch numbers score Terra high at 64.8% and Opus 5 at 65.0% on nominally the same DeepSWE v1.1 where this matrix measures 54% and 73%; DeepSeek's 54.4% came from an unreleased minimal harness. Vendor figures are recorded as availability and direction-of-travel evidence and never merged into the pass@1 column"
 
 [[model]]
@@ -58,15 +58,31 @@ weaknesses = ["medium is the routing ceiling: high buys only 4 points for +85% c
 id = "fable-5.1"
 family = "claude"
 status = "experimental"
-role = "head-model candidate on the subscription, unmeasured here. Reachable interactively in Claude Code and through the first-party backend on Pro and Max; no profile routes to it until an independent pass@1 row and a quota measurement on this plan exist"
+role = "available head-model candidate on the Claude subscription, unmeasured here. Reachable interactively in Claude Code and through the first-party backend on Pro and Max; no automatic profile routes to it"
 character = "the vendor's positioning is Fable-level reasoning at a lower cost per task than Fable 5, and the ceiling on genuinely novel hard reasoning that the field credited Fable 5 with is the reason to want it in the seat. None of that is measured on this matrix: the Datacurve board carries Fable 5 at 70% for $21.63 per task and has no row for 5.1"
 weaknesses = ["no independent pass@1. The vendor's own comparisons are against Fable 5 and Opus 5 on its harness, and on the vendor's own numbers it trails Opus 5 on Terminal-Bench-Science (24.7% against 29.0%)", "quota weight is unmeasured on this plan. Fable 5 drew roughly twice the window Opus 5 draws for the same tokens; Fable 5.1 is metered like Fable 5 and capped at half of a Max plan's weekly allowance, so it cannot be the only head model even if it wins the seat", "no generational calibration. Every frontier release needs its own field record of how it fails, and this one has none; carrying Opus 5's forward would be wrong, and carrying none is worse than it looks"]
 api_price_per_million = { input = 10.0, cached_input = 0.25, output = 50.0 }
-notes = "Released 2026-09-01 as `claude-fable-5-1` with five effort levels (low, medium, high, xhigh, max; Claude Code defaults to high). Reachable on the subscription through Claude Code and the first-party `claude` backend, and by credit billing on the API, OpenRouter, and commandcode — the subscription route is the only one this roster will ever route to. Promotion bar, in order: a Datacurve row, an observed quota ratio against Opus 5 on this plan, then one field arc under a lead role before any profile names it. A person selecting it interactively is a choice the harness records and the roster does not make."
+notes = "Released 2026-09-01 as `claude-fable-5-1` with five effort levels (low, medium, high, xhigh, max; Claude Code defaults to high). Reachable on the subscription through Claude Code and the first-party `claude` backend, and by credit billing on the API, OpenRouter, and commandcode — the subscription route is the only one this roster will ever route to. A person selecting it interactively is a choice the harness records; no automatic profile reaches it until a Datacurve row, an observed quota ratio, and a field arc establish a seat."
+  [[model.effort]]
+  effort = "low"
+  status = "explicit-only"
+  use = "explicit selection only; available on the user's Claude subscription when the harness accepts the effort, but unmeasured"
+  [[model.effort]]
+  effort = "medium"
+  status = "explicit-only"
+  use = "explicit selection only; available on the user's Claude subscription when the harness accepts the effort, but unmeasured"
   [[model.effort]]
   effort = "high"
   status = "explicit-only"
-  use = "explicit selection only, as an interactive head model or through a route a person names. Unmeasured: no profile resolves here and no automatic escalation reaches it"
+  use = "explicit selection only; Claude Code's default effort, but unmeasured"
+  [[model.effort]]
+  effort = "xhigh"
+  status = "explicit-only"
+  use = "explicit selection only; available when the harness accepts the effort, but unmeasured"
+  [[model.effort]]
+  effort = "max"
+  status = "explicit-only"
+  use = "explicit selection only; available when the harness accepts the effort, but unmeasured"
 
 [[model]]
 id = "gpt-5.6-sol"
@@ -356,11 +372,31 @@ notes = "Announced 2026-08-14 through the API and the GLM Coding Plan, with weig
   use = "not routed: no probed backend, and no pool serves it"
 
 [[model]]
-id = "astra"
+id = "gpt-6-astra"
 family = "openai"
-status = "inactive"
-role = "announced, unreleased, unpriced. Named on 2026-08-01, designated on 2026-09-01 as the first model at the vendor's Critical cyber-capability threshold, with availability to start from a small alpha; whether it ships as GPT-6, a 5.x release, or another name is unsettled. Nothing to route and nothing to estimate from"
-notes = "Kept so its arrival is a data update. When it reaches the Codex subscription it enters through the evidence bar the Sol seat holds — a Datacurve row and a field arc — never through its launch numbers"
+status = "experimental"
+role = "available to the operator but unprobed. Operator evidence says low/medium may cover Sol-max-class work, medium appears the efficiency candidate, and high is the deliberate try-harder tier; this is a routing hypothesis, not a benchmark row or a default"
+notes = "The earlier unreleased/unpriced note is superseded by current availability evidence. No automatic profile names Astra yet: record a field arc before making it a default, and keep higher efforts uncalibrated until used. The current Codex client addresses the model as gpt-6-astra."
+  [[model.effort]]
+  effort = "low"
+  status = "experimental"
+  use = "experimental direct selection only; operator evidence suggests Sol-max-class capability, but no field arc is recorded"
+  [[model.effort]]
+  effort = "medium"
+  status = "experimental"
+  use = "experimental direct selection only; current efficiency hypothesis, not a default route"
+  [[model.effort]]
+  effort = "high"
+  status = "experimental"
+  use = "experimental direct selection only; deliberate try-harder tier, uncalibrated"
+  [[model.effort]]
+  effort = "xhigh"
+  status = "experimental"
+  use = "experimental direct selection only; uncalibrated"
+  [[model.effort]]
+  effort = "max"
+  status = "experimental"
+  use = "experimental direct selection only; uncalibrated"
 
 # Narrative that the per-model fields cannot carry: the framing sentence and
 # the vocabulary the matrix is read with. Kept here so the whole prose view has
@@ -398,4 +434,4 @@ head_model = "opus-5 medium leads: it plans, orchestrates, delegates, and synthe
 quota_window = "the Claude window remains the scarcer pool, so keep the head model on judgment and push specified labor to Codex. OpenAI's schedule prices every model at 25 credits per API dollar, so benchmark cash ratios transfer directly into task-level credits; official Plus estimates are Sol 10-100, Terra 25-200, and Luna 250-2,000 local messages per five hours. Route bounded labor to Luna max, and spend Sol only where technical judgment or token-efficient persistence earns its rate. Codex fast mode consumes 2.5x credits; Claude fast mode burns its window substantially faster. Both stay deliberate, never ambient"
 user_facing = "opus-5 writes or reviews novel user-facing work: UX, copy, API shape, and final polish. Sol may implement against an already-settled design system, but novel design and final polish stay on the Claude taste axis"
 review_generation = "defect generation and defect adjudication are separable and priced differently. Generation can run on a model below the reviewer floor if it is given an adversarial brief — one that names the failure mode gates cannot catch, enumerates the defect classes to sweep, and refuses a bare 'no issues' by requiring each ruled-out class to name the file and reasoning. Adjudication cannot: every finding from a sub-floor generator is a candidate until a reviewer-tier model or the lead confirms it against source. Measured 2026-07-27: the V4 Pro preview at 8% pass@1 produced six confirmed defects and two fully fabricated blocking claims in the same run. V4 Flash 0731's vendor-reported improvement does not add a reviewer tier or change who may issue a verdict; independent 2026-08-01 testing puts its hallucination rate at 84% and shows it fabricating on every run of an agentic task, which is why it generates candidates and never adjudicates them. Generation is also where its speed, million-token context, and price actually pay: breadth is cheap and a lead is doing the ruling-out anyway"
-review = "the verdict never comes from the model that authored the diff; reviewer tiers are exactly opus-5 medium, sol high, and sol medium. Luna, Terra, Sol low, Sol xhigh, and both DeepSeek models never review. Opus-authored work: routine/docs none, behavior-affecting a Sol-medium skim, high-stakes Sol high mandatory. GPT- or DeepSeek-authored work: Opus 5 medium reviews the diff; high-stakes GPT work adds a second Sol-high pass, while high-stakes work never routes to experimental DeepSeek. When Codex quota is exhausted, Opus 5 medium is the only reviewer left and a high-stakes verdict waits for the reset rather than being self-issued"
+review = "the verdict never claims independence from the model that authored the diff; a lead reviewing delegated work it did not author is valid coverage. Independent review is an escalation for policy, explicit user requirements, or high-consequence approvals, and routine deferred coverage is recorded as Arc debt. Concrete reviewer routes come from profiles and current roster data rather than this frozen sentence. Debt never overrides changes-requested"

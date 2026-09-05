@@ -25,7 +25,7 @@ caught by review or not at all.
 | Actor | Task | Mechanism | Rules |
 | --- | --- | --- | --- |
 | Claude | Plan an arc chain | Write the arc JSON export and a detailed journal spec | Make dependencies and ownership explicit. Generated executor prompts stop before review, merge, or integration. |
-| Claude | Delegate implementation to Codex | Use `/plan-for-codex`; Claude may invoke `codex exec` | Put `codex exec` only in instructions Claude itself will run. Do not ask the Codex executor to delegate again. |
+| Claude | Delegate implementation to Codex | Use `agent-delegate` with an Arc change and bounded brief; Claude may invoke `codex exec` only through the delegation mechanism | Put executor commands only in instructions Claude itself will run. Record the Arc subject, executor attribution, gates, and debt/follow-up; do not ask the executor to delegate again. |
 | Claude | Review and merge | Review `base..head`, record the verdict, then use `arc integrate` when every gate passes | Do not skip review or merge automatically from an implementation prompt. |
 | Codex | Execute a local arc | Import the bundle, read the journal spec, and work locally in the assigned worktree | Implement, verify, commit, run `arc snapshot`, and stop for review. Do not run `codex exec`, delegate, merge, or integrate. |
 | Codex | Orchestrate sub-Codex work (rare and explicit) | Run `codex exec` with a self-contained plan and wait for its result | Do this only when the prompt explicitly assigns Codex the orchestrator role. Preserve Claude's review and merge boundary. |
@@ -45,33 +45,42 @@ backward-compatible behavior for delegated work.
 
 ## Reviewer line
 
-The verdict never comes from the model that authored the diff, and review
-effort is priced by stakes, not applied uniformly. The reviewer tiers are
-exactly **Opus 5 medium**, **Sol high**, and **Sol medium** — Sol low never
-reviews (too shallow for a verdict) and Sol xhigh authors rather than
-reviews. Machine form: `agent-routing models` (`[policy].review`).
+The verdict never claims independence from the model that authored the diff,
+and review effort is priced by stakes, not applied uniformly. A lead reviewing
+delegated work it did not author is valid review coverage; do not dispatch a
+third model merely because implementation was delegated. Independent review is
+an escalation for repository policy, explicit user requirements, or a
+high-consequence approval. When that escalation is not required, record routine
+deferred coverage as Arc debt, including what was read and what remains owed.
+Debt never overrides an actual `changes-requested` verdict.
 
-| Author | Routine / docs-only | Behavior-affecting | High-stakes* |
+Concrete reviewer routes are current roster data, not a permanent sentence in
+this document. Resolve the `review` profile for the backend in use and inspect
+its current stability and effort before dispatch. Sol low never reviews under
+the current roster; future roster changes belong in `agent-routing models` and
+profiles, not here. Machine form: `agent-routing models` (`[policy].review`).
+
+| Authoring relation | Routine / docs-only | Behavior-affecting | High-stakes* |
 | --- | --- | --- | --- |
-| Opus 5 (head model) | none — its own agency suffices | Sol medium read-only skim | Sol high, mandatory |
-| GPT executor (Sol, Terra, or Luna) | lead reads the diff | Opus 5 lead review | lead + a second Sol high pass |
-| DeepSeek V4 Flash/Pro | lead verifies every claim | Opus 5 lead review | not routed |
+| Lead authored | lead judgment; no external review by default | current resolved review route when policy/user/consequence requires it | current high-stakes independent route or an explicit debt/wait decision |
+| Delegated implementation | lead reads and records coverage | lead review is valid; current independent route is an escalation | current high-stakes independent route, unless policy records another allowed path |
+| Untrusted generator output | lead verifies every claim against source | never a verdict or implementer of record | not routed as a reviewer |
 
 *High-stakes: data migrations, schema or breaking changes, destructive
 operations, security-sensitive surfaces.
 
-Opus 5 is the head model and therefore authors most planning and taste
-work, which makes the no-self-review rule load-bearing rather than
-ceremonial. When the Codex pool is exhausted, Opus 5 is the only reviewer
-left: routine and behavior-affecting work may proceed on its judgment, but
-a high-stakes verdict waits for the reset instead of being self-issued.
+The active lead model owns planning, synthesis, and the final answer; its
+identity and effort come from the live harness and routing data, not this
+sentence. When a preferred review pool is exhausted, resolve the current
+available route or wait/record debt according to policy. Never invent an actor
+or a frozen model name to manufacture independence.
 
-Futures, listed so activation is a data update rather than a policy
-rewrite: Gemini 3.8 Flash (Opus-5-max score at a fifth of its cash), GLM
-5.3, Grok 4.6, and Kimi K3 all hold independent rows in the model matrix
-and are reachable through pi on providers no pool serves; each stays
-inactive until a backend probe and a field arc. Fable 5.1 is on the Claude
-subscription and unmeasured; Astra is announced and unreleased.
+Futures and new evidence are data updates rather than frozen policy: Gemini
+3.8 Flash, GLM 5.3, Grok 4.6, and Kimi K3 remain unprobed rows; Fable 5.1 is
+available on the Claude subscription but unmeasured; Astra is available to the
+operator but unprobed, with low/medium/high hypotheses recorded in the roster.
+Concrete selection belongs to the current resolver and the user's request, not
+this prose.
 
 ## Golden rule
 
@@ -80,8 +89,9 @@ Never tell an executor to delegate to itself.
 Before generating a prompt, classify its recipient:
 
 - **Codex executing:** local implementation only; no `codex exec`.
-- **Claude delegating to Codex:** use `/plan-for-codex`; Claude may run the
-  generated `codex exec` command.
+- **Claude delegating to Codex:** use `agent-delegate` against an Arc change
+  or bounded range; Claude may run the resolved executor command. Arc owns the
+  brief, provenance, rounds, debt, review choice, and integration record.
 - **Claude executing:** use the `/arc` workflow and the `arc` CLI directly.
 - **Codex orchestrating:** use `codex exec` only when that rare role is named
   explicitly, never by implication.
@@ -394,9 +404,9 @@ about but does not block on one.
 
 ### Correct: Claude invokes Codex
 
-Claude prepares a `/plan-for-codex` handoff and runs `codex exec` itself. The
-nested prompt tells Codex what to implement locally and where to report the
-result.
+Claude prepares an Arc change or journal brief and runs the resolved
+`agent-delegate`/`codex exec` mechanism itself. The nested prompt tells Codex
+what to implement locally, where to record its result, and which gate proves it.
 
 ### Incorrect: Codex is told to invoke itself
 

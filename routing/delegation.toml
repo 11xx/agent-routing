@@ -17,20 +17,20 @@ rules = "make dependencies and ownership explicit; generated executor prompts st
 [[route]]
 actor = "claude"
 task = "delegate implementation to codex"
-mechanism = "/plan-for-codex; claude itself may run codex exec"
-rules = "codex exec appears only in instructions claude will run; never ask the codex executor to delegate again"
+mechanism = "agent-delegate against an Arc change or bounded range; claude itself may run the resolved codex exec mechanism"
+rules = "executor commands appear only in instructions claude will run; Arc owns the brief, provenance, rounds, debt, review choice, and integration record; never ask the codex executor to delegate again"
 
 [[route]]
 actor = "claude"
 task = "review and merge"
 mechanism = "review base..head, record verdict, arc integrate when gates pass"
-rules = "never skip review or merge automatically from an implementation prompt"
+rules = "inspect delegated work directly; use independent review only when policy, the user, or consequence requires it; record routine deferred coverage as Arc debt; never let debt override changes-requested"
 
 [[route]]
 actor = "lead"
 task = "select a reviewer"
 mechanism = "stakes-based reviewer line (full policy: models.toml [policy].review)"
-rules = "the verdict never comes from the authoring model; reviewer tiers are exactly luna max, opus-5 medium, sol high, and sol medium; GPT-authored diffs use the stable review:opus Claude variant, while the default Codex/Pi review route remains Luna max; docs-only work by the head model needs no external review; high-stakes work (migrations, schema/breaking, destructive, security) always gets sol high, and waits for the codex quota reset rather than being self-issued when that pool is exhausted"
+rules = "do not call self-review independent; a lead may review delegated work it did not author; use independent review only when policy, the user, or consequence requires it; record routine deferred coverage as Arc debt; reviewer tiers remain stakes-based, and debt never overrides changes-requested"
 
 [[route]]
 actor = "codex"
@@ -149,7 +149,7 @@ id = "claude"
 status = "verified"
 providers = ["anthropic"]
 entrypoint = "claude -p \"<prompt>\""
-model_flag = "--model claude-opus-5; claude-fable-5-1 answers on the same login and no profile names it"
+model_flag = "--model claude-opus-5; claude-fable-5-1 is also available on the same login when the user selects it explicitly, and no automatic profile names it"
 effort_flag = "--effort low|medium|high|xhigh|max; every route resolves medium"
 workdir_flag = "none; cd first"
 capture = "--output-format stream-json --verbose; retain the final result as the report"
