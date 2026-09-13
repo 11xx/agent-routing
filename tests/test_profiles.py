@@ -23,6 +23,16 @@ class RoutingProfilesTest(unittest.TestCase):
     def test_manifest_is_valid(self):
         self.assertEqual(validation_problems(ROOT), [])
 
+    def test_computer_use_is_explicit_and_has_comparison_tiers(self):
+        for variant, effort in ((None, "low"), ("medium", "medium"), ("high", "high")):
+            with self.assertRaises(RouteRefusal):
+                resolve(ROOT, "computer-use", "pi", variant_id=variant)
+            route = resolve(ROOT, "computer-use", "pi", variant_id=variant,
+                            allow_experimental=True)
+            self.assertEqual((route["model"], route["effort"]), ("gpt-5.6-luna", effort))
+        with self.assertRaises(RouteRefusal):
+            resolve(ROOT, "computer-use", "codex", allow_experimental=True)
+
     def test_stable_route_resolves_for_supported_backend(self):
         route = resolve(ROOT, "implement", "codex")
         self.assertEqual(route["profile"], "implement")
