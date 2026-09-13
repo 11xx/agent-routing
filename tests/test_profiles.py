@@ -30,8 +30,8 @@ class RoutingProfilesTest(unittest.TestCase):
             route = resolve(ROOT, "computer-use", "pi", variant_id=variant,
                             allow_experimental=True)
             self.assertEqual((route["model"], route["effort"]), ("gpt-5.6-luna", effort))
-        with self.assertRaises(RouteRefusal):
-            resolve(ROOT, "computer-use", "codex", allow_experimental=True)
+        route = resolve(ROOT, "computer-use", "codex", allow_experimental=True)
+        self.assertEqual((route["model"], route["effort"]), ("gpt-5.6-luna", "low"))
 
     def test_stable_route_resolves_for_supported_backend(self):
         route = resolve(ROOT, "implement", "codex")

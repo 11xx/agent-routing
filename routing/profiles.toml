@@ -285,7 +285,7 @@ provider = "openai-codex"
 model = "gpt-5.6-luna"
 effort = "low"
 stability = "experimental"
-backends = ["pi"]
+backends = ["codex", "pi"]
 
   [[profile.variant]]
   id = "medium"
@@ -293,7 +293,7 @@ backends = ["pi"]
   model = "gpt-5.6-luna"
   effort = "medium"
   stability = "experimental"
-  backends = ["pi"]
+  backends = ["codex", "pi"]
 
   [[profile.variant]]
   id = "high"
@@ -301,4 +301,4 @@ backends = ["pi"]
   model = "gpt-5.6-luna"
   effort = "high"
   stability = "experimental"
-  backends = ["pi"]
+  backends = ["codex", "pi"]
