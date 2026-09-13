@@ -109,10 +109,10 @@ Probationary and experimental routes fail closed unless the caller explicitly
 passes `--allow-experimental`, a whole profile as much as a variant.
 
 The `computer-use` profile is an explicit experimental desktop-worker route,
-separate from coding implementation. It uses Pi and defaults to Luna low;
+separate from coding implementation. It supports Codex and Pi, defaulting to Luna low;
 `--variant medium` and `--variant high` select explicit comparison tiers. All
 require `--allow-experimental`; no failure automatically escalates the model.
-Pi access and the retained run/resume lifecycle are owned by agent-delegate.
+Desktop access and the retained run/resume lifecycle are owned by agent-delegate.
 The route does not restrict CU capabilities or claim a measured cost/quality win.
 
 ## What this repository will not do
