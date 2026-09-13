@@ -276,3 +276,29 @@ backend_model = "claude-opus-5"
 effort = "medium"
 stability = "stable"
 backends = ["claude"]
+
+
+[[profile]]
+id = "computer-use"
+purpose = "explicit visible-desktop tasks with bounded context and retained follow-ups"
+provider = "openai-codex"
+model = "gpt-5.6-luna"
+effort = "low"
+stability = "experimental"
+backends = ["pi"]
+
+  [[profile.variant]]
+  id = "medium"
+  provider = "openai-codex"
+  model = "gpt-5.6-luna"
+  effort = "medium"
+  stability = "experimental"
+  backends = ["pi"]
+
+  [[profile.variant]]
+  id = "high"
+  provider = "openai-codex"
+  model = "gpt-5.6-luna"
+  effort = "high"
+  stability = "experimental"
+  backends = ["pi"]
