@@ -11,8 +11,12 @@ survives the next one; the roster and the `generate` route follow it.
   2026-09-17, prices it at 0.30 cache-miss input, 1.20 output, and 0.006 cached
   per million — roughly twice the 0731 input and four times its output.
 - The id: `deepseek-v4-flash` → `deepseek-flash`. The versioned id still
-  answers as an alias, which is why the old route kept working; nobody promised
-  it would.
+  answers, which is why the old route kept working; nobody promised it would.
+  What it answers *as* is unconfirmed — the resellers carry V4 Flash and V4.1
+  Flash as separate models, and pi still prices the versioned id at the 0731
+  rates, so it may be serving the predecessor rather than aliasing the new
+  build. Route on the id the provider publishes, not on the one that still
+  replies.
 - The seat: unchanged. Still a steered generator, never an implementer of
   record, reviewer, planner, or the last model to touch shipped work.
 
