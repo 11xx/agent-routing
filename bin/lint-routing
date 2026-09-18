@@ -11,8 +11,11 @@ compression, the ordering, and the wording in turn.
 
 What can be mechanised is narrow: an unknown model in the doctrine, a model in
 the manifest the doctrine never mentions, or a pass@1 or cost cell that appears
-in both and differs. It also validates route structure, so every profile and
-variant has to name a real model, effort, backend, and provider.
+in both and differs. A row whose live build is unmeasured carries the figures of
+the build it replaces, and those are held to the same agreement wherever the
+doctrine puts them, so retiring a measurement does not release its numbers. It
+also validates route structure, so every profile and variant has to name a real
+model, effort, backend, and provider.
 
 Everything else is outside its reach — the output-token column, every other
 number carried in prose, and the wording of both documents. A rule stated
@@ -47,6 +50,17 @@ def efforts_in(cell):
 
 def numbers_in(cell):
     return set(NUMBER.findall(cell.replace(",", "")))
+
+
+def expected_cell(value, scale):
+    """Spell a manifest value the way the doctrine writes it."""
+    return f"{round(value * scale)}" if scale == 100 else f"{value:.2f}"
+
+
+def carries(cell, value, scale):
+    expected = expected_cell(value, scale)
+    found = numbers_in(cell)
+    return expected in found or expected.rstrip("0").rstrip(".") in found
 
 
 def main():
@@ -86,13 +100,30 @@ def main():
                 value = entry.get(key)
                 if value is None:
                     continue
-                expected = f"{round(value * scale)}" if scale == 100 else f"{value:.2f}"
-                found = numbers_in(cell)
-                if found and expected not in found and expected.rstrip("0").rstrip(".") not in found:
-                    problems.append(
-                        f"{model_id} {effort}: doctrine {label} cell {cell.strip()!r} "
-                        f"does not contain manifest value {expected}"
-                    )
+                if not numbers_in(cell) or carries(cell, value, scale):
+                    continue
+                problems.append(
+                    f"{model_id} {effort}: doctrine {label} cell {cell.strip()!r} "
+                    f"does not contain manifest value {expected_cell(value, scale)}"
+                )
+
+            # A superseded build's figures stay on the row as predecessor
+            # evidence once the live build's own cells go empty. The doctrine
+            # compresses them into whichever of the two compared cells reads
+            # best, so they are matched against the pair rather than a column.
+            measured = pass_cell + usd_cell
+            for label, key, scale in (
+                ("predecessor pass@1", "predecessor_pass_at_1", 100),
+                ("predecessor $", "predecessor_usd_per_task", 1),
+            ):
+                value = entry.get(key)
+                if value is None or carries(measured, value, scale):
+                    continue
+                problems.append(
+                    f"{model_id} {effort}: the doctrine row carries no "
+                    f"{label} {expected_cell(value, scale)} for the "
+                    f"{entry.get('predecessor', 'superseded')} build it records"
+                )
 
     for model_id in by_id:
         if model_id not in mentioned:
