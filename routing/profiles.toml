@@ -22,7 +22,7 @@
 
 [meta]
 schema = "routing-profiles/1"
-updated = "2026-09-03"
+updated = "2026-09-18"
 
 [[profile]]
 id = "extract"
@@ -141,11 +141,12 @@ backends = ["codex", "pi"]
 id = "generate"
 purpose = "high-volume or heavily steered candidate generation whose output is raw material rather than a deliverable: drafts to mine, options to sweep, defect candidates to adjudicate. Everything it returns is unverified until a lead or reviewer-tier model checks it against source, and nothing resolved here is the last model to touch shipped work"
 provider = "deepseek"
-model = "deepseek-v4-flash"
+model = "deepseek-flash"
 effort = "max"
 stability = "experimental"
 # This profile reaches DeepSeek's independent pool as a steered generator and
-# is closed to every other backend by design.
+# is closed to every other backend by design. Max is the only routed tier:
+# the row carries no lower effort, and no profile or variant selects one.
 backends = ["pi"]
 
 [[profile]]

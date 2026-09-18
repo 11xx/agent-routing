@@ -221,8 +221,8 @@ class RoutingProfilesTest(unittest.TestCase):
         root = self.fixture_root()
         path = root / "routing" / "profiles.toml"
         text = path.read_text().replace(
-            'model = "deepseek-v4-flash"\neffort = "max"\nstability = "experimental"',
-            'model = "deepseek-v4-flash"\neffort = "max"\nstability = "stable"',
+            'model = "deepseek-flash"\neffort = "max"\nstability = "experimental"',
+            'model = "deepseek-flash"\neffort = "max"\nstability = "stable"',
         )
         path.write_text(text)
         self.assertTrue(any("experimental model" in problem for problem in validation_problems(root)))
