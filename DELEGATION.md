@@ -314,14 +314,15 @@ Backend selection between the two GPT routes:
   GPT-5.6 on the shared Codex subscription, while `deepseek` reaches V4.1 Flash
   and V4 Pro on independent API billing. Any harness that can run a shell can
   drive it. A non-Claude, non-Codex lead delegating to GPT goes through Pi.
-- **DeepSeek Flash is a generator, never an executor.** The live build is
-  V4.1 Flash, reached as `--provider deepseek --model deepseek-flash`; the
-  versioned id it replaces is deprecated. The vendor's 54.4 DeepSWE result for
-  that predecessor came from DeepSeek's unreleased minimal harness, and
-  independent testing of the same build measured confident fabrication rather
-  than visible error. Route it through the `generate` profile for raw material
-  a lead adjudicates, under a brief that fences what it may produce, and never
-  as the last model to touch shipped work. V4 Pro 0813 is generally available
+- **DeepSeek Flash is routed as a generator, and its seat is probation.** The
+  live build is V4.1 Flash, reached as `--provider deepseek --model
+  deepseek-flash`; the versioned id it replaces is deprecated. Both the
+  vendor's 54.4 DeepSWE result and the independent testing that measured
+  confident fabrication describe that predecessor, not the build in service,
+  and V4.1 has no field arc here. Route it through the `generate` profile for
+  raw material a lead adjudicates, under a brief that fences what it may
+  produce, and keep it off the last edit of shipped work until a field arc on
+  V4.1 says otherwise. V4 Pro 0813 is generally available
   and measures 63% on the Datacurve board; it keeps the briefed
   defect-generation niche until a field arc.
 - pi "read-only" (`--tools read,grep,find,ls`) is tool-level, not
