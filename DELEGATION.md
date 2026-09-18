@@ -292,7 +292,7 @@ Adapter contract (probe checklist for onboarding any new harness):
 | Contract | codex CLI (`codex exec`) | pi (`pi -p`), v0.83.0 | Claude CLI (`claude -p`) | opencode (`opencode run`), v1.18.10 |
 | --- | --- | --- | --- | --- |
 | Entrypoint | `codex exec "<prompt>"` | `pi -p "<prompt>"`; `@file` args inline files (specs) | `claude -p "<prompt>"` | `opencode run "<prompt>"` |
-| Model | `-m gpt-5.6-{sol,terra,luna}` | GPT: `--provider openai-codex --model gpt-5.6-{sol,terra,luna}`; DeepSeek: `--provider deepseek --model deepseek-v4-{flash,pro}` | `--model claude-opus-5` | `-m opencode-go/<model>` |
+| Model | `-m gpt-5.6-{sol,terra,luna}` | GPT: `--provider openai-codex --model gpt-5.6-{sol,terra,luna}`; DeepSeek: `--provider deepseek --model deepseek-flash` (V4.1) and `--model deepseek-v4-pro` | `--model claude-opus-5` | `-m opencode-go/<model>` |
 | Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high` | `--variant high\|max` |
 | Working dir | `-C <dir>` | none — `cd` first | none — `cd` first; `--add-dir=<path>` adds explicit read roots | `--dir <dir>` |
 | Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message | stdout for one-shot calls; `--output-format stream-json` for supervised runs | stdout is the final message under a `> build · <model>` header; `--format json` gives a JSONL event stream with per-step token counts |
@@ -311,15 +311,19 @@ Backend selection between the two GPT routes:
   scope fencing in the prompt.
 - **pi's niche is provider plurality and lead portability**: one adapter
   reaches every provider the user has logged in. Today `openai-codex` reaches
-  GPT-5.6 on the shared Codex subscription, while `deepseek` reaches V4 Flash
+  GPT-5.6 on the shared Codex subscription, while `deepseek` reaches V4.1 Flash
   and V4 Pro on independent API billing. Any harness that can run a shell can
   drive it. A non-Claude, non-Codex lead delegating to GPT goes through Pi.
-- **DeepSeek V4 Flash 0731 is experimental.** The official public-beta API is
-  callable and adapted for Codex/Responses, but its vendor-reported 54.4
-  DeepSWE result used DeepSeek's unreleased minimal harness. Use it only for
-  bounded implementation with an exact brief, discriminating probes, and lead
-  review. V4 Pro 0813 is generally available and measures 63% on the Datacurve
-  board; it keeps the briefed defect-generation niche until a field arc.
+- **DeepSeek Flash is a generator, never an executor.** The live build is
+  V4.1 Flash, reached as `--provider deepseek --model deepseek-flash`; the
+  versioned id it replaces is deprecated. The vendor's 54.4 DeepSWE result for
+  that predecessor came from DeepSeek's unreleased minimal harness, and
+  independent testing of the same build measured confident fabrication rather
+  than visible error. Route it through the `generate` profile for raw material
+  a lead adjudicates, under a brief that fences what it may produce, and never
+  as the last model to touch shipped work. V4 Pro 0813 is generally available
+  and measures 63% on the Datacurve board; it keeps the briefed
+  defect-generation niche until a field arc.
 - pi "read-only" (`--tools read,grep,find,ls`) is tool-level, not
   OS-level, and excludes bash entirely: file reading and search work,
   `git log`/build commands do not. Investigations needing shell stay on
@@ -340,7 +344,7 @@ Backend selection between the two GPT routes:
   with no refresh path — `pi update models` fails outright. For the other 16
   either backend works.
 - **Some Go models refuse to run pending a data-residency opt-in.** DeepSeek
-  V4 Flash returns "only available hosted in China and requires explicit opt
+  Flash returns "only available hosted in China and requires explicit opt
   in" with a workspace URL. That consent governs where delegated code and
   repo context are sent, so it is the user's call and is never taken on their
   behalf; route around the model until they decide.

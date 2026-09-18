@@ -5,7 +5,7 @@
 # `harness` field marks harness-specific rows; omit = shared policy.
 
 [meta]
-updated = "2026-09-03"
+updated = "2026-09-18"
 golden_rule = "never tell an executor to delegate to itself"
 
 [[route]]
@@ -89,7 +89,7 @@ policy = "resolve the extract profile for fixed-shape calls and the stable imple
 [[rule]]
 id = "deepseek-experimental-invocation"
 harness = "pi"
-policy = "invoke the generally available V4 Flash 0731 with `--provider deepseek --model deepseek-v4-flash`, and resolve it through the `generate` profile only. It is a steered generator on an independent pool: never the implementer of record, never a reviewer, never a planner, never a default route, and never the last model to touch shipped work. Its output is unverified raw material — treat every claim and identifier as a candidate until checked against source, because it fabricates confidently rather than visibly. V4 Pro 0813 is generally available and measures 63% on the Datacurve board; it keeps the briefed defect-generation niche and no other role until a field arc on the GA build"
+policy = "invoke the generally available V4.1 Flash through the provider's unversioned id with `--provider deepseek --model deepseek-flash`, and resolve it through the `generate` profile only. It is a steered generator on an independent pool: never the implementer of record, never a reviewer, never a planner, never a default route, and never the last model to touch shipped work. Its output is unverified raw material — treat every claim and identifier as a candidate until checked against source, because it fabricates confidently rather than visibly. V4 Pro 0813 is generally available and measures 63% on the Datacurve board; it keeps the briefed defect-generation niche and no other role until a field arc on the GA build"
 
 [[rule]]
 id = "sandboxed-executors"
@@ -134,7 +134,7 @@ status = "verified"
 providers = ["openai-codex", "deepseek", "commandcode"]
 version_probed = "0.84.3 (2026-08-29)"
 entrypoint = "pi -p \"<prompt>\" (also @file args to inline specs)"
-model_flag = "GPT: --provider openai-codex --model gpt-5.6-{sol,terra,luna}; DeepSeek: --provider deepseek --model deepseek-v4-{flash,pro}; GOAT: --provider commandcode --model gpt-5.6-{sol,terra,luna} or z-ai/glm-5.3-flash. --provider is never optional: a model name authenticated on two providers aborts the run"
+model_flag = "GPT: --provider openai-codex --model gpt-5.6-{sol,terra,luna}; DeepSeek: --provider deepseek --model deepseek-flash for the Flash build, --model deepseek-v4-pro for the Pro build; GOAT: --provider commandcode --model gpt-5.6-{sol,terra,luna} or z-ai/glm-5.3-flash. --provider is never optional: a model name authenticated on two providers aborts the run"
 effort_flag = "--thinking off|minimal|low|medium|high|xhigh|max (or :level model suffix). xhigh and max reach the provider only when the model definition maps them; an unmapped model drops both from its supported set and clamps a requested max to high without reporting it"
 workdir_flag = "none; cd first"
 capture = "stdout is exactly the final message"
@@ -186,7 +186,7 @@ why = "the pool is an optional $10/month subscription, unlike the two standing o
 id = "opencode-go-invocation"
 harness = "opencode"
 policy = "capability rows transfer from the roster because the model is identical — opencode-go/gpt-5.6-luna is the same gpt-5.6-luna measured on the matrix — while cost and quota accounting do not: Go meters usage dollars ($12 per five hours, $30 weekly, $60 monthly) rather than credits. Several Go models are hosted in China and refuse to run until the workspace takes an explicit data-residency opt-in; that opt-in governs where delegated code and repository context are sent, so it is the user's decision and is never taken on their behalf. The remedy when one of those models is wanted is for the operator to take the opt-in where the workspace is configured, or to reach the same model on a pool that serves it without one. This repository does not hold a table of acceptable retention postures: what a route can do belongs here, what posture its owner will accept does not. Until the opt-in is taken, the refusal is terminal and the model stays unrouted on this pool. This rule keys on the observed refusal rather than on an inferred rationale: the message states hosting location, and whether the gate is a retention policy underneath is unconfirmed. Exit status is honest (1 on model error), but the default prefix is heavy — a bare prompt wrote 16.3k cache tokens — so fence context aggressively on a dollar-metered window"
-why = "measured live on 2026-08-01: gpt-5.6-luna returned on the first call, deepseek-v4-flash refused with a China-hosting opt-in requirement, and --format json reported the per-step token accounting that makes the dollar window locally measurable"
+why = "measured live on 2026-08-01: gpt-5.6-luna returned on the first call, DeepSeek Flash refused with a China-hosting opt-in requirement, and --format json reported the per-step token accounting that makes the dollar window locally measurable"
 
 [[rule]]
 id = "quota-bidirectional"
