@@ -171,6 +171,19 @@ stability = "stable"
 # context by delegating to the same window; a lead on another harness uses Sol.
 backends = ["codex", "pi"]
 
+  # Astra is the operator's measured planner: apply_patch falls from 16.3% of
+  # its tool calls at low effort to 0.8% at high, so it reads and reasons where
+  # it will not write. Experimental and reachable only by explicit request,
+  # because the recorded field arc is a cost arc and settles nothing about
+  # pass@1. Its context-carry weakness is on the roster row, not fixed here.
+  [[profile.variant]]
+  id = "astra"
+  provider = "openai-codex"
+  model = "gpt-6-astra"
+  effort = "medium"
+  stability = "experimental"
+  backends = ["codex"]
+
 [[profile]]
 id = "execute"
 purpose = "broad or multi-slice implementation where technical judgment and long-horizon persistence remain material"
