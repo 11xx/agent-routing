@@ -184,6 +184,17 @@ backends = ["codex", "pi"]
   stability = "experimental"
   backends = ["codex"]
 
+  # The deliberate try-harder tier, for resolving an argued discussion rather
+  # than producing a plan. Higher efforts stay uncalibrated until used, and
+  # this one is now used; it asserts nothing about pass@1.
+  [[profile.variant]]
+  id = "astra-xhigh"
+  provider = "openai-codex"
+  model = "gpt-6-astra"
+  effort = "xhigh"
+  stability = "experimental"
+  backends = ["codex"]
+
 [[profile]]
 id = "execute"
 purpose = "broad or multi-slice implementation where technical judgment and long-horizon persistence remain material"
