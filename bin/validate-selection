@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Validate one operator-directed model selection without resolving a route."""
+
+import argparse
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from routing_profiles import RouteRefusal, dumps, validate_selection  # noqa: E402
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="agent-routing validate")
+    parser.add_argument("--profile", required=True, help="base execution-shape profile")
+    parser.add_argument("--backend", required=True)
+    parser.add_argument("--model", required=True, help="canonical roster model or a known backend alias")
+    parser.add_argument("--effort", required=True)
+    parser.add_argument("--provider", required=True)
+    parser.add_argument("--reason", required=True, help="the claimed instruction being recorded")
+    parser.add_argument("--allow-experimental", action="store_true")
+    parser.add_argument(
+        "--allow-cross-pool",
+        action="store_true",
+        help="spend a pool's allowance on a model another subscription already pays for",
+    )
+    parser.add_argument("--json", action="store_true", required=True, help="emit the stable JSON selection contract")
+    args = parser.parse_args()
+    try:
+        selection = validate_selection(
+            ROOT,
+            args.profile,
+            args.backend,
+            args.model,
+            args.effort,
+            args.provider,
+            args.reason,
+            allow_experimental=args.allow_experimental,
+            allow_cross_pool=args.allow_cross_pool,
+        )
+    except RouteRefusal as refusal:
+        print(
+            f"agent-routing: cannot validate operator-directed selection for profile {args.profile!r} "
+            f"and backend {args.backend!r}: {refusal}",
+            file=sys.stderr,
+        )
+        print(dumps(refusal.payload()), file=sys.stderr)
+        return 1
+    except Exception as error:
+        print(
+            f"agent-routing: cannot validate operator-directed selection for profile {args.profile!r} "
+            f"and backend {args.backend!r}: {error}",
+            file=sys.stderr,
+        )
+        print(
+            dumps(
+                {
+                    "schema": "agent-routing-refusal/1",
+                    "kind": "manifest-invalid",
+                    "message": str(error),
+                    "profile": args.profile,
+                    "backend": args.backend,
+                    "selection_kind": "operator-directed",
+                }
+            ),
+            file=sys.stderr,
+        )
+        return 1
+    print(dumps(selection))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

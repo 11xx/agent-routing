@@ -17,6 +17,19 @@ RESOLVE A ROUTE
   experimental routes need --allow-experimental — a whole profile as much as a
   variant — so a route that is not ready cannot be reached by accident.
 
+VALIDATE AN OPERATOR-DIRECTED SELECTION
+  agent-routing validate --profile <profile> --backend <backend>
+    --model <model> --effort <effort> --provider <provider>
+    --reason <text> [--allow-experimental] [--allow-cross-pool] --json
+
+  validate keeps the named profile as the execution shape and checks an
+  explicit model tuple without resolving that profile or selecting a variant.
+  Direct selections are unrostered and experimental, so they require
+  --allow-experimental even when the model also appears on a named route.
+  The result identifies itself as operator-directed and carries the canonical
+  and backend model identities plus the route-version witness. Unknown pool
+  membership and missing backend/model support are refusals, not opt-ins.
+
 CHOOSE A PROFILE BY THE SHAPE OF THE WORK
   extract      one fixed-input, fixed-output classification, extraction,
                aggregation, or bounded summary

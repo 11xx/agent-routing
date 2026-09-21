@@ -8,6 +8,9 @@ agent-routing                         # the routing guide: start here
 agent-routing models                  # the model/effort matrix
 agent-routing profiles                # named task-shape routes
 agent-routing resolve implement --backend codex --json
+agent-routing validate --profile plan --backend codex --model gpt-6-astra \
+  --effort medium --provider openai-codex --reason "operator directed" \
+  --allow-experimental --json
 agent-routing delegation              # the mechanism matrix
 agent-routing mechanism               # DELEGATION.md, the mechanism prose canon
 agent-routing check opus-5 xhigh      # exits 1: prohibited
@@ -59,6 +62,7 @@ of an agent instead of occupying every context window.
 
 ```
 routing/*.toml             ─→ agent-routing resolve   one caller-selected route
+routing/*.toml             ─→ agent-routing validate  one explicit tuple
 doctrine/guide.md          ─→ agent-routing           the guide, bare invocation
 doctrine/model-routing.md  ─→ agent-routing doctrine  the policy in full
 ```
@@ -114,6 +118,33 @@ separate from coding implementation. It supports Codex and Pi, defaulting to Lun
 require `--allow-experimental`; no failure automatically escalates the model.
 Desktop access and the retained run/resume lifecycle are owned by agent-delegate.
 The route does not restrict CU capabilities or claim a measured cost/quality win.
+
+## Operator-directed selection
+
+An explicit one-off model choice keeps the execution shape separate from model
+resolution. Call `validate` with the base profile, backend, model, effort,
+provider, and a nonblank reason:
+
+```sh
+agent-routing validate \
+  --profile plan --backend codex --model gpt-6-astra --effort medium \
+  --provider openai-codex --reason "operator directed" \
+  --allow-experimental --json
+```
+
+The command does not resolve the profile or select a variant. Its JSON result
+records `selection_kind = "operator-directed"`, the base execution profile,
+canonical and backend model identities, the applied opt-ins, and the
+`route_version` witness. Direct selections are unrostered and therefore
+experimental even when the same tuple appears on an automatic route. A
+prohibited tier, unsupported model/backend fact, unknown pool membership, or
+model-role restriction refuses before a caller can use the result. A known
+cross-pool selection additionally requires `--allow-cross-pool`; that opt-in
+does not waive missing backend or model support.
+
+`resolve` keeps its existing output and remains the route-selected surface.
+Both commands emit machine-readable refusal payloads with the
+`agent-routing-refusal/1` schema on stderr.
 
 ## What this repository will not do
 

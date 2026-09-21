@@ -9,7 +9,13 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 
-from routing_profiles import RouteRefusal, pool_problems, resolve, validation_problems
+from routing_profiles import (
+    RouteRefusal,
+    pool_problems,
+    resolve,
+    validate_selection,
+    validation_problems,
+)
 
 
 class RoutingProfilesTest(unittest.TestCase):
@@ -19,6 +25,19 @@ class RoutingProfilesTest(unittest.TestCase):
         root = pathlib.Path(temporary.name)
         shutil.copytree(ROOT / "routing", root / "routing")
         return root
+
+    def direct_selection(self, root=ROOT, **overrides):
+        values = {
+            "profile_id": "implement",
+            "backend": "codex",
+            "model": "gpt-5.6-luna",
+            "effort": "max",
+            "provider": "openai-codex",
+            "reason": "operator directed",
+            "allow_experimental": True,
+        }
+        values.update(overrides)
+        return validate_selection(root, **values)
 
     def test_manifest_is_valid(self):
         self.assertEqual(validation_problems(ROOT), [])
@@ -146,6 +165,178 @@ class RoutingProfilesTest(unittest.TestCase):
         self.assertEqual(route["model"], "claude-opus-5")
         self.assertEqual(route["effort"], "medium")
         self.assertEqual(route["stability"], "stable")
+
+    def test_direct_selection_refuses_a_prohibited_tier(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(
+                profile_id="implement",
+                backend="claude",
+                model="opus-5",
+                effort="max",
+                provider="anthropic",
+            )
+        self.assertEqual(caught.exception.kind, "prohibited")
+        self.assertIn("prohibited", caught.exception.message)
+
+    def test_direct_selection_refuses_unknown_pool_membership_by_fact(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(
+                profile_id="generate",
+                backend="pi",
+                model="deepseek-flash",
+                effort="max",
+                provider="deepseek",
+            )
+        refusal = caught.exception
+        self.assertEqual(refusal.kind, "unknown-pool-membership")
+        self.assertIn("pool membership", refusal.payload()["missing_fact"])
+        self.assertNotIn("override", refusal.payload())
+
+    def test_direct_selection_requires_cross_pool_opt_in(self):
+        values = {
+            "profile_id": "review",
+            "backend": "pi",
+            "model": "gpt-5.6-sol",
+            "effort": "high",
+            "provider": "commandcode",
+        }
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(**values)
+        self.assertEqual(caught.exception.kind, "pool")
+        self.assertEqual(caught.exception.payload()["override"], "--allow-cross-pool")
+        route = self.direct_selection(allow_cross_pool=True, **values)
+        self.assertEqual(route["cross_pool"], "GOAT, a small flat subscription")
+
+    def test_direct_selection_requires_experimental_opt_in_even_for_rostered_model(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(allow_experimental=False)
+        self.assertEqual(caught.exception.kind, "stability")
+        self.assertEqual(caught.exception.payload()["stability"], "experimental")
+
+    def test_direct_selection_accepts_tuple_with_operator_witness(self):
+        route = self.direct_selection(
+            profile_id="plan",
+            backend="codex",
+            model="gpt-6-astra",
+            effort="low",
+            provider="openai-codex",
+        )
+        self.assertEqual(route["selection_kind"], "operator-directed")
+        self.assertEqual(route["base_profile"], "plan")
+        self.assertEqual(route["canonical_model"], "gpt-6-astra")
+        self.assertEqual(route["backend_model"], "gpt-6-astra")
+        self.assertEqual(route["stability"], "experimental")
+        self.assertFalse(route["rostered"])
+        self.assertTrue(route["route_version"])
+
+    def test_direct_selection_accepts_model_without_a_profile_variant(self):
+        route = self.direct_selection(
+            profile_id="implement",
+            backend="claude",
+            model="fable-5.1",
+            effort="high",
+            provider="anthropic",
+        )
+        self.assertEqual(route["selection_kind"], "operator-directed")
+        self.assertEqual(route["model"], "fable-5.1")
+        self.assertEqual(route["backend_model"], "claude-fable-5-1")
+        self.assertEqual(route["stability"], "experimental")
+
+    def test_cross_pool_opt_in_cannot_waive_unknown_backend_model_support(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(
+                profile_id="implement",
+                backend="claude",
+                model="gpt-6-astra",
+                effort="medium",
+                provider="anthropic",
+                allow_cross_pool=True,
+            )
+        refusal = caught.exception
+        self.assertEqual(refusal.kind, "unsupported-model")
+        self.assertIn("backend model support", refusal.payload()["missing_fact"])
+
+    def test_direct_selection_applies_generator_role_restriction(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(
+                profile_id="implement",
+                backend="pi",
+                model="deepseek-flash",
+                effort="max",
+                provider="deepseek",
+            )
+        self.assertEqual(caught.exception.kind, "model-role")
+
+    def test_direct_selection_applies_lead_role_restriction(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(
+                profile_id="plan",
+                backend="codex",
+                model="gpt-5.6-luna",
+                effort="max",
+                provider="openai-codex",
+            )
+        self.assertEqual(caught.exception.kind, "model-role")
+
+    def test_validate_cli_emits_operator_directed_json(self):
+        command = ROOT / "bin" / "agent-routing"
+        completed = subprocess.run(
+            [
+                command,
+                "validate",
+                "--profile",
+                "plan",
+                "--backend",
+                "codex",
+                "--model",
+                "gpt-6-astra",
+                "--effort",
+                "low",
+                "--provider",
+                "openai-codex",
+                "--reason",
+                "operator directed",
+                "--allow-experimental",
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stderr, "")
+        selection = json.loads(completed.stdout)
+        self.assertEqual(selection["selection_kind"], "operator-directed")
+        self.assertEqual(selection["base_profile"], "plan")
+
+    def test_validate_cli_keeps_refusal_payload_on_stderr(self):
+        command = ROOT / "bin" / "agent-routing"
+        completed = subprocess.run(
+            [
+                command,
+                "validate",
+                "--profile",
+                "implement",
+                "--backend",
+                "claude",
+                "--model",
+                "opus-5",
+                "--effort",
+                "max",
+                "--provider",
+                "anthropic",
+                "--reason",
+                "operator directed",
+                "--allow-experimental",
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(completed.stdout, "")
+        payload = json.loads(completed.stderr.splitlines()[-1])
+        self.assertEqual(payload["schema"], "agent-routing-refusal/1")
+        self.assertEqual(payload["kind"], "prohibited")
 
     def test_experimental_variant_fails_closed(self):
         """A variant carries its own stability, independent of its profile's.

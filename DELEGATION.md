@@ -12,8 +12,9 @@ model/effort ladder; this document owns how the selected executor is invoked
 and what context it receives.
 
 Machine-readable form: `agent-routing delegation`; the model/effort ladder is
-`agent-routing models`, and caller-selected task profiles resolve through
-`agent-routing resolve <profile> --backend <backend> --json`.
+`agent-routing models`, caller-selected task profiles resolve through
+`agent-routing resolve <profile> --backend <backend> --json`, and one-off
+explicit tuples validate through the `agent-routing validate` command.
 `agent-routing lint` compares the pass@1 and cost
 cells the doctrine table restates against the manifest, checks model coverage,
 and validates route structure, so numeric drift is detected rather than

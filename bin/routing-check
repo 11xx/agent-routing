@@ -11,6 +11,9 @@ import sys
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from routing_profiles import prohibited_efforts  # noqa: E402
 
 
 def main(argv):
@@ -46,12 +49,7 @@ def main(argv):
             print("known efforts: " + " ".join(sorted(known_efforts)), file=sys.stderr)
             return 2
 
-    banned = [
-        e["effort"]
-        for e in match.get("effort", [])
-        if str(e.get("use", "")).startswith("prohibited")
-        and (effort is None or e["effort"] == effort)
-    ]
+    banned = prohibited_efforts(match, effort)
     if banned:
         print(f"prohibited: {model_id} at {' '.join(banned)}", file=sys.stderr)
         print("never select these, including on explicit request", file=sys.stderr)
