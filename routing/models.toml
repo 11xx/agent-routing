@@ -428,6 +428,68 @@ notes = "Priced 2026-09-20 from the vendor model page: $10 input, $1 cached inpu
   use = "experimental direct selection only; uncalibrated"
 
 [[model]]
+id = "gpt-6-luna"
+family = "openai"
+status = "experimental"
+role = "candidate successor to gpt-5.6-luna in the implementation-workhorse seat, unmeasured here. Reachable through the Codex CLI and selected only through the experimental implement:luna6 variant or direct selection; its first field arc is real implementation work, not a benchmark"
+character = "OpenAI's GPT-6 Luna, released 2026-09-22 at 0.10 input and 0.50 output per million, half 5.6 Luna's input and 42% of its output price. On the vendor's DeepSWE 1.1 harness it scores 66.6% with the effort unstated, within noise of 5.6 Luna max's 67% board row, and the vendor puts its task cost 93% below Opus 5. The vendor reports its failure-to-disclose rate falling from 78.3% to 30.2% and coding deception from 9.5% to 2.8%. All of that is vendor-scale evidence, and none of it is measured here"
+weaknesses = ["no Datacurve row and no field arc, so no effort tier is calibrated. 5.6 Luna collapsed at low effort (2% against 67% at max), and whether 6 Luna shares that curve is the first thing a real session should show", "Codex credit rates are unpublished; the 5.6 rule, credits at 25x API dollars, is a working assumption until real sessions show otherwise", "not in pi's bundled catalog as of 2026-09-22, so it is reachable through codex only"]
+api_price_per_million = { input = 0.10, output = 0.50 }
+notes = "Released 2026-09-22 as `gpt-6-luna`; the Codex CLI model cache lists efforts low through max (default medium) and a 272k context. Answered through `codex exec` at low and at high effort on 2026-09-22. The cached-input price is unpublished, so it is omitted rather than assumed. Discussion: journal 20260922T185057Z-gpt-6-sol-and-luna-discussion.md"
+  [[model.effort]]
+  effort = "low"
+  status = "experimental"
+  use = "experimental; uncalibrated, and the first real implementation session decides where the seat sits"
+  [[model.effort]]
+  effort = "medium"
+  status = "experimental"
+  use = "experimental; uncalibrated, and the first real implementation session decides where the seat sits"
+  [[model.effort]]
+  effort = "high"
+  status = "experimental"
+  use = "experimental; uncalibrated, and the first real implementation session decides where the seat sits"
+  [[model.effort]]
+  effort = "xhigh"
+  status = "experimental"
+  use = "experimental; uncalibrated, and the first real implementation session decides where the seat sits"
+  [[model.effort]]
+  effort = "max"
+  status = "experimental"
+  use = "experimental; uncalibrated, and the first real implementation session decides where the seat sits"
+
+
+[[model]]
+id = "gpt-6-sol"
+family = "openai"
+status = "experimental"
+role = "candidate successor to gpt-5.6-sol in the Codex-side technical-peer seat (correctness, feasibility, failure modes, long execution arcs), unmeasured here. It draws the Codex window, not the Claude one, so its bar is 5.6 Sol's judgment at lower cost, not the head model. Direct selection only"
+character = "OpenAI's GPT-6 Sol, released 2026-09-22 at 2 input and 10 output per million, against 5.6 Sol's 5 / 30 and Opus 5.5's 4 / 20. Vendor figures: 68.8% on its DeepSWE 1.1 harness at max, against Fable 5 xhigh's 69.9% at about 80% less cost; ahead of Opus 5 max on AutomationBench at 9% of its cost; near Opus 5 medium on OSWorld 2.0 at about 80% less; half its predecessor's factuality mistakes. The operator's read is a weaker coder than Opus 5.5, plausible for intermediate implementation, computer use, or a budget alternative to Astra"
+weaknesses = ["no Datacurve row and no field arc; every figure above is vendor-scale", "Codex credit rates are unpublished; the 25x API-dollar rule is a working assumption", "not in pi's bundled catalog as of 2026-09-22"]
+api_price_per_million = { input = 2.0, output = 10.0 }
+notes = "Released 2026-09-22 as `gpt-6-sol`; the Codex CLI model cache lists efforts low through max plus ultra (default medium) and a 272k context. Answered through `codex exec` at low and at high effort on 2026-09-22. Ultra is not carried as a tier. The cached-input price is unpublished and omitted. Discussion: journal 20260922T185057Z-gpt-6-sol-and-luna-discussion.md"
+  [[model.effort]]
+  effort = "low"
+  status = "experimental"
+  use = "experimental direct selection only; uncalibrated"
+  [[model.effort]]
+  effort = "medium"
+  status = "experimental"
+  use = "experimental direct selection only; uncalibrated"
+  [[model.effort]]
+  effort = "high"
+  status = "experimental"
+  use = "experimental direct selection only; uncalibrated"
+  [[model.effort]]
+  effort = "xhigh"
+  status = "experimental"
+  use = "experimental direct selection only; uncalibrated"
+  [[model.effort]]
+  effort = "max"
+  status = "experimental"
+  use = "experimental direct selection only; uncalibrated"
+
+
+[[model]]
 id = "mimo-v2.6-flash"
 family = "xiaomi"
 aliases = ["mimo-2.6-flash"]
