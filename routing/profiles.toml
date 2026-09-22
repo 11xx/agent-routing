@@ -127,6 +127,21 @@ backends = ["codex", "pi"]
   stability = "stable"
   backends = ["pi"]
 
+  # DeepSeek V4.1 Flash off the OpenCode Go pool, by operator direction only.
+  # The row's footing still binds: whatever it writes is raw material until a
+  # lead or reviewer-tier model has checked it against source, so a run here
+  # always ends in a review, never in an unread integration. The Go catalog
+  # names the build `deepseek-v4.1-flash`, which is not the id the direct
+  # DeepSeek provider uses, hence the explicit backend model.
+  [[profile.variant]]
+  id = "deepseek-go"
+  provider = "opencode-go"
+  model = "deepseek-flash"
+  backend_model = "deepseek-v4.1-flash"
+  effort = "max"
+  stability = "experimental"
+  backends = ["pi"]
+
   # Luna max off the GOAT subscription, for a slice whose brief is tight
   # enough that literal instruction-following is the deciding trait.
   [[profile.variant]]

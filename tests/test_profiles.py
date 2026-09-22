@@ -601,6 +601,17 @@ backends = ["claude"]
             resolve(ROOT, "design", "codex")
         self.assertEqual(caught.exception.kind, "unsupported-backend")
 
+    def test_deepseek_reaches_the_go_pool_only_by_opt_in(self):
+        route = resolve(ROOT, "implement", "pi", variant_id="deepseek-go", allow_experimental=True)
+        self.assertEqual(route["profile"], "implement:deepseek-go")
+        self.assertEqual(route["provider"], "opencode-go")
+        self.assertEqual(route["model"], "deepseek-v4.1-flash")
+        self.assertEqual(route["effort"], "max")
+        self.assertEqual(route["stability"], "experimental")
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "implement", "pi", variant_id="deepseek-go")
+        self.assertEqual(caught.exception.kind, "stability")
+
     def test_claude_backend_coverage_is_stated(self):
         route = resolve(ROOT, "explore", "claude")
         self.assertEqual(route["profile"], "explore:opus")
