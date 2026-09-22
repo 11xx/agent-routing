@@ -293,14 +293,14 @@ Adapter contract (probe checklist for onboarding any new harness):
 | Contract | codex CLI (`codex exec`) | pi (`pi -p`), v0.83.0 | Claude CLI (`claude -p`) | opencode (`opencode run`), v1.18.10 |
 | --- | --- | --- | --- | --- |
 | Entrypoint | `codex exec "<prompt>"` | `pi -p "<prompt>"`; `@file` args inline files (specs) | `claude -p "<prompt>"` | `opencode run "<prompt>"` |
-| Model | `-m gpt-5.6-{sol,terra,luna}` | GPT: `--provider openai-codex --model gpt-5.6-{sol,terra,luna}`; DeepSeek: `--provider deepseek --model deepseek-flash` (V4.1) and `--model deepseek-v4-pro` | `--model claude-opus-5` | `-m opencode-go/<model>` |
+| Model | `-m gpt-5.6-{sol,terra,luna}` | GPT: `--provider openai-codex --model gpt-5.6-{sol,terra,luna}`; DeepSeek: `--provider deepseek --model deepseek-flash` (V4.1) and `--model deepseek-v4-pro`; MiMo trial: `--provider opencode-go --model mimo-v2.6-flash` / `mimo-v2.6-pro` | `--model claude-opus-5` | `-m opencode-go/<model>` |
 | Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high` | `--variant high\|max` |
 | Working dir | `-C <dir>` | none — `cd` first | none — `cd` first; `--add-dir=<path>` adds explicit read roots | `--dir <dir>` |
 | Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message | stdout for one-shot calls; `--output-format stream-json` for supervised runs | stdout is the final message under a `> build · <model>` header; `--format json` gives a JSONL event stream with per-step token counts |
 | Isolation | OS sandbox: `-s read-only` / `-s workspace-write` (+ `writable_roots`) | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access | permission mode plus tool allowlist; `plan` is the read-only consultation mode | **none**; permission config, and `--auto` approves everything not explicitly denied |
 | Clean-room | curated prompt; reads repo AGENTS.md | `--no-session --no-extensions --no-skills --no-context-files` | `--safe-mode --disable-slash-commands --no-session-persistence` with a curated stdin prompt | `--pure` drops external plugins only; AGENTS.md and `~/.config/opencode/skills` still load |
 | Resume | `codex exec resume --last` | `--session <id>` / `-c` / `--fork` | `--resume <session-id>` | `-c` / `-s <id>` / `--fork` |
-| Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota | Claude subscription through the first-party client | Conditional OpenCode Go subscription — a third pool metered in usage dollars ($12/5h, $30/week, $60/month), locally readable via `opencode stats`. Limit signature unprobed |
+| Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota; `opencode-go` draws the Go subscription, metered in usage dollars | Claude subscription through the first-party client | Conditional OpenCode Go subscription — a third pool metered in usage dollars ($12/5h, $30/week, $60/month), locally readable via `opencode stats`. Limit signature unprobed |
 
 Backend selection between the two GPT routes:
 
@@ -312,8 +312,10 @@ Backend selection between the two GPT routes:
   scope fencing in the prompt.
 - **pi's niche is provider plurality and lead portability**: one adapter
   reaches every provider the user has logged in. Today `openai-codex` reaches
-  GPT-5.6 on the shared Codex subscription, while `deepseek` reaches V4.1 Flash
-  and V4 Pro on independent API billing. Any harness that can run a shell can
+  GPT-5.6 on the shared Codex subscription, `deepseek` reaches V4.1 Flash
+  and V4 Pro on independent API billing, and `opencode-go` reaches the
+  probationary MiMo rows on the Go subscription through an operator-directed
+  selection. Any harness that can run a shell can
   drive it. A non-Claude, non-Codex lead delegating to GPT goes through Pi.
 - **DeepSeek Flash is routed as a generator, and its seat is probation.** The
   live build is V4.1 Flash, reached as `--provider deepseek --model
@@ -326,6 +328,20 @@ Backend selection between the two GPT routes:
   V4.1 says otherwise. V4 Pro 0813 is generally available
   and measures 63% on the Datacurve board; it keeps the briefed
   defect-generation niche until a field arc.
+- **MiMo V2.6 Flash and Pro are probation, and Flash is the row benchmarked
+  going forward.** Both rows are unmeasured — no score, no field arc, no
+  approval anyone has confirmed — and no profile resolves to either. Reach
+  them as `--provider opencode-go --model mimo-v2.6-flash` (or
+  `mimo-v2.6-pro`) through a validated operator-directed selection:
+  `agent-routing validate --profile <shape> --backend pi --model
+  mimo-v2.6-flash --effort high --provider opencode-go --reason <text>
+  --allow-experimental`, which records the execution shape, pool, and reason
+  against the route version. Pro is read as a little stronger at about three
+  times Flash's input; that read is an estimate, so Flash stays the benchmark
+  subject and a trial's result — not the price and not the read — is what
+  would move either row. Both take a fully specified brief with exact targets,
+  a scope ceiling, named acceptance probes, and lead review, and neither is
+  the last model to touch shipped work.
 - pi "read-only" (`--tools read,grep,find,ls`) is tool-level, not
   OS-level, and excludes bash entirely: file reading and search work,
   `git log`/build commands do not. Investigations needing shell stay on

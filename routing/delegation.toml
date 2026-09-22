@@ -5,7 +5,7 @@
 # `harness` field marks harness-specific rows; omit = shared policy.
 
 [meta]
-updated = "2026-09-18"
+updated = "2026-09-22"
 golden_rule = "never tell an executor to delegate to itself"
 
 [[route]]
@@ -92,6 +92,12 @@ harness = "pi"
 policy = "invoke the generally available V4.1 Flash through the provider's unversioned id with `--provider deepseek --model deepseek-flash`, and resolve it through the `generate` profile only. It is a steered generator on an independent pool: never the implementer of record, never a reviewer, never a planner, never a default route, and never the last model to touch shipped work. Its output is unverified raw material — treat every claim and identifier as a candidate until checked against source, because it fabricates confidently rather than visibly. V4 Pro 0813 is generally available and measures 63% on the Datacurve board; it keeps the briefed defect-generation niche and no other role until a field arc on the GA build"
 
 [[rule]]
+id = "mimo-probation-invocation"
+harness = "pi"
+policy = "select the MiMo rows by operator direction only — `agent-routing validate --profile <shape> --backend pi --model mimo-v2.6-flash --effort high --provider opencode-go --reason <text> --allow-experimental` — and run them through pi as `--provider opencode-go --model mimo-v2.6-flash` or `--model mimo-v2.6-pro`. No profile resolves to either row and nothing degrades to them. Flash is the row benchmarked going forward; Pro is its sibling, read as a little stronger at about three times the input, and carried for the trial that wants it. Both are unmeasured: a fully specified brief with exact targets, a scope ceiling, acceptance probes, and lead review; every claim and identifier a candidate until checked against source; never the last model to touch shipped work. A trial's result is what moves a row, and the result is recorded against the selection that produced it"
+why = "the rows hold deepseek-flash's probation footing with none of its evidence, so the selection path has to carry the record: validate names the profile shape, model, effort, pool, and reason against the route version, which is what a later trial is read against"
+
+[[rule]]
 id = "sandboxed-executors"
 harness = "codex"
 policy = "sandboxed executors that commit and snapshot need the main repo .git in writable_roots (worktree git-dirs and the default arc store live there); ARC_DATA_ROOT moves the store out"
@@ -131,18 +137,18 @@ default_for = "all GPT delegation; mandatory default for write mode (real sandbo
 [[backend]]
 id = "pi"
 status = "verified"
-providers = ["openai-codex", "deepseek", "commandcode"]
+providers = ["openai-codex", "deepseek", "commandcode", "opencode-go"]
 version_probed = "0.84.3 (2026-08-29)"
 entrypoint = "pi -p \"<prompt>\" (also @file args to inline specs)"
-model_flag = "GPT: --provider openai-codex --model gpt-5.6-{sol,terra,luna}; DeepSeek: --provider deepseek --model deepseek-flash for the Flash build, --model deepseek-v4-pro for the Pro build; GOAT: --provider commandcode --model gpt-5.6-{sol,terra,luna} or z-ai/glm-5.3-flash. --provider is never optional: a model name authenticated on two providers aborts the run"
+model_flag = "GPT: --provider openai-codex --model gpt-5.6-{sol,terra,luna}; DeepSeek: --provider deepseek --model deepseek-flash for the Flash build, --model deepseek-v4-pro for the Pro build; GOAT: --provider commandcode --model gpt-5.6-{sol,terra,luna} or z-ai/glm-5.3-flash; MiMo trial: --provider opencode-go --model mimo-v2.6-flash or mimo-v2.6-pro. --provider is never optional: a model name authenticated on two providers aborts the run"
 effort_flag = "--thinking off|minimal|low|medium|high|xhigh|max (or :level model suffix). xhigh and max reach the provider only when the model definition maps them; an unmapped model drops both from its supported set and clamps a requested max to high without reporting it"
 workdir_flag = "none; cd first"
 capture = "stdout is exactly the final message"
 isolation = "NONE; read-only ~= --tools read,grep,find,ls (excludes bash: no git/shell); write mode unsandboxed"
 clean_room = "--no-session --no-extensions --no-skills --no-context-files"
 resume = "--session <id> | -c | --fork"
-quota_pool = "provider-dependent, and the pairing of model to pool is policy rather than preference. openai-codex shares the codex CLI's ChatGPT subscription and is not a quota fallback; deepseek uses separate API billing. commandcode is the GOAT subscription: a small flat plan whose allowance is generous for the small-model tiers it exists to serve — Luna and GLM 5.3 Flash — and which a frontier tier drains in a handful of calls. Route Sol, Terra, and any Claude model through the subscription that already pays for them, which pi and opencode reach with the same OpenAI or Anthropic login; spending GOAT allowance on a model another subscription covers wastes the pool without buying capacity"
-default_for = "provider-plural clean-room delegation, leads without codex access, and experimental DeepSeek work; GPT write mode only when codex CLI itself is the blocker, and only in a dedicated worktree"
+quota_pool = "provider-dependent, and the pairing of model to pool is policy rather than preference. openai-codex shares the codex CLI's ChatGPT subscription and is not a quota fallback; deepseek uses separate API billing; opencode-go draws the Go subscription, metered in usage dollars, and it is where the MiMo rows are selected. commandcode is the GOAT subscription: a small flat plan whose allowance is generous for the small-model tiers it exists to serve — Luna and GLM 5.3 Flash — and which a frontier tier drains in a handful of calls. Route Sol, Terra, and any Claude model through the subscription that already pays for them, which pi and opencode reach with the same OpenAI or Anthropic login; spending GOAT allowance on a model another subscription covers wastes the pool without buying capacity"
+default_for = "provider-plural clean-room delegation, leads without codex access, experimental DeepSeek work, and the MiMo probation trials; GPT write mode only when codex CLI itself is the blocker, and only in a dedicated worktree"
 
 [[backend]]
 id = "claude"
@@ -210,7 +216,7 @@ why = "the allowance is generous for the tiers it is priced for and a frontier t
 [[pool]]
 provider = "opencode-go"
 plan = "OpenCode Go, an optional flat subscription"
-serves = ["gpt-5.6-luna", "glm-5.3-flash"]
+serves = ["gpt-5.6-luna", "glm-5.3-flash", "mimo-v2.6-flash", "mimo-v2.6-pro"]
 pays_for = "openai-codex for the GPT frontier tiers, anthropic for the Claude models"
 why = "the same shape as GOAT — a dollar-metered small plan whose value is cheap-tier capacity off both standing windows, not a cheaper way to buy a frontier tier"
 
