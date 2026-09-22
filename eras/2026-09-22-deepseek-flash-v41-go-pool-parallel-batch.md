@@ -77,8 +77,7 @@ the whole batch, including the sequential eighth, took 36.
   generator footing relaxed by operator direction for this batch. It is evidence
   about what the relaxation cost here, which was one semantic defect caught in
   review; it is not a standing change to the seat.
-- **The hosting posture.** The Go pool refused this model's predecessor on
-  2026-08-01 pending a China-hosting data-residency opt-in, and served V4.1 on
-  2026-09-22 without refusing. So the opt-in is in effect for this workspace,
-  and the operator directed six repositories' context there. That is the
-  operator's decision, recorded as a fact; nothing on this row takes it for them.
+- **The hosting posture.** The Go pool hosts this model in China, and it runs
+  only while the workspace's data-residency opt-in is on. It was on for this
+  batch, so six repositories' context went there on the operator's direction.
+  The predecessor was refused on 2026-08-01 with the setting off.
