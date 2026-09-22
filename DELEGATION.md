@@ -361,11 +361,12 @@ Backend selection between the two GPT routes:
   catalog carries 16 of the 17 Go models and omits exactly `gpt-5.6-luna`,
   with no refresh path — `pi update models` fails outright. For the other 16
   either backend works.
-- **Some Go models refuse to run pending a data-residency opt-in.** Go's
-  `deepseek-v4-flash` returns "only available hosted in China and requires
-  explicit opt in" with a workspace URL. That consent governs where delegated
-  code and repo context are sent, so it is the user's call and is never taken
-  on their behalf; route around the model until they decide.
+- **Some Go models are hosted in China** and run only while the workspace's
+  data-residency opt-in is on. With it on, as it was on 2026-09-22, they route
+  normally; switched off, they refuse with "only available hosted in China and
+  requires explicit opt in", as `deepseek-v4-flash` did on 2026-08-01. The
+  setting is the operator's, and delegating to one sends repository context
+  there; the roster records it and does not gate on it.
 - opencode has no OS sandbox and `--auto` approves everything not explicitly
   denied, so write mode carries pi's exposure without pi's tool allowlist.
   Its dollar-denominated window also makes context discipline a cost
