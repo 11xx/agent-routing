@@ -91,47 +91,74 @@ roster can rank them only by price.
 
 The operator's read on Flash was blunt — it is slow, and slow is what counts
 when several harnesses queue on one slot — so it was measured rather than
-agreed with. Identical prompts, one machine, three pools:
+agreed with, then re-measured when a preference question turned on it.
+Identical prompts, one machine, `--thinking high` on both MiMo rows,
+`max` on deepseek-flash.
 
-| Prompt | mimo-v2.6-flash | mimo-v2.6-pro | deepseek-flash |
-| :--- | :--- | :--- | :--- |
-| "Reply with exactly: ok" | 1.83s, 2.05s (n=2) | 10.15s | 1.14s |
-| 20-item HTTP status list | 4.4s / 292 tokens | — | 3.0s / 639 tokens |
-| 60-item flag list | **763.6s** / 41,003 tokens, of which 40,310 reasoning | 33.5s / 1,659 tokens | 33.6s / 8,872 tokens, of which 7,960 reasoning |
-| small file-write task, doctests run | 25.9s / 176 tokens | — | — |
-| decode rate observed | ~50–66 tok/s | ~49.6 tok/s | ~213–264 tok/s |
+One 60-item formatting prompt, run three times per row:
 
-Two facts fall out of that table, and they route differently.
+| run | mimo-v2.6-flash | mimo-v2.6-pro | deepseek-flash | gpt-5.6-luna low | gpt-5.6-luna max |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | 763.6s · 40,310 reasoning tokens | 33.5s · 1,007 | 33.6s · 7,960 | 17.9s · 67 | capped 240s, unfinished |
+| 2 | 153.4s · 7,269 (†) | killed at the 20-min cap mid-reasoning, ~29k thinking tokens streamed (†) | 57.3s · 922 | — | capped 300s, unfinished |
+| 3 | 17.5s · 67 | 131.6s · 5,029 | — | — | — |
 
-**The blowup is a reasoning loop, not provider queueing.** The token rate
-held near 54 tok/s for the whole twelve-minute run; the row simply emitted
-40,310 reasoning tokens to format a list. That is why the tail is the cost:
-the same row answered the 20-item list in 4.4s and a small agentic task in
-25.9s, so a queue sized on the median meets the tail instead.
+(†) run 2 of the two MiMo rows ran concurrently; the rest ran sequentially.
 
-**The session that filed these rows is the field half of the same
-observation.** Created 13:33:54Z, first roster commit 14:03:21Z — 29.4
+Smaller cells, one to two runs each: trivial "reply ok" — flash 1.83s and
+2.05s, pro 10.15s, deepseek 1.14s. 20-item HTTP list — flash 4.4s / 292
+tokens, deepseek 3.0s / 639. Small file-write task with doctests — flash
+25.9s, pro 31.8s. Observed decode rate: ~50–66 tok/s (flash), ~49.6 (pro),
+~213–264 (deepseek).
+
+Three facts fall out, and they route differently.
+
+**The blowup is reasoning volume at slow decode, not provider queueing.**
+The token rate held near 54 tok/s through the 763.6s run while the row
+emitted 40,310 reasoning tokens to format a list. The same prompt shape
+answered in 17.5s on another run, so a queue sized on the median meets the
+tail instead.
+
+**The tail is the pair's, not Flash's.** Two of three runs blew up on each
+MiMo row, and Pro's worst — still streaming at the twenty-minute cap —
+outlasted Flash's worst. Paying Pro's ~3x price buys no measured speed;
+between the two rows the tie-breaker is capability, which is unmeasured on
+both. The operator's preference is therefore open rather than settled: Flash
+was the designated benchmark subject at entry, and the operator expects to
+try Pro more after the latency question — for capability reasons, since the
+latency premise the preference rested on is not supported.
+
+**The tail follows the effort lever as much as the model.** Luna low finished
+the prompt in 17.9s where luna max did not finish within five minutes on two
+capped runs — the same asymmetry the roster already records as Luna's effort
+cliff, arriving here as wall-clock rather than pass@1.
+
+The session that filed these rows is the field half of the same
+observation: created 13:33:54Z, first roster commit 14:03:21Z — 29.4
 minutes for one bounded two-row entry, of which at least 25.3 minutes was
-this row generating across 50 assistant turns; tool execution across the
-whole span was well under a minute. Across all 71 assistant turns of the
-session: median 19.8s, mean 29.3s, ninetieth percentile 61.2s, worst 147.9s —
+Flash generating across 50 assistant turns, with tool execution across the
+whole span well under a minute. Across all 71 assistant turns of the
+session: median 19.8s, mean 29.3s, ninetieth percentile 61.2s, worst 147.9s,
 and 75% of the session's output tokens were reasoning (75,944 of 101,804).
-The slowest turns are the reasoning-heavy ones, which is the loop above at
-turn scale.
+Cash was never the axis: the whole session billed $0.2402 on Flash, and the
+same token mix at Pro's list prices computes to $0.3862 — fifteen cents
+against a wall-clock spread of twenty minutes.
 
-Consequences recorded with the rows: latency joins price in `[policy]`,
-Flash's tier `use` says to run it where the queue behind the slot is empty,
-and Pro carries its own two cells rather than inheriting Flash's — where
-Flash ran 763.6s, Pro ran 33.5s on the identical prompt.
+Consequences recorded with the rows: latency joins price in `[policy]`, each
+MiMo tier `use` says to run it where the queue behind the slot is empty, and
+both rows carry their own measured latency cells.
 
 Limitations, so the numbers are read at their weight:
 
-- One machine, one day, one or two runs per cell. Queue position and cache
-  state at each call were not controlled.
-- No Codex-side comparator: `gpt-5.6-luna` could not be measured at all,
-  because the Codex OAuth token was invalidated at measurement time
-  (`refresh_token_invalidated` — that login needs re-authenticating). The
-  comparison is therefore the two Go-pool rows against `deepseek-flash` on
-  its own pool, which is the comparison the operator drew anyway.
+- One machine, one day, three runs per MiMo cell and one or two per other.
+  Queue position and cache state at each call were not controlled, and one
+  run pair (†) was concurrent.
+- Luna max did not complete the prompt inside 240s and 300s caps, with zero
+  observable output — pi buffers to completion — so that cell records a
+  non-completion, not a mechanism. Whether it was reasoning volume or a
+  transport stall is unmeasured; luna low on the same prompt took 17.9s.
+- The Codex-side comparator arrived late: the Codex OAuth token had been
+  invalidated earlier in the day (`refresh_token_invalidated`) and was
+  re-authenticated by the operator before the Luna cells could run.
 - The interactive figures come from the session's own message timestamps;
   the probe figures are separate single calls outside it.
