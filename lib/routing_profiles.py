@@ -99,7 +99,8 @@ def backends(root: pathlib.Path) -> dict[str, dict]:
 def model_effort_facts(root: pathlib.Path, requested_model: str, effort: str | None = None) -> dict:
     """Return the roster facts used by both ``check`` and selection validation.
 
-    Backend-facing aliases map to canonical IDs before prohibition evaluation.
+    Backend-facing aliases and the roster's own ``aliases`` map to canonical
+    IDs before prohibition evaluation.
     Keeping the lookup and the prohibition predicate here gives direct
     validation the same fence without making it a subprocess copy of
     ``bin/routing-check``.
@@ -113,7 +114,11 @@ def model_effort_facts(root: pathlib.Path, requested_model: str, effort: str | N
         if route.get("backend_model") and route.get("model")
     }
     model_id = aliases.get(requested_model, requested_model)
-    model = next((entry for entry in models if entry["id"] == model_id), None)
+    model = next(
+        (entry for entry in models if model_id in (entry["id"], *entry.get("aliases", []))),
+        None,
+    )
+    model_id = model["id"] if model else model_id
     known_efforts = [entry["effort"] for entry in model.get("effort", [])] if model else []
     tier = next((entry for entry in model.get("effort", []) if entry.get("effort") == effort), None) if model else None
     return {
@@ -341,7 +346,9 @@ def _flag_model_candidates(flag: str) -> list[str]:
         prefix, choices, suffix = re.fullmatch(r"(.*)\{([^{}]+)\}(.*)", token).groups()
         candidates.extend(prefix + choice + suffix for choice in choices.split(","))
     candidates.extend(re.findall(r"[A-Za-z0-9][A-Za-z0-9_./:-]+", flag))
-    return candidates
+    # A flag string is prose as well as syntax: an id that closes a sentence
+    # carries the stop with it, and it is the id a caller must be handed.
+    return [candidate.rstrip(".:") for candidate in candidates]
 
 
 def _backend_model_identity(

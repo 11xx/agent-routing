@@ -338,6 +338,56 @@ class RoutingProfilesTest(unittest.TestCase):
         self.assertEqual(payload["schema"], "agent-routing-refusal/1")
         self.assertEqual(payload["kind"], "prohibited")
 
+    def test_mimo_rows_are_operator_directed_trials(self):
+        """Neither MiMo row carries a profile, so the path that has to work is
+        a validated operator-directed selection on the Go pool — under the
+        vendor id and under the operator's shorthand alike."""
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(
+                profile_id="implement",
+                backend="pi",
+                model="mimo-v2.6-flash",
+                effort="high",
+                provider="opencode-go",
+                allow_experimental=False,
+            )
+        self.assertEqual(caught.exception.kind, "stability")
+
+        for model, canonical in (
+            ("mimo-v2.6-flash", "mimo-v2.6-flash"),
+            ("mimo-2.6-flash", "mimo-v2.6-flash"),
+            ("mimo-v2.6-pro", "mimo-v2.6-pro"),
+            ("mimo-2.6-pro", "mimo-v2.6-pro"),
+        ):
+            with self.subTest(model=model):
+                selection = self.direct_selection(
+                    profile_id="implement",
+                    backend="pi",
+                    model=model,
+                    effort="high",
+                    provider="opencode-go",
+                )
+                self.assertEqual(selection["canonical_model"], canonical)
+                # The backend identity is what a caller hands pi, so prose
+                # punctuation around it in the flag string must not travel.
+                self.assertEqual(selection["backend_model"], canonical)
+                self.assertEqual(selection["stability"], "experimental")
+                self.assertEqual(selection["selection_kind"], "operator-directed")
+
+    def test_check_resolves_a_roster_alias_to_its_canonical_id(self):
+        for argument, expected in (
+            ("mimo-2.6-flash", "mimo-v2.6-flash"),
+            ("mimo-v2.6-pro", "mimo-v2.6-pro"),
+        ):
+            with self.subTest(argument=argument):
+                completed = subprocess.run(
+                    [ROOT / "bin" / "routing-check", argument, "high"],
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertIn(f"not prohibited: {expected}", completed.stdout)
+
     def test_experimental_variant_fails_closed(self):
         """A variant carries its own stability, independent of its profile's.
 
