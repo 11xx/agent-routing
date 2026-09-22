@@ -86,3 +86,52 @@ roster can rank them only by price.
   and its result belongs on the row.
 - GOAT and `openrouter` unrouted, and the ultraspeed and free variants
   uncatalogued as capacities. Each is a pool or price decision of its own.
+
+## Field observation: wall-clock latency (2026-09-22, the same day)
+
+The operator's read on Flash was blunt — it is slow, and slow is what counts
+when several harnesses queue on one slot — so it was measured rather than
+agreed with. Identical prompts, one machine, three pools:
+
+| Prompt | mimo-v2.6-flash | mimo-v2.6-pro | deepseek-flash |
+| :--- | :--- | :--- | :--- |
+| "Reply with exactly: ok" | 1.83s, 2.05s (n=2) | 10.15s | 1.14s |
+| 20-item HTTP status list | 4.4s / 292 tokens | — | 3.0s / 639 tokens |
+| 60-item flag list | **763.6s** / 41,003 tokens, of which 40,310 reasoning | 33.5s / 1,659 tokens | 33.6s / 8,872 tokens, of which 7,960 reasoning |
+| small file-write task, doctests run | 25.9s / 176 tokens | — | — |
+| decode rate observed | ~50–66 tok/s | ~49.6 tok/s | ~213–264 tok/s |
+
+Two facts fall out of that table, and they route differently.
+
+**The blowup is a reasoning loop, not provider queueing.** The token rate
+held near 54 tok/s for the whole twelve-minute run; the row simply emitted
+40,310 reasoning tokens to format a list. That is why the tail is the cost:
+the same row answered the 20-item list in 4.4s and a small agentic task in
+25.9s, so a queue sized on the median meets the tail instead.
+
+**The session that filed these rows is the field half of the same
+observation.** Created 13:33:54Z, first roster commit 14:03:21Z — 29.4
+minutes for one bounded two-row entry, of which at least 25.3 minutes was
+this row generating across 50 assistant turns; tool execution across the
+whole span was well under a minute. Across all 71 assistant turns of the
+session: median 19.8s, mean 29.3s, ninetieth percentile 61.2s, worst 147.9s —
+and 75% of the session's output tokens were reasoning (75,944 of 101,804).
+The slowest turns are the reasoning-heavy ones, which is the loop above at
+turn scale.
+
+Consequences recorded with the rows: latency joins price in `[policy]`,
+Flash's tier `use` says to run it where the queue behind the slot is empty,
+and Pro carries its own two cells rather than inheriting Flash's — where
+Flash ran 763.6s, Pro ran 33.5s on the identical prompt.
+
+Limitations, so the numbers are read at their weight:
+
+- One machine, one day, one or two runs per cell. Queue position and cache
+  state at each call were not controlled.
+- No Codex-side comparator: `gpt-5.6-luna` could not be measured at all,
+  because the Codex OAuth token was invalidated at measurement time
+  (`refresh_token_invalidated` — that login needs re-authenticating). The
+  comparison is therefore the two Go-pool rows against `deepseek-flash` on
+  its own pool, which is the comparison the operator drew anyway.
+- The interactive figures come from the session's own message timestamps;
+  the probe figures are separate single calls outside it.
