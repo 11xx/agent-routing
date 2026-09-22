@@ -58,8 +58,7 @@ day of release.
 - **No field calibration.** Opus 5's recorded weakness is confident action on
   unverified substrate, including overriding an explicit instruction over an
   assumed environment limit. That record belongs to the Opus 5 row. It is
-  neither inherited by Opus 5.5 nor refuted, so the shared
-  verify-before-depending triggers apply as written. The Opus 5 generational
+  neither inherited by Opus 5.5 nor refuted. The Opus 5 generational
   calibration block is removed from the doctrine, as that block required when
   the seat changed.
 - **No quota ratio.** Opus 5's ~15% of a window per ~500k uncached tokens is
