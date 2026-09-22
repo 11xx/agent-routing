@@ -36,11 +36,15 @@ def main(argv):
                 aliases[route["backend_model"]] = route["model"]
     model_id = aliases.get(model_id, model_id)
 
-    match = next((m for m in models if m["id"] == model_id), None)
+    match = next(
+        (m for m in models if model_id in (m["id"], *m.get("aliases", []))),
+        None,
+    )
     if match is None:
         print(f"unknown model: {model_id}", file=sys.stderr)
         print("known ids: " + " ".join(m["id"] for m in models), file=sys.stderr)
         return 2
+    model_id = match["id"]
 
     if effort is not None:
         known_efforts = {entry["effort"] for entry in match.get("effort", [])}
