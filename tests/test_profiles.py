@@ -42,6 +42,53 @@ class RoutingProfilesTest(unittest.TestCase):
     def test_manifest_is_valid(self):
         self.assertEqual(validation_problems(ROOT), [])
 
+    def test_generator_only_variant_requires_role_exception(self):
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        anchor = '  # DeepSeek V4.1 Flash off the OpenCode Go pool, by operator direction only.'
+        variant = '''  [[profile.variant]]
+  id = "generator-without-exception"
+  provider = "opencode-go"
+  model = "deepseek-flash"
+  effort = "max"
+  stability = "experimental"
+  backends = ["pi"]
+
+'''
+        self.assertIn(anchor, text)
+        profiles.write_text(text.replace(anchor, variant + anchor, 1))
+
+        problems = validation_problems(root)
+        self.assertTrue(
+            any("generator-only" in problem and "generator-without-exception" in problem for problem in problems),
+            problems,
+        )
+
+    def test_role_exception_reason_must_not_be_blank(self):
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        anchor = '  # DeepSeek V4.1 Flash off the OpenCode Go pool, by operator direction only.'
+        variant = '''  [[profile.variant]]
+  id = "generator-with-blank-exception"
+  provider = "opencode-go"
+  model = "deepseek-flash"
+  effort = "max"
+  stability = "experimental"
+  backends = ["pi"]
+  role_exception = "  "
+
+'''
+        self.assertIn(anchor, text)
+        profiles.write_text(text.replace(anchor, variant + anchor, 1))
+
+        problems = validation_problems(root)
+        self.assertTrue(
+            any("generator-with-blank-exception: role_exception must be a nonblank reason" in problem for problem in problems),
+            problems,
+        )
+
     def test_computer_use_is_explicit_and_has_comparison_tiers(self):
         for variant, effort in ((None, "low"), ("medium", "medium"), ("high", "high")):
             with self.assertRaises(RouteRefusal):
@@ -263,7 +310,7 @@ class RoutingProfilesTest(unittest.TestCase):
                 backend="pi",
                 model="deepseek-flash",
                 effort="max",
-                provider="deepseek",
+                provider="opencode-go",
             )
         self.assertEqual(caught.exception.kind, "model-role")
 
@@ -608,9 +655,37 @@ backends = ["claude"]
         self.assertEqual(route["model"], "deepseek-v4.1-flash")
         self.assertEqual(route["effort"], "max")
         self.assertEqual(route["stability"], "experimental")
+        self.assertEqual(
+            route["role_exception"],
+            "operator-directed implementation on the Go pool; output is reviewed by a lead before it integrates",
+        )
         with self.assertRaises(RouteRefusal) as caught:
             resolve(ROOT, "implement", "pi", variant_id="deepseek-go")
         self.assertEqual(caught.exception.kind, "stability")
+
+    def test_resolve_json_reports_declared_role_exception(self):
+        command = ROOT / "bin" / "agent-routing"
+        completed = subprocess.run(
+            [
+                command,
+                "resolve",
+                "implement",
+                "--backend",
+                "pi",
+                "--variant",
+                "deepseek-go",
+                "--allow-experimental",
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        route = json.loads(completed.stdout)
+        self.assertEqual(
+            route["role_exception"],
+            "operator-directed implementation on the Go pool; output is reviewed by a lead before it integrates",
+        )
 
     def test_claude_backend_coverage_is_stated(self):
         route = resolve(ROOT, "explore", "claude")

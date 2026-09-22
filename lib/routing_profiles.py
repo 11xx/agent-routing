@@ -18,7 +18,17 @@ PROFILE_KEYS = frozenset(
     {"id", "purpose", "provider", "model", "backend_model", "effort", "stability", "backends", "variant"}
 )
 VARIANT_KEYS = frozenset(
-    {"id", "provider", "model", "backend_model", "effort", "stability", "backends", "default_for_backend"}
+    {
+        "id",
+        "provider",
+        "model",
+        "backend_model",
+        "effort",
+        "stability",
+        "backends",
+        "default_for_backend",
+        "role_exception",
+    }
 )
 UNROUTABLE_MODEL_STATUSES = {"deprecated", "inactive", "restricted", "retired", "superseded"}
 MODEL_STATUSES = UNROUTABLE_MODEL_STATUSES | {"experimental"}
@@ -225,6 +235,18 @@ def structural_problems(root: pathlib.Path) -> list[str]:
             if stability not in STABILITIES:
                 problems.append(f"{label}: unknown stability {stability!r}")
             model_id = route.get("model")
+            has_role_exception = "role_exception" in route
+            role_exception = route.get("role_exception")
+            valid_role_exception = (
+                has_role_exception
+                and route is not profile
+                and isinstance(role_exception, str)
+                and bool(role_exception.strip())
+            )
+            if has_role_exception and (
+                not isinstance(role_exception, str) or not role_exception.strip()
+            ):
+                problems.append(f"{label}: role_exception must be a nonblank reason")
             model = by_model.get(model_id)
             if not model:
                 problems.append(f"{label}: unknown model {model_id!r}")
@@ -248,6 +270,10 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                     problems.append(f"{label}: probationary tier {model_id} {effort} cannot be marked {stability}")
                 if tier_status == "experimental" and stability != "experimental":
                     problems.append(f"{label}: experimental tier {model_id} {effort} cannot be marked {stability}")
+                if not valid_role_exception:
+                    role_refusal = _model_role_refusal(profile_id, model_id, model)
+                    if role_refusal:
+                        problems.append(f"{label}: {role_refusal.message}")
             provider = route.get("provider")
             backends = route.get("backends", [])
             if not backends:
@@ -751,6 +777,8 @@ def resolve(
         # A deliberate crossing is recorded, not merely permitted: whoever
         # reads a spent allowance later is looking for exactly this.
         route["cross_pool"] = refusal.fields["plan"]
+    if "role_exception" in selected:
+        route["role_exception"] = selected["role_exception"]
     return route
 
 

@@ -145,6 +145,8 @@ backends = ["codex", "pi"]
   # always ends in a review, never in an unread integration. The Go catalog
   # names the build `deepseek-v4.1-flash`, which is not the id the direct
   # DeepSeek provider uses, hence the explicit backend model.
+  # A nonblank `role_exception` lets validation accept a role-restricted
+  # variant and makes the reason part of every resolved route.
   [[profile.variant]]
   id = "deepseek-go"
   provider = "opencode-go"
@@ -153,6 +155,7 @@ backends = ["codex", "pi"]
   effort = "max"
   stability = "experimental"
   backends = ["pi"]
+  role_exception = "operator-directed implementation on the Go pool; output is reviewed by a lead before it integrates"
 
   # Luna max off the GOAT subscription, for a slice whose brief is tight
   # enough that literal instruction-following is the deciding trait.
