@@ -216,7 +216,7 @@ why = "the allowance is generous for the tiers it is priced for and a frontier t
 [[pool]]
 provider = "opencode-go"
 plan = "OpenCode Go, an optional flat subscription"
-serves = ["gpt-5.6-luna", "glm-5.3-flash", "mimo-v2.6-flash", "mimo-v2.6-pro"]
+serves = ["gpt-5.6-luna", "glm-5.3-flash", "mimo-v2.6-flash", "mimo-v2.6-pro", "deepseek-flash"]
 pays_for = "openai-codex for the GPT frontier tiers, anthropic for the Claude models"
 why = "the same shape as GOAT — a dollar-metered small plan whose value is cheap-tier capacity off both standing windows, not a cheaper way to buy a frontier tier"
 
