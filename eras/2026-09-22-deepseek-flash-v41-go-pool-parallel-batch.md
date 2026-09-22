@@ -28,7 +28,7 @@ reviewed.
 | tapes | tapes | three features, 19 files, +857/−104 (Rust) | 25.1 + 5.6 min | $0.303 | changes requested once |
 | directed | ai-agent-delegate | CLI mode + validation + env scrub, 12 files, +1,525/−56 (Rust) | 19.2 min | $0.187 | approved |
 
-Total **$0.88** for eight changes and one repair round, about 102M tokens, nearly
+Total **$0.88** for eight changes and one repair round, plus $0.023 for the post-integration fix below, about 102M tokens, nearly
 all cache reads. The seven parallel runs finished within 25 minutes of dispatch;
 the whole batch, including the sequential eighth, took 36.
 
@@ -57,6 +57,13 @@ the whole batch, including the sequential eighth, took 36.
   incomplete group before launch. A live directed run recorded the full selection
   provenance, and the omitted continuation paths were reported rather than
   papered over.
+- **One defect surfaced after integration, and it was the lead's.** The
+  directed-selection change added 15 concrete model ids to delegate's unit
+  tests, which breaks delegate's contract that its sources name profiles and
+  never models. Routing's consumer lint catches it, but the brief never named
+  that lint as a gate and the lead's review ran only delegate's own gates, so it
+  merged red. A fresh run replaced them with neutral fixtures for $0.023. Brief- and
+  review-caused, not executor-caused.
 - **No fabricated identifier, API, flag, or test result** appeared in anything the
   lead probed, across four languages.
 
