@@ -64,7 +64,7 @@ class RoutingProfilesTest(unittest.TestCase):
         self.assertEqual(route["profile"], "review:opus")
         self.assertEqual(route["backend"], "claude")
         self.assertEqual(route["provider"], "anthropic")
-        self.assertEqual(route["model"], "claude-opus-5")
+        self.assertEqual(route["model"], "claude-opus-5-5")
         self.assertEqual(route["effort"], "medium")
         self.assertEqual(route["stability"], "stable")
 
@@ -74,7 +74,7 @@ class RoutingProfilesTest(unittest.TestCase):
             self.assertEqual(route["profile"], f"{profile}:opus")
             self.assertEqual(route["backend"], "claude")
             self.assertEqual(route["provider"], "anthropic")
-            self.assertEqual(route["model"], "claude-opus-5")
+            self.assertEqual(route["model"], "claude-opus-5-5")
             self.assertEqual(route["effort"], "medium")
             self.assertEqual(route["stability"], "stable")
 
@@ -88,8 +88,8 @@ class RoutingProfilesTest(unittest.TestCase):
   [[profile.variant]]
   id = "second-claude-default"
   provider = "anthropic"
-  model = "opus-5"
-  backend_model = "claude-opus-5"
+  model = "opus-5.5"
+  backend_model = "claude-opus-5-5"
   effort = "medium"
   stability = "stable"
   backends = ["claude"]
@@ -162,7 +162,7 @@ class RoutingProfilesTest(unittest.TestCase):
         route = json.loads(completed.stdout)
         self.assertEqual(route["profile"], "review:opus")
         self.assertEqual(route["backend"], "claude")
-        self.assertEqual(route["model"], "claude-opus-5")
+        self.assertEqual(route["model"], "claude-opus-5-5")
         self.assertEqual(route["effort"], "medium")
         self.assertEqual(route["stability"], "stable")
 
@@ -477,7 +477,7 @@ class RoutingProfilesTest(unittest.TestCase):
 id = "bad-explicit"
 purpose = "fixture"
 provider = "anthropic"
-model = "opus-5"
+model = "opus-5.5"
 effort = "high"
 stability = "stable"
 backends = ["claude"]
@@ -521,7 +521,7 @@ backends = ["claude"]
 
     def test_check_distinguishes_explicit_tiers_and_status_only_models(self):
         command = ROOT / "bin" / "routing-check"
-        explicit = subprocess.run([command, "opus-5", "high"], capture_output=True, text=True)
+        explicit = subprocess.run([command, "opus-5.5", "high"], capture_output=True, text=True)
         self.assertEqual(explicit.returncode, 0)
         self.assertIn("explicit-only", explicit.stdout)
         restricted = subprocess.run([command, "sonnet-5", "low"], capture_output=True, text=True)
@@ -600,7 +600,7 @@ backends = ["claude"]
         route = resolve(ROOT, "explore", "claude")
         self.assertEqual(route["profile"], "explore:opus")
         self.assertEqual(route["provider"], "anthropic")
-        self.assertEqual(route["model"], "claude-opus-5")
+        self.assertEqual(route["model"], "claude-opus-5-5")
         self.assertEqual(route["effort"], "medium")
         self.assertEqual(route["stability"], "stable")
 
