@@ -1,6 +1,6 @@
 ## Model Routing & Delegation
 
-Standing defaults for complementary Claude and Codex orchestration. **Opus 5
+Standing defaults for complementary Claude and Codex orchestration. **Opus 5.5
 is the head model** — it plans, orchestrates, delegates, and owns the final
 answer — and Sol is the technical peer and execution axis beneath it.
 Delegation uses the other subscription where its model or quota is a better
@@ -17,10 +17,10 @@ in `agent-routing eras`.
 
 | Model · effort | pass@1 | $ | out | Role |
 | :--- | :--- | :--- | :--- | :--- |
-| opus-5 · high | 73% | 6.08 | 64k | **Available but not recommended.** Use only when the user explicitly requests high; never auto-route or escalate to it. Four points over medium costs +85% cash and does not fix the model's verification weakness. Medium remains the routing ceiling even for novel UX, copy, API shape, and taste. |
-| opus-5 · medium | 69% | 3.29 | 37k | **The default lead tier and routing ceiling.** Matches Sol high's 69% at 37k output tokens against Opus 5 high's 64k — the same class of work for roughly half the window on a cost-shaped meter. Planning, orchestration, delegation, ceremony, review, cleanup, taste, novel UX/copy, and API shape stay here unless the user explicitly asks for high. |
-| opus-5 · low | 58% | 1.66 | 20k | **Available but not routed.** It is a legitimate Claude-pool workhorse, but rarely saves enough of the scarce Claude window to beat sending bounded labor to much cheaper Luna max. Claude implementation defaults to medium; use low only through an explicit future route justified by a measured capacity need. |
-| opus-5 · xhigh / max | 73–74% | 9.07–11.84 | 92–118k | **Prohibited.** Never select either, including on explicit request: xhigh buys 0 points for +49% cost, max buys 1 point for +95%. |
+| opus-5.5 · medium | — | 4 / 20 per M list | — | **The default lead tier and routing ceiling, by operator direction; unmeasured here.** Released 2026-09-22 as `claude-opus-5-5` and verified the same day through `claude -p --model claude-opus-5-5 --effort medium`. No Datacurve row exists, so no effort tier is calibrated: medium holds the seat because the operator chose it and because it is the vendor's own default, not because a row showed where this family stops paying. The vendor's launch table puts it ahead of Opus 5 on every benchmark it published — Terminal-Bench 4.0 66.4% against 52.3%, FrontierCode v1.1 54.4% against 48.0%, CursorBench 4.0 57.8% against 46.6% — at about 40% less on typical workloads; those are the vendor's scales and names no effort per cell. Planning, orchestration, delegation, ceremony, review, cleanup, taste, novel UX/copy, and API shape stay here. |
+| opus-5.5 · low / high / xhigh / max | — | — | — | **Low available but not routed; high, xhigh, and max explicit-only.** All four are unmeasured. None is an escalation tier: a slice medium cannot land gets decomposed, better context, or a sideways second opinion. Whether a tier above medium buys anything on this model is the first thing a benchmark row should settle. |
+| opus-5 · high | 73% | 6.08 | 64k | **Superseded by Opus 5.5 on 2026-09-22**; never select. Its measured rows (max 74%, xhigh 73%, high 73%, medium 69%, low 58%) stay in the roster as the predecessor calibration Opus 5.5 is compared against. |
+| opus-5 · xhigh / max | 73–74% | 9.07–11.84 | 92–118k | **Prohibited.** Never select either, including on explicit request: xhigh bought 0 points for +49% cost, max 1 point for +95%. |
 | fable-5.1 · high | — | — | — | **Head-model candidate, unmeasured; explicit selection only.** On the subscription since 2026-09-01 (Pro and Max, Claude Code and the first-party backend), which is the fact the Fable 5 retirement turned on. No Datacurve row, no quota ratio on this plan, no generational calibration; no profile names it. Two facts stand against reseating on launch evidence even once it measures: it is metered like Fable 5, which drew roughly twice the window Opus 5 draws for the same tokens, and it is capped at half of a Max plan's weekly allowance, so it cannot be the only head model whatever it scores. A person selecting it interactively is a choice the harness records and the roster does not make. |
 | gpt-5.6-sol · xhigh | 71% | 4.70 | 41k | **Explicit request only.** 2 points over high for +35% cash and +46% tokens — the same non-scaling shape that prohibits the tiers above it. High is the working ceiling; reach past it for a genuinely hard unplanned task or a rerun after high missed. |
 | gpt-5.6-sol · high | 69% | 3.47 | 28k | **Technical lead tier, and the best pass@1-per-token row on the board.** Correctness, feasibility, failure modes, deep dives, judgment-involving implementation, adversarial review; carries whole arcs delegated wholesale. |
@@ -51,19 +51,23 @@ in `agent-routing eras`.
 | mimo-v2.6-pro · high | — | 0.435 / 0.87 per M list | — | **Probationary trial route, unmeasured; the stronger sibling on the operator's read.** Xiaomi MiMo V2.6 Pro at three times Flash's input and twice its output for a capability difference nothing here measures — a read, not a row — so Flash stays the row benchmarked going forward and Pro is carried for the trial that wants the sibling. Reached and probed beside Flash on 2026-09-22 as `--provider opencode-go --model mimo-v2.6-pro`, answered and billed at list: same selection path, same ceiling, same absence of evidence, and the same catalog that maps no effort levels. A `mimo-v2.6-pro-ultraspeed` variant lists at ten times the price and is not carried. Field-measured on latency, 2026-09-22: three runs of the 60-item list returned 33.5s, 131.6s, and a twenty-minute kill mid-reasoning — the day's worst MiMo wall-clock — a trivial call took 10.15s against Flash's 1.8-2.1s, and decode runs at the same ~49.6 tok/s as Flash. So the blowup tail is the pair's rather than Flash's, this row's 3x price buys no measured speed, and the tie-breaker between the two is capability, unmeasured on both. |
 
 **Every family stops paying before its top tier**, so "tops the bench" is never
-a reason to select one. Opus 5 above high buys 0 points at xhigh for +49% and
-1 point at max for +95%; Sol above xhigh buys 2 points for +78%; Fable above
-high bought ≤1 point for 1.5–2.4×. The routing ceilings are **Opus 5
-medium and Sol xhigh**. Opus 5 high remains available only by explicit user
-request; Opus 5 xhigh/max and Sol ultra/max are prohibited.
+a reason to select one. Opus 5 above high bought 0 points at xhigh for +49%
+and 1 point at max for +95%; Sol above xhigh buys 2 points for +78%; Fable
+above high bought ≤1 point for 1.5–2.4×. The routing ceilings are **Opus 5.5
+medium and Sol xhigh**. Opus 5.5's higher efforts remain available only by
+explicit user request and are uncalibrated; Opus 5 xhigh/max and Sol ultra/max
+are prohibited.
 
-Opus 5 high tops the roster on score, but medium is the routing ceiling. High
-is not an escalation tier: it remains available only when the user explicitly
-requests that effort. A slice medium cannot land gets decomposed, given better
+Medium is the routing ceiling for the head seat. A higher effort is not an
+escalation tier: it remains available only when the user explicitly requests
+it. A slice medium cannot land gets decomposed, given better
 context, or a sideways second opinion from Sol high instead of an automatic
 effort increase.
 
-**What the benchmark does not measure, and the field does.** Opus 5 is strong
+**What the benchmark does not measure, and the field does.** The field record
+below is Opus 5's, kept because Opus 5.5 has none yet: whether the successor
+shares the pattern is unmeasured, so its consequences stand until a field arc on
+Opus 5.5 says otherwise. Opus 5 was strong
 at following a specified order and weak at checking the substrate it acts on.
 Measured over one long session (2026-07-27/28): it assumed `org-babel` expands
 `#+INCLUDE` and that cross-file noweb references resolve — neither is true, and
@@ -82,30 +86,7 @@ verified**, and treat a plan or brief it produces as needing its premises
 checked against source before delegation, which is cheap and catches most of
 this class.
 
-<!-- GENERATIONAL: Opus 5 era, opened 2026-07-25. Delete this block whole when
-     the head-model seat changes. It calibrates one model generation's quirks,
-     not standing policy — every frontier release needs its own, and carrying a
-     previous model's calibration forward is worse than carrying none. The
-     standing rule this specialises lives in the shared instructions as
-     "Before you depend on it, run it". -->
-
-**Opus 5 calibration (2026-07).** It acts with high confidence on unverified
-substrate, and the confidence is indistinguishable from the well-founded kind
-from the inside — so any instruction keyed on *feeling* unsure is inert against
-it. Three consequences while this model holds the seat:
-
-- The shared verify-before-depending triggers are not optional for it.
-- Treat a plan or brief it authors as needing every premise checked against
-  source before delegation. Cheap, and it catches most of the class: in one
-  measured session three delegated runs each stopped on a lead-authored brief
-  defect before writing any code.
-- Do not run it unattended on work whose substrate it has not verified. Keep
-  executor stop conditions aggressive; they, not its judgement, are what
-  actually caught every instance.
-
-<!-- END GENERATIONAL -->
-
-Orchestration mechanics are a separate weak axis. A proxy subagent it spawned
+Orchestration mechanics are a separate weak axis. A proxy subagent an Opus 5 lead spawned
 improvised a poll loop on a status file the harness never writes, and hung —
 fatal in an unattended run. Drive long delegations with a directly backgrounded
 call, never through a proxy agent free to invent its own wait.
@@ -124,8 +105,9 @@ the same quantity the delegation ladder prices as residual risk after the gate.
 Naming the axis keeps the reason legible at the moment a cheap tier looks
 tempting for a long run.
 
-**Two co-equal leads, not one default.** Opus 5 medium and Sol high both score
-69% at roughly the same cash, on *different quota pools* — Claude and Codex.
+**Two co-equal leads, not one default.** Opus 5.5 medium and Sol high lead on
+*different quota pools* — Claude and Codex. Opus 5 medium and Sol high both
+scored 69% at roughly the same cash; Opus 5.5 medium has no row yet.
 They are not alternatives to choose between; they are independent capacity, and
 defaulting to one wastes the other. Route by which window has headroom, and by
 the axis in question: Sol for correctness, feasibility, and failure modes, Opus
@@ -151,8 +133,10 @@ Anthropic exposes no consumption meter, so observed ratios remain the Claude
 budgeting instrument. The ratios were observed on the **Pro $20** plan's 5h
 rolling window and transfer to Max as ratios, not as window sizes:
 **~500k uncached tokens ≈ 15% of one window** — roughly **3.3M uncached tokens
-per window**. Fable 5 measured ~30% for the same 500k, so Opus 5 does the same
-work for about half the quota; Fable 5.1 is metered like Fable 5 and capped at
+per window**, measured on Opus 5. Fable 5 measured ~30% for the same 500k, so
+Opus 5 did the same work for about half the quota. Opus 5.5's ratio is
+unmeasured: the vendor reports raised five-hour limits and a lower per-token
+price, so the Opus 5 figure is the working upper bound; Fable 5.1 is metered like Fable 5 and capped at
 half of a Max plan's weekly allowance, and its own ratio is unmeasured. These are *uncached* figures: a cache-warm
 session stretches the window substantially, which is why one long single-context
 arc beats repeated cold re-derivation.
@@ -190,9 +174,9 @@ reasoning efforts, and 5.6 bills cache writes, so cache churn is not free.
 - **Quota-window strategy:** the Claude window remains the scarcer pool. Keep Opus on judgment and push specified labor to Codex. OpenAI's published schedule prices every model at 25 credits per API dollar, so benchmark cash ratios transfer directly to task-level credits; official Plus estimates are Sol 10–100, Terra 25–200, and Luna 250–2,000 local messages per five hours. Start bounded implementation on Luna max, and spend Sol where technical judgment or token-efficient persistence earns its rate. Codex fast mode consumes 2.5× credits; Claude fast mode burns its window substantially faster. Both stay deliberate, never ambient. A third pool exists when the OpenCode Go subscription is active: it is metered in usage dollars rather than credits or observed share, which makes the benchmark cash column convert directly into per-window capacity and makes consumption locally measurable — the only pool of the three where that is true. Pi is how a profile reaches it; nothing falls back to it, and no route resolves there by default.
 - **Slice according to effort:** Sol high reliably executes an entire multi-slice arc as a single `/goal` run. Luna max gets bounded slices with observable stop conditions and named acceptance probes. Prefer one high-effort goal run or a few coarse Arc slices over a long hand-authored series unless review gates genuinely matter; do not hand a broad ambiguous arc to a cheaper executor merely because its credit rate is low.
 - **Workflow calls:** low/medium efforts that the current roster marks fixed-shape remain extraction, classification, aggregation, and bounded summaries; experimental efforts require explicit opt-in. The stable `implement` and `review` profiles provide the current workhorse and first review gate, while backend-specific defaults come from `profiles.toml`. Reviewing may cost more than implementation when a read-only pass buys thoroughness against a diff nobody waits on; that is a reason to resolve the current route deliberately, not to freeze a model name here.
-- **User-facing surfaces** need taste: Opus 5 writes or reviews them. Sol may implement against an already-settled design system, but novel design and final polish stay on the Claude taste axis.
+- **User-facing surfaces** need taste: Opus 5.5 writes or reviews them. Sol may implement against an already-settled design system, but novel design and final polish stay on the Claude taste axis.
 - **Reviewer line:** the verdict never claims independence from the model that authored the diff, and review effort is priced by stakes. A lead reviewing delegated work it did not author is valid review coverage; independent review is an escalation for repository policy, explicit user requirements, or a high-consequence approval. When no escalation is required, record deferred coverage as Arc debt. Concrete reviewer routes come from the current roster and resolver; this doctrine does not freeze a tier list. Debt never overrides an actual `changes-requested` verdict. **the resolver's current stable review route is the first review gate for behavior-affecting work; its verdict discharges review on its own** — the current route's field evidence includes ten changes integrated in one session under adversarial briefs: 31 recorded verdicts split 15 approved to 14 changes-requested, 73 recorded findings, and a class of defect no gate catches (a stale observation inherited across a relink, a gate declaration notarized for a command nothing ran, an asserted integration accepting any commit). The false-approval mode was probed deliberately — a silent one-character regression in a file the commit message did not mention, green suite, a test that appeared to cover the affected flag — and it named the plant against the repository's own documentation plus three unplanted defects. It also terminates: asked to approve unless it could name a concrete failing input, it approved. Escalation is by the current named review variant when the verdict is on the critical path or a wrong approval is expensive — irreversible migrations, security boundaries, outside blast radius. Four operating rules travel with the seat, because its faults are repeatable and cheap: **re-run a finding's failing input before recording it** (the mechanism claim is usually right, the consequence sometimes overstated); resolve a self-contradiction across rounds on the merits rather than by round order; read a strictness finding as a claim about where the guard belongs, not an instruction; and scope the brief to `<target>..HEAD` after a rebase, since it reviews exactly the range it is handed. Two dispatch facts: parse for the verdict shape you asked for and treat a missing verdict as an incomplete run rather than a verdict, because exit status does not distinguish them; and a delegated reviewer under `codex exec -s workspace-write` cannot write a ledger inside the Git common dir, so arm it beforehand or plan to record its verdict verbatim as the lead. For lead-authored work, routine/docs-only changes need no external review; behavior-affecting work uses the current resolved review route when an independent pass is required. A lead reviews delegated work it did not author. High-stakes work adds the current high-stakes reviewer route, and if no independent route is available it waits or records debt according to policy rather than inventing independence. **Review is where the money goes, so buy passes deliberately.** Measured over one nine-run session: implementation on Luna max was 43% more tokens and 8% of the cost, while review on Sol high was 92% of it — one Sol high pass costs about nine Luna max implementation slices. Counting runs or tokens hides this entirely; spend is rate times volume. Two consequences. First, **routing Luna to implement routes review off the cheap tier by construction**, because the reviewer is never the author — the Luna-authored exception fires most often precisely because Luna is also the workhorse, and it is worth 12-15x, where tuning effort inside Sol is worth about 1.9x. Second, **batch review by default**: one pass over N related changes, not N passes. Batching is also the more precise shape for defects that span changes, which a per-change reviewer has no reason to look for; per-change review is an opt-in that buys depth on one intricate change, or a verdict before a dependent change is written, and its price is named where it is chosen. Resolve the `review` profile for the backend in use; any variant selection is current routing data rather than a reviewer-tier rule in this doctrine. A lead cannot review its own authored diff as independent, but it can review delegated work it did not author. A killed reviewer loses everything, since it writes no report and leaves no partial work. The arcs behind this seat are in `eras/2026-08-18-luna-reviewer-off-probation.md`; the cost shape is in `eras/2026-08-26-luna-implements-sol-reviews-cost-share.md`.
-- **Prohibited modes:** never select Opus 5 `xhigh`, Opus 5 `max`, Sol `ultra`, or Sol `max`, including when explicitly requested. Treat all four as banned routing targets, not escalation tiers. The routing ceilings are **Opus 5 medium** and **Sol xhigh**; Opus 5 high is available but not recommended and requires an explicit user request.
+- **Prohibited modes:** never select Opus 5 `xhigh`, Opus 5 `max`, Sol `ultra`, or Sol `max`, including when explicitly requested. Treat all four as banned routing targets, not escalation tiers. The routing ceilings are **Opus 5.5 medium** and **Sol xhigh**; Opus 5.5 high, xhigh, and max are uncalibrated and require an explicit user request.
 - **Quota is bidirectional:** codex hitting "You've hit your usage limit" is routine — report it and fall back (do the work Claude-side or wait for the stated reset); never retry-loop against it. The reverse holds too: when Claude quota dies mid-arc, hand the worktree to codex sol via the handoff skills and review its work on return.
-- These are **defaults, not limits**, except where a model or effort is explicitly prohibited. Judge output rather than rank alone; spend Luna max on bounded implementation and review, Sol on technical judgment and persistence, and Opus 5 on planning, orchestration, taste, and synthesis.
+- These are **defaults, not limits**, except where a model or effort is explicitly prohibited. Judge output rather than rank alone; spend Luna max on bounded implementation and review, Sol on technical judgment and persistence, and Opus 5.5 on planning, orchestration, taste, and synthesis.
 - Machine-readable form: `agent-routing models` for the roster, `agent-routing profiles` and `agent-routing resolve <profile> --backend <backend> --json` for caller-selected routes, and `agent-routing delegation` for mechanism rules (no path needed). Mechanism-routing prose canon: `agent-routing mechanism`. Never route work through harness-native subagent defaults (e.g. Codex 5.6 subagents inherit full conversation + parent model/effort); invoke executors through a resolved profile with a curated brief.
