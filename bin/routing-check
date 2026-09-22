@@ -13,7 +13,7 @@ import tomllib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 
-from routing_profiles import prohibited_efforts  # noqa: E402
+from routing_profiles import UNROUTABLE_MODEL_STATUSES, prohibited_efforts  # noqa: E402
 
 
 def main(argv):
@@ -65,7 +65,7 @@ def main(argv):
             print(f"explicit-only: {model_id} at {effort} — requires a direct user request")
             return 0
 
-    if match.get("status") in {"restricted", "inactive"}:
+    if match.get("status") in UNROUTABLE_MODEL_STATUSES:
         print(f"{match['status']}: {model_id} — {match.get('role', '')}")
         return 0
     print(f"not prohibited: {model_id}" + (f" at {effort}" if effort else ""))

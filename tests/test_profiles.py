@@ -527,6 +527,11 @@ backends = ["claude"]
         restricted = subprocess.run([command, "sonnet-5", "low"], capture_output=True, text=True)
         self.assertEqual(restricted.returncode, 0)
         self.assertIn("restricted", restricted.stdout)
+        for model in ("opus-5", "opus-4.8"):
+            with self.subTest(model=model):
+                superseded = subprocess.run([command, model, "medium"], capture_output=True, text=True)
+                self.assertEqual(superseded.returncode, 0)
+                self.assertTrue(superseded.stdout.startswith("superseded: "), superseded.stdout)
 
     def test_route_version_covers_every_routing_manifest(self):
         root = self.fixture_root()
