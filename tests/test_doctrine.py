@@ -1,8 +1,9 @@
-"""The doctrine/manifest agreement gate, exercised on a disposable copy.
+"""The doctrine documents: the manifest agreement gate and the guide fences.
 
 `bin/lint-routing` locates both documents from its own path, so a fixture is a
 copy of the tree it reads: perturb the copy, run the script there, and the
-failure is the real one a drifting edit would produce.
+failure is the real one a drifting edit would produce. The guide tests read the
+authored document directly, because that is what the bare CLI prints.
 """
 
 import pathlib
@@ -60,3 +61,28 @@ class DoctrineLintTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("predecessor pass@1 53", result.stdout)
         self.assertIn("predecessor $ 0.46", result.stdout)
+
+
+class GuideFenceTest(unittest.TestCase):
+    """The bare `agent-routing` guide carries the review and delegation fences.
+
+    The guide is where the reasoning behind a fence is read, so these tests
+    read the authored document rather than a lint's copy of it.
+    """
+
+    def normalized_guide(self):
+        return " ".join((ROOT / "doctrine" / "guide.md").read_text().split())
+
+    def test_self_review_is_not_independent_review(self):
+        guide = self.normalized_guide()
+        self.assertIn("authored the patchset is not independent", guide)
+        self.assertIn(
+            "a lead that did not write the implementation reviews it", guide
+        )
+
+    def test_debt_never_overrides_a_changes_requested_verdict(self):
+        guide = self.normalized_guide()
+        self.assertIn("Debt is a routine record of deferred coverage", guide)
+        self.assertIn(
+            "never overrides an actual changes-requested verdict", guide
+        )

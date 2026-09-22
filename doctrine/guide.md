@@ -62,9 +62,24 @@ WHAT BINDS BEFORE ANY QUERY
 
     agent-routing check <model> [effort]   exit non-zero if that pair is banned
 
-  The reviewer is never the author. Delegation goes through a resolved route
-  carrying a curated brief, never a harness's native subagent defaults, which
-  inherit the parent's model, effort, and entire conversation.
+  The reviewer is never the author. An approval from the identity that
+  authored the patchset is not independent, and independence is never
+  manufactured by inventing a second actor. That fence governs the claim, not
+  whether a lead may inspect delegated work: a lead that did not write the
+  implementation reviews it and records that verdict, carrying the executor's
+  attribution where the ledger supports it.
+
+  Independent review is an escalation, not a reflex. Repository policy, an
+  explicit user requirement, or a wrong approval costly enough to warrant
+  another judgment earns it; otherwise the lead inspects the delegated result,
+  runs the declared gates, and integrates with an explicit debt record naming
+  the coverage and the deeper pass still owed. Debt is a routine record of
+  deferred coverage, not a reason to stop, and it never overrides an actual
+  changes-requested verdict.
+
+  Delegation goes through a resolved route carrying a curated brief, never a
+  harness's native subagent defaults: those inherit the parent's model,
+  effort, and entire conversation, which is why they are never the route.
 
 READ THE POLICY IN FULL
   agent-routing doctrine     the authored policy, with the evidence and the
