@@ -22,44 +22,57 @@
 
 [meta]
 schema = "routing-profiles/1"
-updated = "2026-09-18"
+updated = "2026-09-23"
+
+# Pi routes to DeepSeek V4.1 Flash on the OpenCode Go pool by operator
+# direction: the GPT profiles name the codex backend alone, and a
+# `deepseek-go` variant is pi's default for each of them. The row carries the
+# evidence and the caveats. The Go catalog names the build
+# `deepseek-v4.1-flash`, hence the explicit backend model, and the Go route
+# runs only while the workspace's data-residency opt-in is on.
 
 [[profile]]
 id = "extract"
 purpose = "one fixed-input, fixed-output classification, extraction, aggregation, or bounded summary"
-provider = "openai-codex"
-model = "gpt-5.6-luna"
-effort = "low"
-stability = "stable"
-# Fixed-shape labor belongs on the much cheaper Luna tiers. Spending the Claude
+# Fixed-shape labor belongs on the cheapest Luna tier. Spending the Claude
 # window on extraction is a caller-named capacity decision, and this profile
 # intentionally offers no route for it.
-backends = ["codex", "pi"]
+provider = "openai-codex"
+model = "gpt-6-luna"
+effort = "low"
+stability = "stable"
+backends = ["codex"]
 
-  # Fixed-shape extraction is high-volume enough to spend a separate pool:
-  # choose this when the Codex window is the constraint, and keep the primary
-  # when that window has capacity. Luna low preserves the bounded-call contract
-  # instead of turning a cheap extraction into an agentic trial.
   [[profile.variant]]
-  id = "goat"
-  provider = "commandcode"
-  model = "gpt-5.6-luna"
-  effort = "low"
+  id = "deepseek-go"
+  provider = "opencode-go"
+  model = "deepseek-flash"
+  backend_model = "deepseek-v4.1-flash"
+  effort = "max"
   stability = "stable"
   backends = ["pi"]
+  default_for_backend = true
 
 [[profile]]
 id = "explore"
 purpose = "read-only codebase reconnaissance and source mapping without a verdict"
 # Reconnaissance is bounded reading rather than judgment, so it takes the same
-# workhorse as implementation. Luna's high tier is still probationary, so the
-# stable seat is max — which costs less here than the Terra tier it replaces
-# and keeps one workhorse across both read and write profiles.
+# workhorse as implementation.
 provider = "openai-codex"
-model = "gpt-5.6-luna"
+model = "gpt-6-luna"
 effort = "max"
 stability = "stable"
-backends = ["codex", "pi"]
+backends = ["codex"]
+
+  [[profile.variant]]
+  id = "deepseek-go"
+  provider = "opencode-go"
+  model = "deepseek-flash"
+  backend_model = "deepseek-v4.1-flash"
+  effort = "max"
+  stability = "stable"
+  backends = ["pi"]
+  default_for_backend = true
 
   # Reconnaissance on the Claude window takes the same Opus medium tier as
   # every other first-party route: medium is the routing ceiling, and low is
@@ -77,15 +90,23 @@ backends = ["codex", "pi"]
 [[profile]]
 id = "implement"
 purpose = "bounded production work whose targets and acceptance probes are already named"
-# Terra held this seat until Luna's price reset. Luna max measures 67% at
-# $0.61 a task where Terra high costs several times that for a comparable
-# tier, and a full day of delegated implementation went to Luna without once
-# reaching for Terra.
+# Luna max is the workhorse seat. GPT-6 Luna holds it at the tier 5.6 Luna
+# earned, because its own effort curve is unmeasured.
 provider = "openai-codex"
-model = "gpt-5.6-luna"
+model = "gpt-6-luna"
 effort = "max"
 stability = "stable"
-backends = ["codex", "pi"]
+backends = ["codex"]
+
+  [[profile.variant]]
+  id = "deepseek-go"
+  provider = "opencode-go"
+  model = "deepseek-flash"
+  backend_model = "deepseek-v4.1-flash"
+  effort = "max"
+  stability = "stable"
+  backends = ["pi"]
+  default_for_backend = true
 
   # The first-party Claude subscription has one production implementation
   # tier in this model era. Opus medium is the backend default; low rarely
@@ -99,73 +120,6 @@ backends = ["codex", "pi"]
   stability = "stable"
   backends = ["claude"]
   default_for_backend = true
-
-  # Sol at low is the most output-token-efficient row on the board, and the
-  # only reason to spend the Codex window on it below Luna max is that
-  # efficiency: a small, fully specified slice whose result a person reads,
-  # where Luna's 73k-token habit is the cost. Never a default — a caller
-  # names it, and the roster row says why that is rarely the right call.
-  [[profile.variant]]
-  id = "sol-low"
-  provider = "openai-codex"
-  model = "gpt-5.6-sol"
-  effort = "low"
-  stability = "stable"
-  backends = ["codex", "pi"]
-
-  # The cheap lane off a third subscription: GLM 5.3 Flash matches Luna in
-  # taste and capability and costs a fraction, and neither draws the Claude
-  # window or the Codex schedule. Pi reaches it; provider stays explicit
-  # because the model name is authenticated on more than one. The roster id
-  # is the vendor-less `glm-5.3-flash`, which pi resolves as a pattern against
-  # its own `z-ai/glm-5.3-flash` — probed, so no id translation is needed.
-  [[profile.variant]]
-  id = "goat-glm"
-  provider = "commandcode"
-  model = "glm-5.3-flash"
-  effort = "high"
-  stability = "stable"
-  backends = ["pi"]
-
-  # GPT-6 Luna, the candidate successor to the Luna max workhorse, on the
-  # Codex pool. Experimental until a real implementation session is reviewed;
-  # max matches the seat 5.6 Luna earned, because the new model's effort curve
-  # is unmeasured.
-  [[profile.variant]]
-  id = "luna6"
-  provider = "openai-codex"
-  model = "gpt-6-luna"
-  effort = "max"
-  stability = "experimental"
-  backends = ["codex"]
-
-  # DeepSeek V4.1 Flash off the OpenCode Go pool, by operator direction only.
-  # The row's footing still binds: whatever it writes is raw material until a
-  # lead or reviewer-tier model has checked it against source, so a run here
-  # always ends in a review, never in an unread integration. The Go catalog
-  # names the build `deepseek-v4.1-flash`, which is not the id the direct
-  # DeepSeek provider uses, hence the explicit backend model.
-  # A nonblank `role_exception` lets validation accept a role-restricted
-  # variant and makes the reason part of every resolved route.
-  [[profile.variant]]
-  id = "deepseek-go"
-  provider = "opencode-go"
-  model = "deepseek-flash"
-  backend_model = "deepseek-v4.1-flash"
-  effort = "max"
-  stability = "experimental"
-  backends = ["pi"]
-  role_exception = "operator-directed implementation on the Go pool; output is reviewed by a lead before it integrates"
-
-  # Luna max off the GOAT subscription, for a slice whose brief is tight
-  # enough that literal instruction-following is the deciding trait.
-  [[profile.variant]]
-  id = "goat"
-  provider = "commandcode"
-  model = "gpt-5.6-luna"
-  effort = "max"
-  stability = "stable"
-  backends = ["pi"]
 
 [[profile]]
 id = "generate"
@@ -182,57 +136,68 @@ backends = ["pi"]
 [[profile]]
 id = "interactive"
 purpose = "default interactive Pi parent session before a task-specific child route is selected"
-provider = "openai-codex"
-model = "gpt-5.6-sol"
-effort = "medium"
-stability = "stable"
 # This is a Pi-only shape: the profile names the one backend whose interactive
-# session contract it was measured against.
+# session contract it serves.
+provider = "opencode-go"
+model = "deepseek-flash"
+backend_model = "deepseek-v4.1-flash"
+effort = "max"
+stability = "stable"
 backends = ["pi"]
 
 [[profile]]
 id = "plan"
 purpose = "read-only technical planning where feasibility, failure modes, and ordered execution are the work"
+# Planning is the head model's own seat; a lead on another harness delegates it
+# to Astra. Astra reads and reasons where it will not write — apply_patch falls
+# from 16.3% of its tool calls at low effort to 0.8% at high — and medium buys
+# what high does for less, so medium is the seat.
 provider = "openai-codex"
-model = "gpt-5.6-sol"
-effort = "high"
+model = "gpt-6-astra"
+effort = "medium"
 stability = "stable"
-# Planning is the head model's own seat. A Claude lead gains only a second
-# context by delegating to the same window; a lead on another harness uses Sol.
-backends = ["codex", "pi"]
+backends = ["codex"]
 
-  # Astra is the operator's measured planner: apply_patch falls from 16.3% of
-  # its tool calls at low effort to 0.8% at high, so it reads and reasons where
-  # it will not write. Experimental and reachable only by explicit request,
-  # because the recorded field arc is a cost arc and settles nothing about
-  # pass@1. Its context-carry weakness is on the roster row, not fixed here.
   [[profile.variant]]
-  id = "astra"
-  provider = "openai-codex"
-  model = "gpt-6-astra"
-  effort = "medium"
-  stability = "experimental"
-  backends = ["codex"]
+  id = "deepseek-go"
+  provider = "opencode-go"
+  model = "deepseek-flash"
+  backend_model = "deepseek-v4.1-flash"
+  effort = "max"
+  stability = "stable"
+  backends = ["pi"]
+  default_for_backend = true
 
-  # The deliberate try-harder tier, for resolving an argued discussion rather
-  # than producing a plan. Higher efforts stay uncalibrated until used, and
-  # this one is now used; it asserts nothing about pass@1.
+  # The deliberate try-harder tier, for high-stakes planning or resolving an
+  # argued discussion rather than producing a plan.
   [[profile.variant]]
   id = "astra-xhigh"
   provider = "openai-codex"
   model = "gpt-6-astra"
   effort = "xhigh"
-  stability = "experimental"
+  stability = "stable"
   backends = ["codex"]
 
 [[profile]]
 id = "execute"
 purpose = "broad or multi-slice implementation where technical judgment and long-horizon persistence remain material"
+# Judgment-bearing arcs take the Codex-side technical peer rather than the
+# bounded-work Luna seat.
 provider = "openai-codex"
-model = "gpt-5.6-sol"
+model = "gpt-6-sol"
 effort = "high"
 stability = "stable"
-backends = ["codex", "pi"]
+backends = ["codex"]
+
+  [[profile.variant]]
+  id = "deepseek-go"
+  provider = "opencode-go"
+  model = "deepseek-flash"
+  backend_model = "deepseek-v4.1-flash"
+  effort = "max"
+  stability = "stable"
+  backends = ["pi"]
+  default_for_backend = true
 
   [[profile.variant]]
   id = "opus"
@@ -247,19 +212,25 @@ backends = ["codex", "pi"]
 [[profile]]
 id = "review"
 purpose = "read-only correctness and regression review of a bounded behavior-affecting change"
+# Astra medium is the first gate and its verdict discharges review. The named
+# variants are exceptions: `fast` when the verdict is on the critical path,
+# `high-stakes` where a wrong approval is expensive, and the Claude variant as
+# the cross-provider path for GPT-authored diffs.
 provider = "openai-codex"
-model = "gpt-5.6-luna"
-effort = "max"
+model = "gpt-6-astra"
+effort = "medium"
 stability = "stable"
-backends = ["codex", "pi"]
+backends = ["codex"]
 
-  # Review is the one profile where Luna max's cost shape is the right trade:
-  # nobody waits on a read-only pass, so 2.8x the steps buy thoroughness, and it
-  # scores 6 points over the Sol medium tier it replaces at a third of the cost.
-  # This is the first gate and its verdict discharges review; the named Sol
-  # variants are exceptions — a waiting verdict, or a second pass where a wrong
-  # approval is expensive. The Claude variant is the cross-provider path for
-  # GPT-authored diffs.
+  [[profile.variant]]
+  id = "deepseek-go"
+  provider = "opencode-go"
+  model = "deepseek-flash"
+  backend_model = "deepseek-v4.1-flash"
+  effort = "max"
+  stability = "stable"
+  backends = ["pi"]
+  default_for_backend = true
 
   # GPT-authored diffs need a reviewer outside the Codex pool. Keep the roster
   # id separate from the first-party Claude client id so the route records both
@@ -274,53 +245,21 @@ backends = ["codex", "pi"]
   backends = ["claude"]
   default_for_backend = true
 
-  # When the verdict is on the critical path. Sol medium answers in a fraction
-  # of Luna max's 20-40 minutes on a large diff.
   [[profile.variant]]
   id = "fast"
   provider = "openai-codex"
-  model = "gpt-5.6-sol"
-  effort = "medium"
+  model = "gpt-6-sol"
+  effort = "high"
   stability = "stable"
-  backends = ["codex", "pi"]
+  backends = ["codex"]
 
   [[profile.variant]]
   id = "high-stakes"
   provider = "openai-codex"
-  model = "gpt-5.6-sol"
-  effort = "high"
+  model = "gpt-6-astra"
+  effort = "xhigh"
   stability = "stable"
-  backends = ["codex", "pi"]
-
-  # Luna max off the GOAT subscription instead of the Codex window, while that
-  # pool is open. Its allowance is smaller than the Codex schedule and carries
-  # a weekly limit as well as a five-hour one, so this is complementary
-  # capacity to take when available rather than a lane to plan a sweep around.
-  # Same model and effort,
-  # a third pool, and pi is the only backend that reaches it. Max effort is
-  # genuinely applied here rather than clamped: the provider catalog maps the
-  # extended levels explicitly, verified by reasoning-token counts moving with
-  # the lever.
-  [[profile.variant]]
-  id = "goat"
-  provider = "commandcode"
-  model = "gpt-5.6-luna"
-  effort = "max"
-  stability = "stable"
-  backends = ["pi"]
-
-  # The cheap lane's other half, as a reviewer. It argues rather than
-  # complying, which is the trait a review wants, and it draws the same third
-  # subscription — so a review and the implementation it judges can run on one
-  # pool without either touching a standing window. Never route it onto work
-  # it authored: the pairing is that each reviews the other.
-  [[profile.variant]]
-  id = "goat-glm"
-  provider = "commandcode"
-  model = "glm-5.3-flash"
-  effort = "high"
-  stability = "stable"
-  backends = ["pi"]
+  backends = ["codex"]
 
 [[profile]]
 id = "design"
@@ -332,12 +271,11 @@ effort = "medium"
 stability = "stable"
 backends = ["claude"]
 
-
 [[profile]]
 id = "computer-use"
 purpose = "explicit visible-desktop tasks with bounded context and retained follow-ups"
 provider = "openai-codex"
-model = "gpt-5.6-luna"
+model = "gpt-6-luna"
 effort = "low"
 stability = "experimental"
 backends = ["codex", "pi"]
@@ -345,7 +283,7 @@ backends = ["codex", "pi"]
   [[profile.variant]]
   id = "medium"
   provider = "openai-codex"
-  model = "gpt-5.6-luna"
+  model = "gpt-6-luna"
   effort = "medium"
   stability = "experimental"
   backends = ["codex", "pi"]
@@ -353,7 +291,7 @@ backends = ["codex", "pi"]
   [[profile.variant]]
   id = "high"
   provider = "openai-codex"
-  model = "gpt-5.6-luna"
+  model = "gpt-6-luna"
   effort = "high"
   stability = "experimental"
   backends = ["codex", "pi"]

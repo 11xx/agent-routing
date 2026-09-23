@@ -26,11 +26,33 @@ class RoutingProfilesTest(unittest.TestCase):
         shutil.copytree(ROOT / "routing", root / "routing")
         return root
 
+    def add_generator_model(self, root):
+        """Add a generator-only roster row; no shipped model holds that role."""
+        models = root / "routing" / "models.toml"
+        models.write_text(models.read_text() + '''
+[[model]]
+id = "fixture-generator"
+family = "fixture"
+role = "steered generator for tests only"
+  [[model.effort]]
+  effort = "max"
+  use = "fixture tier"
+''')
+        return "fixture-generator"
+
+    def add_implement_variant(self, root, variant):
+        """Append a variant to the implement profile of a fixture manifest."""
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        anchor = '[[profile]]\nid = "generate"'
+        self.assertIn(anchor, text)
+        profiles.write_text(text.replace(anchor, variant + "\n" + anchor, 1))
+
     def direct_selection(self, root=ROOT, **overrides):
         values = {
             "profile_id": "implement",
             "backend": "codex",
-            "model": "gpt-5.6-luna",
+            "model": "gpt-6-luna",
             "effort": "max",
             "provider": "openai-codex",
             "reason": "operator directed",
@@ -44,20 +66,15 @@ class RoutingProfilesTest(unittest.TestCase):
 
     def test_generator_only_variant_requires_role_exception(self):
         root = self.fixture_root()
-        profiles = root / "routing" / "profiles.toml"
-        text = profiles.read_text()
-        anchor = '  # DeepSeek V4.1 Flash off the OpenCode Go pool, by operator direction only.'
-        variant = '''  [[profile.variant]]
+        self.add_generator_model(root)
+        self.add_implement_variant(root, '''  [[profile.variant]]
   id = "generator-without-exception"
-  provider = "opencode-go"
-  model = "deepseek-flash"
+  provider = "deepseek"
+  model = "fixture-generator"
   effort = "max"
   stability = "experimental"
   backends = ["pi"]
-
-'''
-        self.assertIn(anchor, text)
-        profiles.write_text(text.replace(anchor, variant + anchor, 1))
+''')
 
         problems = validation_problems(root)
         self.assertTrue(
@@ -67,21 +84,16 @@ class RoutingProfilesTest(unittest.TestCase):
 
     def test_role_exception_reason_must_not_be_blank(self):
         root = self.fixture_root()
-        profiles = root / "routing" / "profiles.toml"
-        text = profiles.read_text()
-        anchor = '  # DeepSeek V4.1 Flash off the OpenCode Go pool, by operator direction only.'
-        variant = '''  [[profile.variant]]
+        self.add_generator_model(root)
+        self.add_implement_variant(root, '''  [[profile.variant]]
   id = "generator-with-blank-exception"
-  provider = "opencode-go"
-  model = "deepseek-flash"
+  provider = "deepseek"
+  model = "fixture-generator"
   effort = "max"
   stability = "experimental"
   backends = ["pi"]
   role_exception = "  "
-
-'''
-        self.assertIn(anchor, text)
-        profiles.write_text(text.replace(anchor, variant + anchor, 1))
+''')
 
         problems = validation_problems(root)
         self.assertTrue(
@@ -90,14 +102,13 @@ class RoutingProfilesTest(unittest.TestCase):
         )
 
     def test_computer_use_is_explicit_and_has_comparison_tiers(self):
-        for variant, effort in ((None, "low"), ("medium", "medium"), ("high", "high")):
-            with self.assertRaises(RouteRefusal):
-                resolve(ROOT, "computer-use", "pi", variant_id=variant)
-            route = resolve(ROOT, "computer-use", "pi", variant_id=variant,
-                            allow_experimental=True)
-            self.assertEqual((route["model"], route["effort"]), ("gpt-5.6-luna", effort))
-        route = resolve(ROOT, "computer-use", "codex", allow_experimental=True)
-        self.assertEqual((route["model"], route["effort"]), ("gpt-5.6-luna", "low"))
+        for backend in ("codex", "pi"):
+            for variant, effort in ((None, "low"), ("medium", "medium"), ("high", "high")):
+                with self.assertRaises(RouteRefusal):
+                    resolve(ROOT, "computer-use", backend, variant_id=variant)
+                route = resolve(ROOT, "computer-use", backend, variant_id=variant,
+                                allow_experimental=True)
+                self.assertEqual((route["model"], route["effort"]), ("gpt-6-luna", effort))
 
     def test_stable_route_resolves_for_supported_backend(self):
         route = resolve(ROOT, "implement", "codex")
@@ -243,16 +254,16 @@ class RoutingProfilesTest(unittest.TestCase):
         values = {
             "profile_id": "review",
             "backend": "pi",
-            "model": "gpt-5.6-sol",
+            "model": "gpt-6-sol",
             "effort": "high",
-            "provider": "commandcode",
+            "provider": "opencode-go",
         }
         with self.assertRaises(RouteRefusal) as caught:
             self.direct_selection(**values)
         self.assertEqual(caught.exception.kind, "pool")
         self.assertEqual(caught.exception.payload()["override"], "--allow-cross-pool")
         route = self.direct_selection(allow_cross_pool=True, **values)
-        self.assertEqual(route["cross_pool"], "GOAT, a small flat subscription")
+        self.assertEqual(route["cross_pool"], "OpenCode Go, an optional flat subscription")
 
     def test_direct_selection_requires_experimental_opt_in_even_for_rostered_model(self):
         with self.assertRaises(RouteRefusal) as caught:
@@ -304,13 +315,16 @@ class RoutingProfilesTest(unittest.TestCase):
         self.assertIn("backend model support", refusal.payload()["missing_fact"])
 
     def test_direct_selection_applies_generator_role_restriction(self):
+        root = self.fixture_root()
+        model = self.add_generator_model(root)
         with self.assertRaises(RouteRefusal) as caught:
             self.direct_selection(
+                root,
                 profile_id="implement",
                 backend="pi",
-                model="deepseek-flash",
+                model=model,
                 effort="max",
-                provider="opencode-go",
+                provider="deepseek",
             )
         self.assertEqual(caught.exception.kind, "model-role")
 
@@ -447,7 +461,7 @@ class RoutingProfilesTest(unittest.TestCase):
             '\n  [[profile.variant]]\n'
             '  id = "trial"\n'
             '  provider = "openai-codex"\n'
-            '  model = "gpt-5.6-luna"\n'
+            '  model = "gpt-6-luna"\n'
             '  effort = "max"\n'
             '  stability = "experimental"\n'
             '  backends = ["codex"]\n'
@@ -462,10 +476,9 @@ class RoutingProfilesTest(unittest.TestCase):
         self.assertEqual(route["stability"], "experimental")
 
     def test_implement_takes_the_stable_workhorse_at_max(self):
-        """Luna holds the seat Terra held before its price reset, so the
-        primary is the measured implementer rather than a trial variant."""
+        """The primary is the workhorse tier, not a trial variant."""
         route = resolve(ROOT, "implement", "codex")
-        self.assertEqual(route["model"], "gpt-5.6-luna")
+        self.assertEqual(route["model"], "gpt-6-luna")
         self.assertEqual(route["effort"], "max")
         self.assertEqual(route["stability"], "stable")
 
@@ -485,19 +498,17 @@ class RoutingProfilesTest(unittest.TestCase):
         self.assertEqual(route["profile"], "review:high-stakes")
         self.assertEqual(route["stability"], "stable")
 
-    def test_review_default_and_named_sol_variants_remain_unchanged(self):
-        for backend in ("codex", "pi"):
-            route = resolve(ROOT, "review", backend)
-            self.assertEqual(route["profile"], "review")
-            self.assertEqual(route["provider"], "openai-codex")
-            self.assertEqual(route["model"], "gpt-5.6-luna")
-            self.assertEqual(route["effort"], "max")
-            self.assertEqual(route["stability"], "stable")
+    def test_review_default_and_named_variants(self):
+        route = resolve(ROOT, "review", "codex")
+        self.assertEqual(route["profile"], "review")
+        self.assertEqual(route["provider"], "openai-codex")
+        self.assertEqual((route["model"], route["effort"]), ("gpt-6-astra", "medium"))
+        self.assertEqual(route["stability"], "stable")
 
         fast = resolve(ROOT, "review", "codex", variant_id="fast")
-        self.assertEqual((fast["model"], fast["effort"]), ("gpt-5.6-sol", "medium"))
-        high_stakes = resolve(ROOT, "review", "pi", variant_id="high-stakes")
-        self.assertEqual((high_stakes["model"], high_stakes["effort"]), ("gpt-5.6-sol", "high"))
+        self.assertEqual((fast["model"], fast["effort"]), ("gpt-6-sol", "high"))
+        high_stakes = resolve(ROOT, "review", "codex", variant_id="high-stakes")
+        self.assertEqual((high_stakes["model"], high_stakes["effort"]), ("gpt-6-astra", "xhigh"))
 
     def test_interactive_parent_route_is_pi_only(self):
         route = resolve(ROOT, "interactive", "pi")
@@ -507,12 +518,12 @@ class RoutingProfilesTest(unittest.TestCase):
 
     def test_experimental_model_cannot_be_labeled_stable(self):
         root = self.fixture_root()
-        path = root / "routing" / "profiles.toml"
-        text = path.read_text().replace(
-            'model = "deepseek-flash"\neffort = "max"\nstability = "experimental"',
-            'model = "deepseek-flash"\neffort = "max"\nstability = "stable"',
-        )
-        path.write_text(text)
+        models = root / "routing" / "models.toml"
+        models.write_text(models.read_text().replace(
+            'id = "gpt-6-luna"\nfamily = "openai"\n',
+            'id = "gpt-6-luna"\nfamily = "openai"\nstatus = "experimental"\n',
+            1,
+        ))
         self.assertTrue(any("experimental model" in problem for problem in validation_problems(root)))
 
     def test_explicit_only_tier_cannot_back_a_profile(self):
@@ -534,7 +545,7 @@ backends = ["claude"]
     def test_unknown_model_and_unverified_backend_are_rejected(self):
         root = self.fixture_root()
         profiles = root / "routing" / "profiles.toml"
-        profiles.write_text(profiles.read_text().replace('model = "gpt-5.6-luna"', 'model = "missing-model"', 1))
+        profiles.write_text(profiles.read_text().replace('model = "gpt-6-luna"', 'model = "missing-model"', 1))
         delegation = root / "routing" / "delegation.toml"
         delegation.write_text(delegation.read_text().replace('id = "codex"\nstatus = "verified"', 'id = "codex"\nstatus = "unprobed"', 1))
         problems = validation_problems(root)
@@ -592,48 +603,46 @@ backends = ["claude"]
         self.assertEqual(len(set(versions)), 4)
 
     def cross_pool_root(self):
-        """A fixture whose review profile routes Sol through the small plan."""
+        """A fixture whose review profile routes Sol through the Go plan."""
         root = self.fixture_root()
         profiles = root / "routing" / "profiles.toml"
         text = profiles.read_text()
-        start = text.index('id = "review"')
-        head, tail = text[:start], text[start:]
-        tail = tail.replace(
-            '''  id = "goat"
-  provider = "commandcode"
-  model = "gpt-5.6-luna"
-  effort = "max"''',
-            '''  id = "goat-sol"
-  provider = "commandcode"
-  model = "gpt-5.6-sol"
-  effort = "high"''',
-            1,
-        )
-        profiles.write_text(head + tail)
+        anchor = '[[profile]]\nid = "design"'
+        self.assertIn(anchor, text)
+        variant = '''  [[profile.variant]]
+  id = "go-sol"
+  provider = "opencode-go"
+  model = "gpt-6-sol"
+  effort = "high"
+  stability = "stable"
+  backends = ["pi"]
+
+'''
+        profiles.write_text(text.replace(anchor, variant + anchor, 1))
         return root
 
     def test_a_pool_refusal_names_the_subscription_that_pays(self):
         root = self.cross_pool_root()
         with self.assertRaises(RouteRefusal) as caught:
-            resolve(root, "review", "pi", variant_id="goat-sol")
+            resolve(root, "review", "pi", variant_id="go-sol")
         refusal = caught.exception
         self.assertEqual(refusal.kind, "pool")
         payload = refusal.payload()
-        self.assertEqual(payload["model"], "gpt-5.6-sol")
+        self.assertEqual(payload["model"], "gpt-6-sol")
         self.assertEqual(payload["override"], "--allow-cross-pool")
         self.assertIn("openai-codex", payload["alternative"])
 
     def test_crossing_a_pool_is_opt_in_and_recorded(self):
         root = self.cross_pool_root()
-        route = resolve(root, "review", "pi", variant_id="goat-sol", allow_cross_pool=True)
-        self.assertEqual(route["model"], "gpt-5.6-sol")
+        route = resolve(root, "review", "pi", variant_id="go-sol", allow_cross_pool=True)
+        self.assertEqual(route["model"], "gpt-6-sol")
         self.assertIn("cross_pool", route)
 
     def test_one_pool_violation_does_not_block_an_unrelated_route(self):
         """A pool pairing is a property of one route. Blocking every other
         resolution would make a single bad variant an outage."""
         root = self.cross_pool_root()
-        self.assertEqual(resolve(root, "review", "codex")["model"], "gpt-5.6-luna")
+        self.assertEqual(resolve(root, "review", "codex")["model"], "gpt-6-astra")
         self.assertEqual(len(pool_problems(root)), 1)
 
     def test_a_refusal_carries_its_kind(self):
@@ -648,32 +657,41 @@ backends = ["claude"]
             resolve(ROOT, "design", "codex")
         self.assertEqual(caught.exception.kind, "unsupported-backend")
 
-    def test_deepseek_reaches_the_go_pool_only_by_opt_in(self):
-        route = resolve(ROOT, "implement", "pi", variant_id="deepseek-go", allow_experimental=True)
-        self.assertEqual(route["profile"], "implement:deepseek-go")
-        self.assertEqual(route["provider"], "opencode-go")
-        self.assertEqual(route["model"], "deepseek-v4.1-flash")
-        self.assertEqual(route["effort"], "max")
-        self.assertEqual(route["stability"], "experimental")
-        self.assertEqual(
-            route["role_exception"],
-            "operator-directed implementation on the Go pool; output is reviewed by a lead before it integrates",
-        )
-        with self.assertRaises(RouteRefusal) as caught:
-            resolve(ROOT, "implement", "pi", variant_id="deepseek-go")
-        self.assertEqual(caught.exception.kind, "stability")
+    def test_pi_defaults_to_deepseek_on_the_go_pool(self):
+        for profile in ("extract", "explore", "implement", "plan", "execute", "review"):
+            route = resolve(ROOT, profile, "pi")
+            self.assertEqual(route["profile"], f"{profile}:deepseek-go")
+            self.assertEqual(route["provider"], "opencode-go")
+            self.assertEqual(route["model"], "deepseek-v4.1-flash")
+            self.assertEqual(route["effort"], "max")
+            self.assertEqual(route["stability"], "stable")
+        interactive = resolve(ROOT, "interactive", "pi")
+        self.assertEqual((interactive["provider"], interactive["model"]), ("opencode-go", "deepseek-v4.1-flash"))
 
     def test_resolve_json_reports_declared_role_exception(self):
-        command = ROOT / "bin" / "agent-routing"
+        root = self.fixture_root()
+        for directory in ("bin", "lib"):
+            shutil.copytree(ROOT / directory, root / directory)
+        self.add_generator_model(root)
+        reason = "operator-directed defect generation, reviewed by a lead"
+        self.add_implement_variant(root, f'''  [[profile.variant]]
+  id = "defects"
+  provider = "deepseek"
+  model = "fixture-generator"
+  effort = "max"
+  stability = "experimental"
+  backends = ["pi"]
+  role_exception = "{reason}"
+''')
         completed = subprocess.run(
             [
-                command,
+                root / "bin" / "agent-routing",
                 "resolve",
                 "implement",
                 "--backend",
                 "pi",
                 "--variant",
-                "deepseek-go",
+                "defects",
                 "--allow-experimental",
                 "--json",
             ],
@@ -681,11 +699,7 @@ backends = ["claude"]
             text=True,
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        route = json.loads(completed.stdout)
-        self.assertEqual(
-            route["role_exception"],
-            "operator-directed implementation on the Go pool; output is reviewed by a lead before it integrates",
-        )
+        self.assertEqual(json.loads(completed.stdout)["role_exception"], reason)
 
     def test_claude_backend_coverage_is_stated(self):
         route = resolve(ROOT, "explore", "claude")

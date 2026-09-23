@@ -182,9 +182,9 @@ with the routing policy:
 
 - Effort inheritance is the wrong direction. A high-effort orchestrator
   spawning same-effort context gatherers is the most expensive possible
-  configuration; the ladder routes fixed-shape calls to Luna low/medium,
-  bounded implementation to Terra high, controlled Luna-max trials to fully
-  pre-resolved work, and lead judgment to Sol high.
+  configuration; the ladder routes fixed-shape calls to Luna low, bounded
+  implementation to Luna max, planning and review to Astra, and
+  judgment-bearing execution to Sol high.
 - Whole-conversation inheritance is unscoped context transfer. It pays for
   the entire session history in every child and buries the task signal.
   Delegated work gets a curated, self-contained brief: the spec, the done
@@ -293,11 +293,11 @@ Adapter contract (probe checklist for onboarding any new harness):
 | Contract | codex CLI (`codex exec`) | pi (`pi -p`), v0.83.0 | Claude CLI (`claude -p`) | opencode (`opencode run`), v1.18.10 |
 | --- | --- | --- | --- | --- |
 | Entrypoint | `codex exec "<prompt>"` | `pi -p "<prompt>"`; `@file` args inline files (specs) | `claude -p "<prompt>"` | `opencode run "<prompt>"` |
-| Model | `-m gpt-5.6-{sol,terra,luna}` | GPT: `--provider openai-codex --model gpt-5.6-{sol,terra,luna}`; DeepSeek: `--provider deepseek --model deepseek-flash` (V4.1) and `--model deepseek-v4-pro`; MiMo trial: `--provider opencode-go --model mimo-v2.6-flash` / `mimo-v2.6-pro` | `--model claude-opus-5` | `-m opencode-go/<model>` |
+| Model | `-m gpt-6-{luna,sol,astra}` | GPT: `--provider openai-codex --model gpt-6-{luna,sol,astra}`; DeepSeek: `--provider opencode-go --model deepseek-v4.1-flash` on the Go pool, `--provider deepseek --model deepseek-flash` (V4.1) on DeepSeek's own billing; MiMo trial: `--provider opencode-go --model mimo-v2.6-flash` / `mimo-v2.6-pro` | `--model claude-opus-5` | `-m opencode-go/<model>` |
 | Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high` | `--variant high\|max` |
 | Working dir | `-C <dir>` | none — `cd` first | none — `cd` first; `--add-dir=<path>` adds explicit read roots | `--dir <dir>` |
 | Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message | stdout for one-shot calls; `--output-format stream-json` for supervised runs | stdout is the final message under a `> build · <model>` header; `--format json` gives a JSONL event stream with per-step token counts |
-| Isolation | OS sandbox: `-s read-only` / `-s workspace-write` (+ `writable_roots`) | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access | permission mode plus tool allowlist; `plan` is the read-only consultation mode | **none**; permission config, and `--auto` approves everything not explicitly denied |
+| Isolation | OS sandbox, which `agent-delegate` opens to `-s danger-full-access` by default; `-s read-only` / `-s workspace-write` (+ `writable_roots`) narrows a run | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access | permission mode plus tool allowlist; `plan` is the read-only consultation mode | **none**; permission config, and `--auto` approves everything not explicitly denied |
 | Clean-room | curated prompt; reads repo AGENTS.md | `--no-session --no-extensions --no-skills --no-context-files` | `--safe-mode --disable-slash-commands --no-session-persistence` with a curated stdin prompt | `--pure` drops external plugins only; AGENTS.md and `~/.config/opencode/skills` still load |
 | Resume | `codex exec resume --last` | `--session <id>` / `-c` / `--fork` | `--resume <session-id>` | `-c` / `-s <id>` / `--fork` |
 | Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota; `opencode-go` draws the Go subscription, metered in usage dollars | Claude subscription through the first-party client | Conditional OpenCode Go subscription — a third pool metered in usage dollars ($12/5h, $30/week, $60/month), locally readable via `opencode stats`. Limit signature unprobed |
