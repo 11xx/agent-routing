@@ -482,12 +482,29 @@ role = "steered generator for tests only"
         self.assertEqual(route["effort"], "max")
         self.assertEqual(route["stability"], "stable")
 
+    def experimental_generate_root(self):
+        """A fixture whose whole generate profile is experimental."""
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        start = text.index('id = "generate"')
+        head, tail = text[:start], text[start:]
+        profiles.write_text(head + tail.replace('stability = "stable"', 'stability = "experimental"', 1))
+        return root
+
     def test_experimental_base_profile_fails_closed(self):
         """A whole profile can be experimental, not only a variant of a stable one."""
+        root = self.experimental_generate_root()
         with self.assertRaisesRegex(ValueError, "--allow-experimental"):
-            resolve(ROOT, "generate", "pi")
-        route = resolve(ROOT, "generate", "pi", allow_experimental=True)
+            resolve(root, "generate", "pi")
+        route = resolve(root, "generate", "pi", allow_experimental=True)
         self.assertEqual(route["stability"], "experimental")
+
+    def test_generate_runs_on_the_go_pool(self):
+        route = resolve(ROOT, "generate", "pi")
+        self.assertEqual(route["provider"], "opencode-go")
+        self.assertEqual(route["model"], "deepseek-v4.1-flash")
+        self.assertEqual(route["stability"], "stable")
 
     def test_backend_mismatch_fails(self):
         with self.assertRaisesRegex(ValueError, "does not support backend"):
@@ -650,7 +667,7 @@ backends = ["claude"]
             resolve(ROOT, "nosuch", "pi")
         self.assertEqual(caught.exception.kind, "unknown-profile")
         with self.assertRaises(RouteRefusal) as caught:
-            resolve(ROOT, "generate", "pi")
+            resolve(self.experimental_generate_root(), "generate", "pi")
         self.assertEqual(caught.exception.kind, "stability")
         self.assertEqual(caught.exception.payload()["override"], "--allow-experimental")
         with self.assertRaises(RouteRefusal) as caught:
