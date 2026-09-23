@@ -16,9 +16,10 @@ what the seats rest on.
 | execute | gpt-6-sol high | deepseek-flash max (Go pool) |
 | review | gpt-6-astra medium; `fast` gpt-6-sol high; `high-stakes` gpt-6-astra xhigh | deepseek-flash max (Go pool) |
 | interactive | — | deepseek-flash max (Go pool) |
+| generate | — | deepseek-flash max (Go pool), stable |
 | computer-use (experimental) | gpt-6-luna low / medium / high | the same, through pi's `openai-codex` provider |
 
-The Claude variants, `design`, and `generate` did not move.
+The Claude variants and `design` did not move. `generate` left DeepSeek's own billing for the subsidised Go pool.
 
 ## What the seats rest on
 

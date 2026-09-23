@@ -312,22 +312,19 @@ Backend selection between the two GPT routes:
   scope fencing in the prompt.
 - **pi's niche is provider plurality and lead portability**: one adapter
   reaches every provider the user has logged in. Today `openai-codex` reaches
-  GPT-5.6 on the shared Codex subscription, `deepseek` reaches V4.1 Flash
-  and V4 Pro on independent API billing, and `opencode-go` reaches the
-  probationary MiMo rows on the Go subscription through an operator-directed
-  selection. Any harness that can run a shell can
+  GPT-6 on the shared Codex subscription, `opencode-go` reaches V4.1 Flash —
+  pi's default for every GPT profile and for `generate` — and the
+  probationary MiMo rows on the Go subscription, and `deepseek` reaches V4.1
+  Flash on independent API billing that no profile uses. Any harness that can run a shell can
   drive it. A non-Claude, non-Codex lead delegating to GPT goes through Pi.
-- **DeepSeek Flash is routed as a generator, and its seat is probation.** The
-  live build is V4.1 Flash, reached as `--provider deepseek --model
-  deepseek-flash`; the versioned id it replaces is deprecated. Both the
-  vendor's 54.4 DeepSWE result and the independent testing that measured
-  confident fabrication describe that predecessor, not the build in service,
-  and V4.1 has no field arc here. Route it through the `generate` profile for
-  raw material a lead adjudicates, under a brief that fences what it may
-  produce, and keep it off the last edit of shipped work until a field arc on
-  V4.1 says otherwise. V4 Pro 0813 is generally available
-  and measures 63% on the Datacurve board; it keeps the briefed
-  defect-generation niche until a field arc.
+- **DeepSeek V4.1 Flash is pi's default route.** It is reached on the Go pool
+  as `--provider opencode-go --model deepseek-v4.1-flash`, through each GPT
+  profile's `deepseek-go` variant and through `generate`. The vendor's 54.4
+  DeepSWE result and the independent testing that measured confident
+  fabrication describe the 0731 predecessor; the build in service carries
+  three field arcs of its own, and the operator seated it on that record.
+  Brief it fully and check every identifier it emits against source. V4 Pro
+  is deprecated in favour of it.
 - **MiMo V2.6 Flash and Pro are probation, and Flash is the row benchmarked
   going forward.** Both rows are unmeasured — no score, no field arc, no
   approval anyone has confirmed — and no profile resolves to either. Reach

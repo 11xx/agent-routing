@@ -124,13 +124,15 @@ backends = ["codex"]
 [[profile]]
 id = "generate"
 purpose = "high-volume or heavily steered candidate generation whose output is raw material rather than a deliverable: drafts to mine, options to sweep, defect candidates to adjudicate. Everything it returns is unverified until a lead or reviewer-tier model checks it against source, and nothing resolved here is the last model to touch shipped work"
-provider = "deepseek"
+provider = "opencode-go"
 model = "deepseek-flash"
+backend_model = "deepseek-v4.1-flash"
 effort = "max"
-stability = "experimental"
-# This profile reaches DeepSeek's independent pool as a steered generator and
-# is closed to every other backend by design. Max is the only routed tier:
-# the row carries no lower effort, and no profile or variant selects one.
+stability = "stable"
+# Steered generation runs on the subsidised Go subscription, the pool pi's
+# other defaults already draw, and is closed to every other backend by design.
+# Max is the only routed tier: the row carries no lower effort, and no profile
+# or variant selects one.
 backends = ["pi"]
 
 [[profile]]
