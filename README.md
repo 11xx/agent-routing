@@ -117,6 +117,11 @@ separate from coding implementation. It supports Codex and Pi, defaulting to Sol
 low; `--variant medium`, `--variant high`, and `--variant xhigh` select explicit
 comparison tiers. All require `--allow-experimental`; no failure automatically
 escalates the model.
+
+Claude can run Opus 5.5 for this profile through an explicit `--variant opus`
+or an operator-directed model selection. There is no Claude default for
+`computer-use`; either path requires `--allow-experimental`.
+
 Desktop access and the retained run/resume lifecycle are owned by agent-delegate.
 The route does not restrict CU capabilities or claim a measured cost/quality win.
 
