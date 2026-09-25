@@ -120,6 +120,24 @@ role = "steered generator for tests only"
                                   effort="max")
         self.assertEqual(caught.exception.kind, "prohibited")
 
+    def test_opus_computer_use_requires_explicit_claude_selection(self):
+        with self.assertRaises(RouteRefusal):
+            resolve(ROOT, "computer-use", "claude", allow_experimental=True)
+        with self.assertRaises(RouteRefusal):
+            resolve(ROOT, "computer-use", "claude", variant_id="opus")
+        route = resolve(ROOT, "computer-use", "claude", variant_id="opus",
+                        allow_experimental=True)
+        self.assertEqual((route["model"], route["effort"]),
+                         ("claude-opus-5-5", "medium"))
+        for effort in ("low", "medium", "high", "xhigh", "max"):
+            selection = self.direct_selection(
+                profile_id="computer-use", backend="claude", model="opus-5.5",
+                effort=effort, provider="anthropic",
+            )
+            self.assertEqual(selection["backend_model"], "claude-opus-5-5")
+            self.assertEqual(selection["effort"], effort)
+            self.assertEqual(selection["selection_kind"], "operator-directed")
+
     def test_stable_route_resolves_for_supported_backend(self):
         route = resolve(ROOT, "implement", "codex")
         self.assertEqual(route["profile"], "implement")
