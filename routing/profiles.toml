@@ -277,7 +277,7 @@ backends = ["claude"]
 id = "computer-use"
 purpose = "explicit visible-desktop tasks with bounded context and retained follow-ups"
 provider = "openai-codex"
-model = "gpt-6-luna"
+model = "gpt-6-sol"
 effort = "low"
 stability = "experimental"
 backends = ["codex", "pi"]
@@ -285,7 +285,7 @@ backends = ["codex", "pi"]
   [[profile.variant]]
   id = "medium"
   provider = "openai-codex"
-  model = "gpt-6-luna"
+  model = "gpt-6-sol"
   effort = "medium"
   stability = "experimental"
   backends = ["codex", "pi"]
@@ -293,7 +293,15 @@ backends = ["codex", "pi"]
   [[profile.variant]]
   id = "high"
   provider = "openai-codex"
-  model = "gpt-6-luna"
+  model = "gpt-6-sol"
   effort = "high"
+  stability = "experimental"
+  backends = ["codex", "pi"]
+
+  [[profile.variant]]
+  id = "xhigh"
+  provider = "openai-codex"
+  model = "gpt-6-sol"
+  effort = "xhigh"
   stability = "experimental"
   backends = ["codex", "pi"]

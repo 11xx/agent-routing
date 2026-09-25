@@ -103,12 +103,22 @@ role = "steered generator for tests only"
 
     def test_computer_use_is_explicit_and_has_comparison_tiers(self):
         for backend in ("codex", "pi"):
-            for variant, effort in ((None, "low"), ("medium", "medium"), ("high", "high")):
+            for variant, effort in ((None, "low"), ("medium", "medium"),
+                                    ("high", "high"), ("xhigh", "xhigh")):
                 with self.assertRaises(RouteRefusal):
                     resolve(ROOT, "computer-use", backend, variant_id=variant)
                 route = resolve(ROOT, "computer-use", backend, variant_id=variant,
                                 allow_experimental=True)
-                self.assertEqual((route["model"], route["effort"]), ("gpt-6-luna", effort))
+                self.assertEqual((route["model"], route["effort"]), ("gpt-6-sol", effort))
+
+    def test_sol_max_is_prohibited_while_computer_use_tiers_remain_available(self):
+        for effort in ("low", "medium", "high", "xhigh"):
+            self.direct_selection(profile_id="computer-use", model="gpt-6-sol",
+                                  effort=effort)
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(profile_id="computer-use", model="gpt-6-sol",
+                                  effort="max")
+        self.assertEqual(caught.exception.kind, "prohibited")
 
     def test_stable_route_resolves_for_supported_backend(self):
         route = resolve(ROOT, "implement", "codex")
