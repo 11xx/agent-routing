@@ -1,6 +1,7 @@
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import tempfile
 import tomllib
@@ -107,6 +108,24 @@ class ConsumerLintTest(unittest.TestCase):
         result = self.run_lint(code)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("reported no delegation sources", result.stderr)
+
+    def test_an_empty_consumer_inventory_is_a_failure(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = pathlib.Path(temporary.name)
+        for directory in ("bin", "routing"):
+            shutil.copytree(ROOT / directory, root / directory)
+        (root / "routing" / "consumers.toml").write_text(
+            '[repository]\nskills = "ai-agent-harnesses"\ndelegate = "ai-agent-delegate"\n'
+        )
+        result = subprocess.run(
+            [root / "bin" / "lint-consumers"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "AI_AGENT_CODE_ROOT": str(root / "code")},
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("declares no delegation consumer", result.stderr)
 
 
 if __name__ == "__main__":
