@@ -90,7 +90,7 @@ policy = "resolve the extract profile for fixed-shape calls and the stable imple
 id = "deepseek-invocation"
 harness = "pi"
 policy = "V4.1 Flash is pi's default for every GPT profile, reached on the Go pool as `--provider opencode-go --model deepseek-v4.1-flash` through each profile's deepseek-go variant, and the steered generator on the same pool through the `generate` profile. Brief it fully — exact targets, a scope ceiling, named acceptance probes — and check every identifier it emits against source, because the predecessor build fabricated confidently rather than visibly."
-why = "three field arcs on the build in service landed implementation work with approvals on first read and no fabricated identifier in anything a lead probed, and the operator directed pi's defaults onto it; the identifier check is what the predecessor's record still buys"
+why = "four field arcs on the build in service landed implementation work with approvals on first read and no fabricated identifier in anything a lead probed, and the operator directed pi's defaults onto it; the identifier check is what the predecessor's record still buys"
 
 
 [[rule]]

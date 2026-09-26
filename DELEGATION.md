@@ -322,7 +322,7 @@ Backend selection between the two GPT routes:
   profile's `deepseek-go` variant and through `generate`. The vendor's 54.4
   DeepSWE result and the independent testing that measured confident
   fabrication describe the 0731 predecessor; the build in service carries
-  three field arcs of its own, and the operator seated it on that record.
+  four field arcs of its own, and the operator seated it on that record.
   Brief it fully and check every identifier it emits against source. V4 Pro
   is deprecated in favour of it.
 - **MiMo V2.6 Flash and Pro are probation, and Flash is the row benchmarked
