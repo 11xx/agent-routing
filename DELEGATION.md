@@ -325,8 +325,8 @@ Backend selection between the two GPT routes:
   four field arcs of its own, and the operator seated it on that record.
   Brief it fully and check every identifier it emits against source. V4 Pro
   is deprecated in favour of it.
-- **MiMo V2.6 Flash and Pro are probation, and Flash is the row benchmarked
-  going forward.** Both rows are unmeasured — no score, no field arc, no
+- **MiMo V2.6 Flash and Pro are probation, and the preference between them
+  is open.** Both rows are unmeasured — no score, no field arc, no
   approval anyone has confirmed — and no profile resolves to either. Reach
   them as `--provider opencode-go --model mimo-v2.6-flash` (or
   `mimo-v2.6-pro`) through a validated operator-directed selection:
@@ -334,9 +334,8 @@ Backend selection between the two GPT routes:
   mimo-v2.6-flash --effort high --provider opencode-go --reason <text>
   --allow-experimental`, which records the execution shape, pool, and reason
   against the route version. Pro is read as a little stronger at about three
-  times Flash's input; that read is an estimate, so Flash stays the benchmark
-  subject and a trial's result — not the price and not the read — is what
-  would move either row. Both take a fully specified brief with exact targets,
+  times Flash's input; that read is an estimate, so a trial's result — not the
+  price and not the read — is what would move either row. Both take a fully specified brief with exact targets,
   a scope ceiling, named acceptance probes, and lead review, and neither is
   the last model to touch shipped work.
 - pi "read-only" (`--tools read,grep,find,ls`) is tool-level, not
