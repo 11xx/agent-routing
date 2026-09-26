@@ -439,7 +439,7 @@ notes = "Codex usage estimates published on the Codex pricing page (read 2026-09
   use = "bounded function-shaped calls; uncalibrated"
   [[model.effort]]
   effort = "high"
-  use = "uncalibrated; reached by the experimental computer-use high variant"
+  use = "uncalibrated; unrouted"
   [[model.effort]]
   effort = "xhigh"
   use = "uncalibrated; unrouted"
