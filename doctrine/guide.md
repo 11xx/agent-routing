@@ -54,19 +54,21 @@ WHAT BINDS BEFORE ANY QUERY
   route by which window has headroom, and by axis.
 
   Prohibited tiers stay prohibited when asked for by name, because every family
-  stops paying before its top tier. Escalating a delegated route is ordinary —
-  a workhorse tier upward, or across to the technical peer where judgment
-  remains — but the head model's own effort is not an escalation path: a slice
-  its working tier cannot land gets decomposed, given better context, or a
-  sideways second opinion.
-
-  An escalation that costs more than the caller's own seat, or draws on a
-  scarcer pool, is offered to the user with its price and never dispatched on
-  the caller's own initiative. A clean repository is where that question most
-  often arises: its founding slices set the conventions every later model
-  copies, so they belong on the best-taste tier the roster offers.
+  stops paying before its top tier. Escalating a delegated route within what
+  the caller's own seat costs is ordinary — a workhorse tier upward, or across
+  to the technical peer where judgment remains — but the head model's own
+  effort is not an escalation path: a slice its working tier cannot land gets
+  decomposed, given better context, or a sideways second opinion.
 
     agent-routing check <model> [effort]   exit non-zero if that pair is banned
+
+  An escalation that costs more than the caller's own seat, or draws on a
+  scarcer pool, is offered to the user, naming the route, what it buys, and the
+  pool it spends, and is never dispatched on the caller's own initiative. A
+  declined offer leaves the work at the caller's tier, except under a floor,
+  where it waits. One place the question arises is a clean repository: its
+  founding slices set the conventions every later model copies, so they belong
+  on the head model at its routing ceiling.
 
   The reviewer is never the author. An approval from the identity that
   authored the patchset is not independent, and independence is never
