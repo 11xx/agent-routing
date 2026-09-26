@@ -15,7 +15,18 @@ STABILITIES = {"stable", "probationary", "experimental"}
 #: ignored by every reader, which makes the route it was meant to change look
 #: as though the edit never happened.
 PROFILE_KEYS = frozenset(
-    {"id", "purpose", "provider", "model", "backend_model", "effort", "stability", "backends", "variant"}
+    {
+        "id",
+        "purpose",
+        "provider",
+        "model",
+        "backend_model",
+        "effort",
+        "stability",
+        "backends",
+        "variant",
+        "escalation_sources",
+    }
 )
 VARIANT_KEYS = frozenset(
     {
@@ -33,6 +44,9 @@ VARIANT_KEYS = frozenset(
 UNROUTABLE_MODEL_STATUSES = {"deprecated", "inactive", "restricted", "retired", "superseded"}
 MODEL_STATUSES = UNROUTABLE_MODEL_STATUSES | {"experimental"}
 EFFORT_STATUSES = {"explicit-only", "experimental", "probationary"}
+#: The order a rank must respect within one model and pool. Manifest order is
+#: not this order: older rows list their efforts from the top down.
+EFFORT_ORDER = ("low", "medium", "high", "xhigh", "max", "ultra")
 
 REFUSAL_SCHEMA = "agent-routing-refusal/1"
 
@@ -171,6 +185,115 @@ def pool_refusal(by_pool, label, provider, model_id):
     )
 
 
+def _seated_tiers(profiles: list[dict], by_pool: dict[str, dict]) -> dict[tuple[str, str], set[str]]:
+    """Each ``(model, effort)`` a stable route seats, with the pools that seat it.
+
+    A pool is named by its provider. Only a stable route seats a tier: an
+    experimental or probationary route is a trial, not a seat a rank can
+    order. A route whose pool does not serve its model is a pool violation,
+    which ``pool_problems`` reports and a caller may override, so it seats
+    nothing there.
+    """
+    seated: dict[tuple[str, str], set[str]] = {}
+    for profile in profiles:
+        for route in [profile, *profile.get("variant", [])]:
+            if route.get("stability") != "stable" or not route.get("model") or not route.get("effort"):
+                continue
+            pool = by_pool.get(route.get("provider"))
+            if pool is not None and route["model"] not in pool.get("serves", []):
+                continue
+            seated.setdefault((route["model"], route["effort"]), set()).add(route.get("provider"))
+    return seated
+
+
+def _tier_rank(models: list[dict], model_id: str, effort: str, pool: str) -> int | None:
+    model = next((entry for entry in models if entry.get("id") == model_id), None)
+    tier = next((entry for entry in (model or {}).get("effort", []) if entry.get("effort") == effort), None)
+    rank = (tier or {}).get("rank", {})
+    value = rank.get(pool) if isinstance(rank, dict) else None
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def rank_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict]) -> list[str]:
+    """Ranks are operator policy that orders seated tiers within one pool.
+
+    Every seated tier carries a rank for each pool that seats it and no other
+    tier carries one; a rank never falls as effort rises within one model and
+    pool, and never inverts two measured pass@1 scores in the same pool.
+    """
+    seated = _seated_tiers(profiles, by_pool)
+    pool_ids = set(by_pool)
+    problems: list[str] = []
+    ranked: dict[str, list[tuple[int, str, str, float | None]]] = {}
+    for model in models:
+        model_id = model.get("id")
+        efforts_seen: set[str] = set()
+        by_pool: dict[str, list[tuple[int, int, str]]] = {}
+        for tier in model.get("effort", []):
+            effort = tier.get("effort")
+            label = f"model {model_id!r} effort {effort!r}"
+            if effort in efforts_seen:
+                problems.append(f"{label}: declared more than once")
+            efforts_seen.add(effort)
+            pools_seating = seated.get((model_id, effort), set())
+            rank = tier.get("rank")
+            if rank is None:
+                for pool in sorted(pools_seating):
+                    problems.append(f"{label}: seated on pool {pool!r} without a rank")
+                continue
+            if not isinstance(rank, dict):
+                problems.append(f"{label}: rank must map pools to positive integers")
+                continue
+            if not pools_seating:
+                problems.append(f"{label}: rank on a tier no stable route seats")
+            for pool, value in sorted(rank.items()):
+                if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                    problems.append(f"{label}: rank for pool {pool!r} must be a positive integer, not {value!r}")
+                    continue
+                if pool not in pool_ids:
+                    problems.append(f"{label}: rank names undeclared pool {pool!r}")
+                elif pool not in pools_seating:
+                    problems.append(f"{label}: rank for pool {pool!r}, which does not seat this tier")
+                if effort in EFFORT_ORDER:
+                    by_pool.setdefault(pool, []).append((EFFORT_ORDER.index(effort), value, effort))
+                ranked.setdefault(pool, []).append((value, model_id, effort, tier.get("pass_at_1")))
+            for pool in sorted(pools_seating - set(rank)):
+                problems.append(f"{label}: seated on pool {pool!r} without a rank")
+        for pool, entries in by_pool.items():
+            entries.sort()
+            for (_, lower_rank, lower), (_, higher_rank, higher) in zip(entries, entries[1:]):
+                if higher_rank < lower_rank:
+                    problems.append(
+                        f"model {model_id!r} pool {pool!r}: rank falls from {lower} ({lower_rank}) to {higher} ({higher_rank})"
+                    )
+    for pool, entries in ranked.items():
+        scored = [entry for entry in entries if isinstance(entry[3], (int, float)) and not isinstance(entry[3], bool)]
+        for rank_a, model_a, effort_a, score_a in scored:
+            for rank_b, model_b, effort_b, score_b in scored:
+                if score_a > score_b and rank_a < rank_b:
+                    problems.append(
+                        f"pool {pool!r}: {model_a} {effort_a} scores {score_a} above {model_b} {effort_b} "
+                        f"({score_b}) but holds the lower rank"
+                    )
+    return problems
+
+
+def escalation_source_problems(profiles: list[dict]) -> list[str]:
+    known = {profile.get("id") for profile in profiles}
+    problems: list[str] = []
+    for profile in profiles:
+        sources = profile.get("escalation_sources", [])
+        if not isinstance(sources, list) or not all(isinstance(source, str) for source in sources):
+            problems.append(f"{profile.get('id')}: escalation_sources must be a list of profile ids")
+            continue
+        for source in sources:
+            if source not in known:
+                problems.append(f"{profile.get('id')}: escalation source {source!r} is not a profile")
+            elif source == profile.get("id"):
+                problems.append(f"{profile.get('id')}: escalation source {source!r} names the profile itself, which is always implied")
+    return problems
+
+
 def structural_problems(root: pathlib.Path) -> list[str]:
     profiles_path = root / "routing" / "profiles.toml"
     profiles = load_toml(profiles_path).get("profile", [])
@@ -287,6 +410,8 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                     problems.append(f"{label}: backend {backend_id!r} is not verified")
                 if provider not in backend.get("providers", []):
                     problems.append(f"{label}: provider {provider!r} is unsupported by backend {backend_id!r}")
+    problems.extend(rank_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
+    problems.extend(escalation_source_problems(profiles))
     return problems
 
 
@@ -488,6 +613,97 @@ def _selection_pool_refusal(
     return refusal
 
 
+def _baseline_route(profile: dict, backend: str) -> dict | None:
+    """The route ``resolve`` would pick for ``backend`` without a variant."""
+    if backend in profile.get("backends", []):
+        return profile
+    return next(
+        (
+            variant
+            for variant in profile.get("variant", [])
+            if variant.get("default_for_backend") is True and backend in variant.get("backends", [])
+        ),
+        None,
+    )
+
+
+def _classify_selection(
+    root: pathlib.Path,
+    profile: dict,
+    backend: str,
+    model_id: str,
+    effort: str,
+    provider: str,
+) -> dict[str, object]:
+    """Place a directed tuple relative to the profile's own route.
+
+    ``direction`` compares policy ranks within the selection's pool: ``same``
+    for the baseline itself, ``upgrade``, ``lateral`` or ``downgrade`` when
+    both ends are ranked there, and ``unranked`` otherwise. A tuple is
+    eligible when this profile, or a profile it names in
+    ``escalation_sources``, seats it on a stable route. The selection is
+    stable only against a stable baseline, and then when it is eligible and
+    does not rank below the baseline, or when it is a stable variant of this
+    profile on the requested backend and provider. A stable upgrade is an
+    operator escalation; everything else stays operator-directed.
+    """
+    models = load_toml(root / "routing" / "models.toml").get("model", [])
+    profiles = load_toml(root / "routing" / "profiles.toml").get("profile", [])
+    by_id = {entry.get("id"): entry for entry in profiles}
+    selected = (model_id, effort, provider)
+
+    baseline_route = _baseline_route(profile, backend)
+    baseline = None
+    direction = "unranked"
+    if baseline_route is not None:
+        baseline_tuple = (baseline_route["model"], baseline_route["effort"], baseline_route["provider"])
+        baseline = f"{baseline_route['model']}#{baseline_route['effort']}"
+        if selected == baseline_tuple:
+            direction = "same"
+        else:
+            selected_rank = _tier_rank(models, model_id, effort, provider)
+            baseline_rank = (
+                _tier_rank(models, baseline_route["model"], baseline_route["effort"], provider)
+                if baseline_route["provider"] == provider
+                else None
+            )
+            if selected_rank is not None and baseline_rank is not None:
+                direction = (
+                    "upgrade"
+                    if selected_rank > baseline_rank
+                    else "lateral"
+                    if selected_rank == baseline_rank
+                    else "downgrade"
+                )
+
+    def seats(entry: dict) -> bool:
+        return any(
+            route.get("stability") == "stable"
+            and (route.get("model"), route.get("effort"), route.get("provider")) == selected
+            for route in [entry, *entry.get("variant", [])]
+        )
+
+    sources = [profile, *(by_id[source] for source in profile.get("escalation_sources", []) if source in by_id)]
+    eligible = any(seats(entry) for entry in sources)
+    named_variant = any(
+        variant.get("stability") == "stable"
+        and backend in variant.get("backends", [])
+        and (variant.get("model"), variant.get("effort"), variant.get("provider")) == selected
+        for variant in profile.get("variant", [])
+    )
+    stable = (
+        baseline_route is not None
+        and baseline_route.get("stability") == "stable"
+        and ((eligible and direction in {"same", "upgrade", "lateral"}) or named_variant)
+    )
+    return {
+        "baseline": baseline,
+        "direction": direction,
+        "stability": "stable" if stable else "experimental",
+        "selection_kind": "operator-escalation" if stable and direction == "upgrade" else "operator-directed",
+    }
+
+
 def validate_selection(
     root: pathlib.Path,
     profile_id: str,
@@ -503,8 +719,10 @@ def validate_selection(
     """Validate an operator-directed tuple without resolving its profile.
 
     ``profile_id`` describes the execution shape only. No route or variant is
-    selected from it, and direct selections are always unrostered/experimental
-    even when the same model appears on an automatic route.
+    selected from it, and a direct selection is never rostered. Every refusal
+    runs first; then the tuple is classified against the route the profile
+    would have chosen (see ``_classify_selection``), and only a selection that
+    classification leaves experimental needs ``allow_experimental``.
     """
     fields = {
         "profile": profile_id,
@@ -628,18 +846,22 @@ def validate_selection(
             missing_fact=f"backend model support for {model_id!r} on {backend!r}",
         )
 
-    stability = "experimental"
-    if not allow_experimental:
+    classification = _classify_selection(root, profile, backend, model_id, effort, provider)
+    stability = classification["stability"]
+    selection_kind = classification["selection_kind"]
+    if stability != "stable" and not allow_experimental:
         raise RouteRefusal(
             "stability",
-            f"operator-directed selection of {model_id!r} is unrostered/experimental; pass --allow-experimental to opt in",
+            f"operator-directed selection of {model_id!r} at {effort!r} is not a seated escalation of "
+            f"{profile_id!r} on {backend!r}; pass --allow-experimental to opt in",
             profile=profile_id,
             backend=backend,
             provider=provider,
             model=model_id,
             effort=effort,
             stability=stability,
-            selection_kind="operator-directed",
+            selection_kind=selection_kind,
+            direction=classification["direction"],
             override="--allow-experimental",
         )
 
@@ -656,8 +878,10 @@ def validate_selection(
         "reason": reason,
         "route_version": version,
         "rostered": False,
-        "selection_kind": "operator-directed",
+        "selection_kind": selection_kind,
         "stability": stability,
+        "direction": classification["direction"],
+        "baseline": classification["baseline"],
         "allow_experimental": allow_experimental,
         "allow_cross_pool": allow_cross_pool,
     }

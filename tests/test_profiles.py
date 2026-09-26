@@ -293,11 +293,89 @@ role = "steered generator for tests only"
         route = self.direct_selection(allow_cross_pool=True, **values)
         self.assertEqual(route["cross_pool"], "OpenCode Go, an optional flat subscription")
 
-    def test_direct_selection_requires_experimental_opt_in_even_for_rostered_model(self):
+    def test_direct_selection_of_an_unseated_tier_requires_experimental_opt_in(self):
         with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(allow_experimental=False)
+            self.direct_selection(model="gpt-6-astra", effort="xhigh", allow_experimental=False)
         self.assertEqual(caught.exception.kind, "stability")
-        self.assertEqual(caught.exception.payload()["stability"], "experimental")
+        payload = caught.exception.payload()
+        self.assertEqual(payload["stability"], "experimental")
+        self.assertEqual(payload["direction"], "upgrade")
+        route = self.direct_selection(model="gpt-6-astra", effort="xhigh")
+        self.assertEqual(route["stability"], "experimental")
+        self.assertEqual(route["selection_kind"], "operator-directed")
+
+    def test_a_seated_upgrade_is_a_stable_operator_escalation(self):
+        route = self.direct_selection(
+            profile_id="explore", model="gpt-6-astra", effort="xhigh", allow_experimental=False
+        )
+        self.assertEqual(route["selection_kind"], "operator-escalation")
+        self.assertEqual(route["stability"], "stable")
+        self.assertEqual(route["direction"], "upgrade")
+        self.assertEqual(route["baseline"], "gpt-6-luna#max")
+        self.assertFalse(route["rostered"])
+
+    def test_naming_the_baseline_is_stable_and_directed(self):
+        route = self.direct_selection(profile_id="explore", allow_experimental=False)
+        self.assertEqual(route["direction"], "same")
+        self.assertEqual(route["stability"], "stable")
+        self.assertEqual(route["selection_kind"], "operator-directed")
+
+    def test_a_stable_variant_is_stable_only_on_its_own_backend(self):
+        values = {"profile_id": "review", "model": "gpt-6-sol", "effort": "high"}
+        route = self.direct_selection(allow_experimental=False, **values)
+        self.assertEqual(route["direction"], "downgrade")
+        self.assertEqual(route["stability"], "stable")
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(backend="pi", allow_experimental=False, **values)
+        self.assertEqual(caught.exception.kind, "stability")
+
+    def test_direction_reports_downgrade_and_unranked(self):
+        low = self.direct_selection(profile_id="explore", effort="low")
+        self.assertEqual(low["direction"], "downgrade")
+        self.assertEqual(low["stability"], "experimental")
+        high = self.direct_selection(profile_id="explore", model="gpt-6-astra", effort="high")
+        self.assertEqual(high["direction"], "unranked")
+
+    def test_baseline_is_the_canonical_backend_default(self):
+        pi = self.direct_selection(
+            profile_id="explore", backend="pi", model="deepseek-v4.1-flash", effort="max", provider="opencode-go"
+        )
+        self.assertEqual(pi["baseline"], "deepseek-flash#max")
+        claude = self.direct_selection(
+            profile_id="explore", backend="claude", model="opus-5.5", effort="medium", provider="anthropic"
+        )
+        self.assertEqual(claude["baseline"], "opus-5.5#medium")
+
+    def test_a_profile_without_a_baseline_on_the_backend_stays_experimental(self):
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        old = 'default_for_backend = true'
+        # Drop explore's pi default so nothing answers explore on pi without a variant.
+        start = text.index('[[profile]]\nid = "explore"')
+        end = text.index('[[profile]]', start + 1)
+        block = text[start:end]
+        self.assertIn(old, block)
+        profiles.write_text(text[:start] + block.replace(old, 'default_for_backend = false', 1) + text[end:])
+        route = self.direct_selection(
+            root, profile_id="explore", backend="pi", model="deepseek-flash", effort="max", provider="opencode-go"
+        )
+        self.assertIsNone(route["baseline"])
+        self.assertEqual(route["direction"], "unranked")
+        self.assertEqual(route["stability"], "experimental")
+
+    def test_a_probationary_baseline_caps_a_seated_upgrade(self):
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        text = profiles.read_text()
+        start = text.index('[[profile]]\nid = "explore"')
+        stability = text.index('stability = "stable"', start)
+        profiles.write_text(text[:stability] + 'stability = "probationary"' + text[stability + len('stability = "stable"'):])
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(
+                root, profile_id="explore", model="gpt-6-astra", effort="xhigh", allow_experimental=False
+            )
+        self.assertEqual(caught.exception.kind, "stability")
 
     def test_direct_selection_accepts_tuple_with_operator_witness(self):
         route = self.direct_selection(
@@ -797,6 +875,78 @@ backends = ["claude"]
         payload = json.loads(completed.stderr.strip().splitlines()[-1])
         self.assertEqual(payload["schema"], "agent-routing-refusal/1")
         self.assertEqual(payload["kind"], "manifest-invalid")
+
+
+class RankLintTest(unittest.TestCase):
+    def fixture_root(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = pathlib.Path(temporary.name)
+        shutil.copytree(ROOT / "routing", root / "routing")
+        return root
+
+    def rewrite(self, root, name, old, new):
+        path = root / "routing" / name
+        text = path.read_text()
+        self.assertIn(old, text)
+        path.write_text(text.replace(old, new, 1))
+
+    def problems(self, root):
+        return validation_problems(root)
+
+    def test_the_shipped_ranks_and_sources_are_valid(self):
+        self.assertEqual(self.problems(ROOT), [])
+
+    def test_a_seated_tier_without_a_rank_is_reported(self):
+        root = self.fixture_root()
+        self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 3 }\n', "")
+        self.assertIn(
+            "model 'gpt-6-sol' effort 'high': seated on pool 'openai-codex' without a rank",
+            self.problems(root),
+        )
+
+    def test_a_rank_on_an_unseated_tier_is_reported(self):
+        root = self.fixture_root()
+        self.rewrite(
+            root,
+            "models.toml",
+            '  effort = "high"\n  use = "uncalibrated; unrouted. Reads alike',
+            '  effort = "high"\n  rank = { "openai-codex" = 4 }\n  use = "uncalibrated; unrouted. Reads alike',
+        )
+        self.assertIn("model 'gpt-6-astra' effort 'high': rank on a tier no stable route seats", self.problems(root))
+
+    def test_a_boolean_rank_is_reported(self):
+        root = self.fixture_root()
+        self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 3 }\n', '  rank = { "openai-codex" = true }\n')
+        self.assertTrue(any("must be a positive integer, not True" in problem for problem in self.problems(root)))
+
+    def test_a_rank_falling_along_the_effort_order_is_reported(self):
+        root = self.fixture_root()
+        self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 5 }\n', '  rank = { "openai-codex" = 3 }\n')
+        self.assertIn(
+            "model 'gpt-6-astra' pool 'openai-codex': rank falls from medium (4) to xhigh (3)",
+            self.problems(root),
+        )
+
+    def test_a_score_inversion_is_reported(self):
+        root = self.fixture_root()
+        self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 1 }\n', '  rank = { "openai-codex" = 1 }\n  pass_at_1 = 0.9\n')
+        self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 2 }\n', '  rank = { "openai-codex" = 2 }\n  pass_at_1 = 0.5\n')
+        self.assertTrue(
+            any("scores 0.9 above" in problem and "holds the lower rank" in problem for problem in self.problems(root))
+        )
+
+    def test_an_unknown_escalation_source_names_the_profile(self):
+        root = self.fixture_root()
+        self.rewrite(root, "profiles.toml", 'escalation_sources = ["execute"]', 'escalation_sources = ["exeucte"]')
+        problems = self.problems(root)
+        self.assertIn("implement: escalation source 'exeucte' is not a profile", problems)
+        self.assertFalse(any("unknown key" in problem for problem in problems))
+
+    def test_a_valid_escalation_source_passes(self):
+        root = self.fixture_root()
+        self.rewrite(root, "profiles.toml", 'escalation_sources = ["execute"]', 'escalation_sources = ["execute", "plan"]')
+        self.assertEqual(self.problems(root), [])
 
 
 if __name__ == "__main__":

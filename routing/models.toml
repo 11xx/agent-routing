@@ -7,6 +7,12 @@
 # rather than asking anyone to remember to sync them. It reads neither
 # document's prose.
 # Access without a path: `agent-routing models`.
+#
+# A seated tier, one some stable profile route uses, carries `rank`: one
+# positive integer per pool that seats it. Ranks are operator policy ordering
+# tiers within a pool so a directed selection can be read as an upgrade or a
+# downgrade; they are not measured capability and never compare across pools.
+# The lint requires one on every seated tier and refuses one anywhere else.
 
 [meta]
 benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-09-02, with operator evidence added for Astra on 2026-09-05"
@@ -39,6 +45,7 @@ notes = "Released 2026-09-22 as `claude-opus-5-5`: 1M context, 128k maximum outp
   use = "explicit selection only; unmeasured here. Not an escalation tier: a slice medium cannot land gets decomposed, better context, or a sideways second opinion instead"
   [[model.effort]]
   effort = "medium"
+  rank = { "anthropic" = 1 }
   use = "THE DEFAULT LEAD TIER, CLAUDE IMPLEMENTATION TIER, AND ROUTING CEILING, by operator direction while no tier is calibrated. Planning, orchestration, implementation through the first-party Claude backend, ceremony, review, cleanup, novel UX/copy, and API shape all stay here unless the user explicitly asks for another effort"
   [[model.effort]]
   effort = "low"
@@ -324,6 +331,7 @@ open_weights = true
 niches = ["the open-weight route carries no frontier refusal surface, which makes it the practical choice for authorized security work — probing one's own systems for vulnerabilities — where hosted frontier models lecture, refuse, or degrade mid-task. Authorization is the operator's to establish; the model will not ask", "generation quality responds to exemplars rather than to constraints. Out of the box its code is functional and graceless, and the fix is showing it what the target should look like. Briefs that fence what it may not do get verbose noise; briefs carrying concrete style references get usable raw material", "field reports credit it with real medium-horizon agency — orchestrating subagents, checking its own work, catching and correcting its own wrong turns. That is compatible with everything measured here and changes nothing: the ceiling on its use is trust, not capability, and horizon buys no trust"]
   [[model.effort]]
   effort = "max"
+  rank = { "opencode-go" = 1 }
   predecessor = "V4 Flash 0731"
   predecessor_pass_at_1 = 0.53
   predecessor_usd_per_task = 0.46
@@ -412,12 +420,14 @@ notes = "Priced 2026-09-20 from the vendor model page: $10 input, $1 cached inpu
   use = "uncalibrated; unrouted. Operator evidence suggests Sol-max-class capability"
   [[model.effort]]
   effort = "medium"
+  rank = { "openai-codex" = 4 }
   use = "the plan and review seat. Chosen on capability, not cost: medium and high read alike on the operator's evidence, so the lower tier wins. Measured medium requests averaged the widest contexts of any tier, so a long review round is a context cost to watch"
   [[model.effort]]
   effort = "high"
   use = "uncalibrated; unrouted. Reads alike with medium on the operator's evidence, which is why medium holds the seats"
   [[model.effort]]
   effort = "xhigh"
+  rank = { "openai-codex" = 5 }
   use = "the try-harder tier for high-stakes planning, resolving an argued discussion, and high-stakes review; uncalibrated"
   [[model.effort]]
   effort = "max"
@@ -433,6 +443,7 @@ api_price_per_million = { input = 0.10, output = 0.50 }
 notes = "Codex usage estimates published on the Codex pricing page (read 2026-09-22), local messages per five-hour window: Plus 350-3,000, Pro 5x 1,750-14,000, Pro 20x 7,000-56,000, against 5.6 Luna's 250-2,000, 1,250-10,000 and 5,000-40,000, about 1.4-1.5x the allowance. Per-token credit rates are not published there. Released 2026-09-22 as `gpt-6-luna`; the Codex CLI model cache lists efforts low through max (default medium) and a 272k context. Answered through `codex exec` at low and at high effort on 2026-09-22. The cached-input price is unpublished, so it is omitted rather than assumed. Discussion: journal 20260922T185057Z-gpt-6-sol-and-luna-discussion.md"
   [[model.effort]]
   effort = "low"
+  rank = { "openai-codex" = 1 }
   use = "fixed-shape workflow calls: classify, extract, aggregate, summarize one bounded thing. Whether 5.6 Luna's low-effort cliff carries over is unmeasured, so nothing agentic routes here"
   [[model.effort]]
   effort = "medium"
@@ -445,6 +456,7 @@ notes = "Codex usage estimates published on the Codex pricing page (read 2026-09
   use = "uncalibrated; unrouted"
   [[model.effort]]
   effort = "max"
+  rank = { "openai-codex" = 2 }
   use = "the stable bounded-implementation and reconnaissance tier, at the seat 5.6 Luna max earned. Its own effort curve is unmeasured, so the first real sessions on this tier are the evidence that moves it"
 
 
@@ -464,6 +476,7 @@ notes = "Codex usage estimates published on the Codex pricing page (read 2026-09
   use = "uncalibrated; explicit computer-use comparison tier"
   [[model.effort]]
   effort = "high"
+  rank = { "openai-codex" = 3 }
   use = "the execute seat and the review fast variant: judgment-bearing arcs and a verdict on the critical path. Uncalibrated here; the tier follows the seat 5.6 Sol high earned"
   [[model.effort]]
   effort = "xhigh"

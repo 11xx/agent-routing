@@ -24,11 +24,14 @@ VALIDATE AN OPERATOR-DIRECTED SELECTION
 
   validate keeps the named profile as the execution shape and checks an
   explicit model tuple without resolving that profile or selecting a variant.
-  Direct selections are unrostered and experimental, so they require
-  --allow-experimental even when the model also appears on a named route.
-  The result identifies itself as operator-directed and carries the canonical
-  and backend model identities plus the route-version witness. Unknown pool
-  membership and missing backend/model support are refusals, not opt-ins.
+  The result carries the canonical and backend model identities, the
+  route-version witness, the profile's own route as `baseline`, and a
+  `direction` from comparing policy ranks within the selection's pool. A
+  tuple the profile or its `escalation_sources` seat stably, at or above the
+  baseline, is stable, and a stable upgrade reports `operator-escalation`.
+  Everything else is experimental and requires --allow-experimental. Unknown
+  pool membership and missing backend/model support are refusals, not
+  opt-ins.
 
 CHOOSE A PROFILE BY THE SHAPE OF THE WORK
   extract      one fixed-input, fixed-output classification, extraction,
