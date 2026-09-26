@@ -68,10 +68,13 @@ WHAT BINDS BEFORE ANY QUERY
     agent-routing check <model> [effort]   exit non-zero if that pair is banned
 
   An escalation that costs more than the caller's own seat, or draws on a
-  scarcer pool, is offered to the user, naming the route, what it buys, and the
-  pool it spends, and is never dispatched on the caller's own initiative. A
+  scarcer pool, is offered to the user by default, naming the route, what it
+  buys, and the pool it spends. A standing user instruction that
+  pre-authorizes escalation replaces the ask for the work it covers. A
   declined offer leaves the work at the caller's tier, except under a floor,
-  where it waits. One place the question arises is a clean repository: its
+  where it waits. Escalating to the caller's own tier is ordinary; prefer an
+  equivalent tier from another lab. Compare candidates as model-and-effort
+  tiers, capability and cost together, and let taste break ties. One place the question arises is a clean repository: its
   founding slices set the conventions every later model copies, so they belong
   on the head model at its routing ceiling.
 
