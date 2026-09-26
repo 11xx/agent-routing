@@ -486,7 +486,7 @@ notes = "Live-probed through pi 0.87.0 on 2026-09-22 via `--provider opencode-go
   [[model.effort]]
   effort = "high"
   status = "probationary"
-  use = "probationary trial tier, operator-directed only: `agent-routing validate --profile <shape> --backend pi --model mimo-v2.6-flash --effort high --provider opencode-go --reason <text> --allow-experimental`. The tier names what pi sends this model rather than a measured lever, so nothing above it is reachable and no tier here is scored. Trials run under a fully specified brief with exact targets, a scope ceiling, named acceptance probes, and lead review; a trial arc, not the price, is what earns or refuses a seat. Wall-clock belongs in the price: this is the slow row of the pair, so run it where the queue behind the slot is empty"
+  use = "probationary trial tier, operator-directed only: `agent-routing validate --profile <shape> --backend pi --model mimo-v2.6-flash --effort high --provider opencode-go --reason <text> --allow-experimental`. The tier names what pi sends this model rather than a measured lever, so nothing above it is reachable and no tier here is scored. Trials run under a fully specified brief with exact targets, a scope ceiling, named acceptance probes, and lead review; a trial arc, not the price, is what earns or refuses a seat. Wall-clock belongs in the price: the tail is the pair's, so run it where the queue behind the slot is empty"
 
 [[model]]
 id = "mimo-v2.6-pro"
@@ -501,7 +501,7 @@ notes = "Live-probed through pi 0.87.0 on 2026-09-22 via `--provider opencode-go
   [[model.effort]]
   effort = "high"
   status = "probationary"
-  use = "probationary trial tier, operator-directed only: `agent-routing validate --profile <shape> --backend pi --model mimo-v2.6-pro --effort high --provider opencode-go --reason <text> --allow-experimental`. The same ceiling as Flash — a fully specified brief, named probes, scope ceiling, lead review — and selected when a trial wants the sibling rather than the row being benchmarked"
+  use = "probationary trial tier, operator-directed only: `agent-routing validate --profile <shape> --backend pi --model mimo-v2.6-pro --effort high --provider opencode-go --reason <text> --allow-experimental`. The same ceiling as Flash — a fully specified brief, named probes, scope ceiling, lead review — and selected when a trial wants the sibling. Wall-clock belongs in the price: the tail is the pair's, so run it where the queue behind the slot is empty"
 
 # Narrative that the per-model fields cannot carry: the framing sentence and
 # the vocabulary the matrix is read with. Kept here so the whole prose view has
