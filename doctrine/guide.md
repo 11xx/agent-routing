@@ -26,10 +26,12 @@ VALIDATE AN OPERATOR-DIRECTED SELECTION
   explicit model tuple without resolving that profile or selecting a variant.
   The result carries the canonical and backend model identities, the
   route-version witness, the profile's own route as `baseline`, and a
-  `direction` from comparing policy ranks within the selection's pool. A
-  tuple the profile or its `escalation_sources` seat stably, at or above the
-  baseline, is stable, and a stable upgrade reports `operator-escalation`.
-  Everything else is experimental and requires --allow-experimental. Unknown
+  `direction` from comparing policy ranks within the selection's pool. Only a
+  stable baseline admits a stable selection, and then either a tuple the
+  profile or its `escalation_sources` seat stably, at or above the baseline,
+  or a stable variant of the profile on the requested backend and provider,
+  whatever its rank. A stable upgrade reports `operator-escalation`. Every
+  other selection is experimental and requires --allow-experimental. Unknown
   pool membership and missing backend/model support are refusals, not
   opt-ins.
 

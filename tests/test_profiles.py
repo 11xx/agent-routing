@@ -329,6 +329,13 @@ role = "steered generator for tests only"
             self.direct_selection(backend="pi", allow_experimental=False, **values)
         self.assertEqual(caught.exception.kind, "stability")
 
+    def test_an_experimental_baseline_keeps_a_direct_selection_experimental(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(profile_id="computer-use", effort="low", allow_experimental=False)
+        self.assertEqual(caught.exception.kind, "stability")
+        route = self.direct_selection(profile_id="computer-use", effort="low")
+        self.assertEqual(route["stability"], "experimental")
+
     def test_direction_reports_downgrade_and_unranked(self):
         low = self.direct_selection(profile_id="explore", effort="low")
         self.assertEqual(low["direction"], "downgrade")
@@ -942,6 +949,29 @@ class RankLintTest(unittest.TestCase):
         problems = self.problems(root)
         self.assertIn("implement: escalation source 'exeucte' is not a profile", problems)
         self.assertFalse(any("unknown key" in problem for problem in problems))
+
+    def test_a_tier_seated_by_an_undeclared_provider_is_ranked_under_its_name(self):
+        root = self.fixture_root()
+        self.rewrite(
+            root,
+            "profiles.toml",
+            '[[profile]]\nid = "generate"',
+            '  [[profile.variant]]\n  id = "unpooled"\n'
+            '  provider = "deepseek"\n  model = "deepseek-flash"\n  effort = "max"\n'
+            '  stability = "stable"\n  backends = ["pi"]\n\n[[profile]]\nid = "generate"',
+        )
+        self.assertIn(
+            "model 'deepseek-flash' effort 'max': seated on pool 'deepseek' without a rank",
+            self.problems(root),
+        )
+        self.rewrite(root, "models.toml", '  rank = { "opencode-go" = 1 }\n', '  rank = { "opencode-go" = 1, "deepseek" = 1 }\n')
+        self.assertEqual(self.problems(root), [])
+
+    def test_a_duplicate_model_id_is_reported(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        path.write_text(path.read_text() + '\n[[model]]\nid = "gpt-6-sol"\nfamily = "openai"\nrole = "duplicate"\n')
+        self.assertIn("duplicate model 'gpt-6-sol'", self.problems(root))
 
     def test_a_valid_escalation_source_passes(self):
         root = self.fixture_root()
