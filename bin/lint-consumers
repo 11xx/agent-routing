@@ -105,6 +105,11 @@ def configured_consumers():
             raise SystemExit(f"duplicate delegation pin: {path}")
         proxy_pins[path] = (pin["model"], pin["effort"])
         route_pins[path] = pin
+    # A lint that cannot find its subject has not passed. An accessor that
+    # names nothing is refused above; an inventory declaring no consumers and
+    # no accessors leaves the same count of zero behind, silently.
+    if not entries:
+        raise SystemExit("routing/consumers.toml declares no delegation consumers or accessors")
     return entries, proxy_pins, route_pins
 
 

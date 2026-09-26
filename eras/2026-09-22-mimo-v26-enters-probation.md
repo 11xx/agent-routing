@@ -71,7 +71,7 @@ price on the routed row), and the earlier V2.5 pair.
 
 The Flash/Pro preference is the operator's and is recorded as a preference.
 Nothing here measures the gap between them; Pro costs about three times
-Flash's input and twice its output, and until a trial measures the pair the
+Flash's input and output, and until a trial measures the pair the
 roster can rank them only by price.
 
 ## What this pass deliberately leaves
