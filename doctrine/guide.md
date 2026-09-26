@@ -60,6 +60,12 @@ WHAT BINDS BEFORE ANY QUERY
   its working tier cannot land gets decomposed, given better context, or a
   sideways second opinion.
 
+  An escalation that costs more than the caller's own seat, or draws on a
+  scarcer pool, is offered to the user with its price and never dispatched on
+  the caller's own initiative. A clean repository is where that question most
+  often arises: its founding slices set the conventions every later model
+  copies, so they belong on the best-taste tier the roster offers.
+
     agent-routing check <model> [effort]   exit non-zero if that pair is banned
 
   The reviewer is never the author. An approval from the identity that
