@@ -59,8 +59,9 @@ a reason to select one. Opus 5 above high bought 0 points at xhigh for +49%
 and 1 point at max for +95%; Sol above xhigh buys 2 points for +78%; Fable
 above high bought ≤1 point for 1.5–2.4×. The routing ceilings are **Opus 5.5
 medium and Astra xhigh**. Opus 5.5's higher efforts remain available only by
-explicit user request and are uncalibrated, as is every GPT-6 tier above its
-routed seat; Opus 5 xhigh/max and 5.6 Sol ultra/max are prohibited.
+explicit user request and are uncalibrated, as are the GPT-6 tiers above
+their routed seats; Opus 5 xhigh/max, 5.6 Sol ultra/max, and GPT-6 Sol max
+are prohibited.
 
 Medium is the routing ceiling for the head seat. A higher effort is not an
 escalation tier: it remains available only when the user explicitly requests
