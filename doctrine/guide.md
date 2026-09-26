@@ -24,11 +24,14 @@ VALIDATE AN OPERATOR-DIRECTED SELECTION
 
   validate keeps the named profile as the execution shape and checks an
   explicit model tuple without resolving that profile or selecting a variant.
-  Direct selections are unrostered and experimental, so they require
-  --allow-experimental even when the model also appears on a named route.
-  The result identifies itself as operator-directed and carries the canonical
-  and backend model identities plus the route-version witness. Unknown pool
-  membership and missing backend/model support are refusals, not opt-ins.
+  The result carries the canonical and backend model identities, the
+  route-version witness, the profile's own route as `baseline`, and a
+  `direction` from comparing policy ranks within the selection's pool. A
+  tuple the profile or its `escalation_sources` seat stably, at or above the
+  baseline, is stable, and a stable upgrade reports `operator-escalation`.
+  Everything else is experimental and requires --allow-experimental. Unknown
+  pool membership and missing backend/model support are refusals, not
+  opt-ins.
 
 CHOOSE A PROFILE BY THE SHAPE OF THE WORK
   extract      one fixed-input, fixed-output classification, extraction,
@@ -54,13 +57,21 @@ WHAT BINDS BEFORE ANY QUERY
   route by which window has headroom, and by axis.
 
   Prohibited tiers stay prohibited when asked for by name, because every family
-  stops paying before its top tier. Escalating a delegated route is ordinary —
-  a workhorse tier upward, or across to the technical peer where judgment
-  remains — but the head model's own effort is not an escalation path: a slice
-  its working tier cannot land gets decomposed, given better context, or a
-  sideways second opinion.
+  stops paying before its top tier. Escalating a delegated route within what
+  the caller's own seat costs is ordinary — a workhorse tier upward, or across
+  to the technical peer where judgment remains — but the head model's own
+  effort is not an escalation path: a slice its working tier cannot land gets
+  decomposed, given better context, or a sideways second opinion.
 
     agent-routing check <model> [effort]   exit non-zero if that pair is banned
+
+  An escalation that costs more than the caller's own seat, or draws on a
+  scarcer pool, is offered to the user, naming the route, what it buys, and the
+  pool it spends, and is never dispatched on the caller's own initiative. A
+  declined offer leaves the work at the caller's tier, except under a floor,
+  where it waits. One place the question arises is a clean repository: its
+  founding slices set the conventions every later model copies, so they belong
+  on the head model at its routing ceiling.
 
   The reviewer is never the author. An approval from the identity that
   authored the patchset is not independent, and independence is never

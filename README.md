@@ -139,14 +139,31 @@ agent-routing validate \
 ```
 
 The command does not resolve the profile or select a variant. Its JSON result
-records `selection_kind = "operator-directed"`, the base execution profile,
-canonical and backend model identities, the applied opt-ins, and the
-`route_version` witness. Direct selections are unrostered and therefore
-experimental even when the same tuple appears on an automatic route. A
-prohibited tier, unsupported model/backend fact, unknown pool membership, or
-model-role restriction refuses before a caller can use the result. A known
-cross-pool selection additionally requires `--allow-cross-pool`; that opt-in
-does not waive missing backend or model support.
+records the base execution profile, canonical and backend model identities,
+the applied opt-ins, the `route_version` witness, and where the tuple sits
+relative to the route the profile would have chosen. A prohibited tier,
+unsupported model/backend fact, unknown pool membership, or model-role
+restriction refuses before any of that. A known cross-pool selection
+additionally requires `--allow-cross-pool`; that opt-in does not waive missing
+backend or model support.
+
+`baseline` is the tuple `resolve` would return for the profile and backend,
+as `<canonical model>#<effort>`, or null when no route answers that backend.
+`direction` compares policy ranks inside the selection's pool: `same` for the
+baseline itself, `upgrade`, `lateral` or `downgrade` when both ends are
+ranked there, and `unranked` otherwise. Ranks live on seated tiers in
+`models.toml` as `rank = { "<pool>" = <n> }`; they are operator policy, not
+measured capability, and compare only within one pool. A tuple is eligible
+when the profile, or a profile it names in `escalation_sources`, seats it on
+a stable route.
+
+A selection is `stable` only against a stable baseline, and then when it is
+eligible and does not rank below the baseline, or when it is a stable variant
+of the profile on the requested backend and provider. A stable upgrade
+reports `selection_kind = "operator-escalation"`; every other selection is
+`operator-directed`, and anything left experimental requires
+`--allow-experimental`. `rostered` stays false for both, because the route
+did not choose the tuple.
 
 `resolve` keeps its existing output and remains the route-selected surface.
 Both commands emit machine-readable refusal payloads with the
