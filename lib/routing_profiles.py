@@ -217,12 +217,13 @@ def _tier_rank(models: list[dict], model_id: str, effort: str, pool: str) -> int
 def rank_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict]) -> list[str]:
     """Ranks are operator policy that orders seated tiers within one pool.
 
-    Every seated tier carries a rank for each pool that seats it and no other
-    tier carries one; a rank never falls as effort rises within one model and
+    A pool is the provider a route draws on, declared in ``delegation.toml``
+    or not: an undeclared provider is unconstrained, and a tier it seats is
+    ranked under its name like any other. Every seated tier carries a rank for
+    each pool that seats it and no other tier carries one; a rank never falls as effort rises within one model and
     pool, and never inverts two measured pass@1 scores in the same pool.
     """
     seated = _seated_tiers(profiles, by_pool)
-    pool_ids = set(by_pool)
     problems: list[str] = []
     ranked: dict[str, list[tuple[int, str, str, float | None]]] = {}
     for model in models:
@@ -250,9 +251,7 @@ def rank_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, d
                 if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                     problems.append(f"{label}: rank for pool {pool!r} must be a positive integer, not {value!r}")
                     continue
-                if pool not in pool_ids:
-                    problems.append(f"{label}: rank names undeclared pool {pool!r}")
-                elif pool not in pools_seating:
+                if pool not in pools_seating:
                     problems.append(f"{label}: rank for pool {pool!r}, which does not seat this tier")
                 if effort in EFFORT_ORDER:
                     by_pool.setdefault(pool, []).append((EFFORT_ORDER.index(effort), value, effort))
@@ -302,7 +301,11 @@ def structural_problems(root: pathlib.Path) -> list[str]:
     by_model = {model["id"]: model for model in models}
     by_backend = {backend["id"]: backend for backend in delegation.get("backend", [])}
     problems: list[str] = []
+    model_ids: set[str] = set()
     for model in models:
+        if model.get("id") in model_ids:
+            problems.append(f"duplicate model {model.get('id')!r}")
+        model_ids.add(model.get("id"))
         status = model.get("status")
         if status is not None and status not in MODEL_STATUSES:
             problems.append(f"model {model['id']!r}: unknown status {status!r}")
