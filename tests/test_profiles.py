@@ -340,8 +340,8 @@ role = "steered generator for tests only"
         low = self.direct_selection(profile_id="explore", effort="low")
         self.assertEqual(low["direction"], "downgrade")
         self.assertEqual(low["stability"], "experimental")
-        high = self.direct_selection(profile_id="explore", model="gpt-6-astra", effort="high")
-        self.assertEqual(high["direction"], "unranked")
+        unranked = self.direct_selection(profile_id="explore", model="gpt-6-astra", effort="low")
+        self.assertEqual(unranked["direction"], "unranked")
 
     def test_baseline_is_the_canonical_backend_default(self):
         pi = self.direct_selection(
@@ -917,10 +917,10 @@ class RankLintTest(unittest.TestCase):
         self.rewrite(
             root,
             "models.toml",
-            '  effort = "high"\n  use = "uncalibrated; unrouted. Reads alike',
-            '  effort = "high"\n  rank = { "openai-codex" = 4 }\n  use = "uncalibrated; unrouted. Reads alike',
+            '  effort = "low"\n  use = "uncalibrated; unrouted. Operator evidence',
+            '  effort = "low"\n  rank = { "openai-codex" = 3 }\n  use = "uncalibrated; unrouted. Operator evidence',
         )
-        self.assertIn("model 'gpt-6-astra' effort 'high': rank on a tier no stable route seats", self.problems(root))
+        self.assertIn("model 'gpt-6-astra' effort 'low': rank on a tier no stable route seats", self.problems(root))
 
     def test_a_boolean_rank_is_reported(self):
         root = self.fixture_root()
