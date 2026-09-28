@@ -562,6 +562,43 @@ role = "steered generator for tests only"
                 self.assertEqual(completed.returncode, 0, completed.stderr)
                 self.assertIn(f"not prohibited: {expected}", completed.stdout)
 
+    def test_sonnet_5_5_is_an_experimental_selection_that_refuses_max(self):
+        for model in ("sonnet-5.5", "sonnet-5-5", "claude-sonnet-5-5"):
+            with self.subTest(model=model):
+                selection = self.direct_selection(
+                    profile_id="implement",
+                    backend="claude",
+                    model=model,
+                    effort="high",
+                    provider="anthropic",
+                )
+                self.assertEqual(selection["canonical_model"], "sonnet-5.5")
+                self.assertEqual(selection["backend_model"], "claude-sonnet-5-5")
+                self.assertEqual(selection["stability"], "experimental")
+                self.assertEqual(selection["selection_kind"], "operator-directed")
+                self.assertFalse(selection["rostered"])
+                with self.assertRaises(RouteRefusal) as caught:
+                    self.direct_selection(
+                        profile_id="implement",
+                        backend="claude",
+                        model=model,
+                        effort="max",
+                        provider="anthropic",
+                    )
+                self.assertEqual(caught.exception.kind, "prohibited")
+
+    def test_check_bans_sonnet_5_5_max_under_every_name(self):
+        command = ROOT / "bin" / "routing-check"
+        for argument in ("sonnet-5.5", "sonnet-5-5", "claude-sonnet-5-5"):
+            with self.subTest(argument=argument):
+                banned = subprocess.run([command, argument, "max"], capture_output=True, text=True)
+                self.assertEqual(banned.returncode, 1)
+                self.assertIn("prohibited: sonnet-5.5 at max", banned.stderr)
+        for effort in ("low", "medium", "high", "xhigh"):
+            with self.subTest(effort=effort):
+                allowed = subprocess.run([command, "sonnet-5.5", effort], capture_output=True, text=True)
+                self.assertEqual(allowed.returncode, 0, allowed.stderr)
+
     def test_experimental_variant_fails_closed(self):
         """A variant carries its own stability, independent of its profile's.
 

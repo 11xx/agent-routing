@@ -78,7 +78,8 @@ or a frozen model name to manufacture independence.
 
 Futures and new evidence are data updates rather than frozen policy: Gemini
 3.8 Flash, GLM 5.3, Grok 4.6, and Kimi K3 remain unprobed rows; Fable 5.1 is
-available on the Claude subscription but unmeasured; Astra is available to the
+available on the Claude subscription but unmeasured; Sonnet 5.5 is a trial row
+on the same subscription, reached only by operator direction; Astra is available to the
 operator but unprobed, with low/medium/high hypotheses recorded in the roster.
 Concrete selection belongs to the current resolver and the user's request, not
 this prose.
@@ -372,6 +373,17 @@ Backend selection between the two GPT routes:
 - Claude is the first-party backend for `design` and taste-axis review. It is
   not a substitute for Pi's native provider route; its subscription entitlement
   belongs to the Claude client.
+- **Sonnet 5.5 is a trial, not a seat.** It is unmeasured and no profile
+  resolves to it. Reach it as `claude -p --model claude-sonnet-5-5 --effort
+  <tier>` through a validated operator-directed selection:
+  `agent-routing validate --profile <shape> --backend claude --model
+  sonnet-5.5 --effort <tier> --provider anthropic --reason <text>
+  --allow-experimental`. Max is prohibited; low and xhigh are explicit-only;
+  medium and high are the trial tiers, and the first comparison is high
+  against Opus 5.5 medium on the same real work. Record the model, requested
+  and effective effort, harness, and evaluator with every result. At its top
+  tier the agent fanned out into subagents, timeouts, and out-of-scope
+  edits, so read a run's diff against its brief's scope ceiling.
 
 ## Launcher hygiene and liveness
 
