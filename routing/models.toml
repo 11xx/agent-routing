@@ -417,21 +417,21 @@ weaknesses = ["FIELD-MEASURED, 2026-09-20, 25 sessions / 2,924 requests / 768M i
 notes = "Priced 2026-09-20 from the vendor model page: $10 input, $1 cached input, $12.50 cache write, $50 output per million. Batch and Flex run at 50% of standard, Fast at 2x. The published long-context surcharge above 272k input tokens is an API list-price term; it is not observed Codex subscription spend, where the field records show no visible quota discontinuity at that threshold. The published API input rate is exactly 50x Luna's and the output rate 41.7x, but those ratios do not predict subscription consumption. Capability remains unprobed and no automatic profile names Astra; the field arc measures context and quota behavior, not pass@1 or implementation quality. The intended workflow is bounded Astra planning and review followed by bounded implementation through the current `implement` profile, which resolves to Luna max. This is a workflow description, not a capability or savings guarantee. An explicit session instruction to implement locally or not delegate is owned by the instruction layer and overrides that default. The current Codex client addresses the model as gpt-6-astra."
   [[model.effort]]
   effort = "low"
-  use = "uncalibrated; unrouted. Operator evidence suggests Sol-max-class capability"
+  use = "uncalibrated; unrouted. Operator evidence suggests Sol-max-class capability. Field test pending on operator direction (2026-09-28): a few low runs on knowledge work (adjudication and review), each compared with medium on the same input; the model and its size are the same at every effort, so knowledge work may hold up at low"
   [[model.effort]]
   effort = "medium"
   rank = { "openai-codex" = 4 }
   use = "the plan and review seat. Chosen on capability, not cost: medium and high read alike on the operator's evidence, so the lower tier wins. Measured medium requests averaged the widest contexts of any tier, so a long review round is a context cost to watch"
   [[model.effort]]
   effort = "high"
-  use = "uncalibrated; unrouted. Reads alike with medium on the operator's evidence, which is why medium holds the seats"
+  use = "prohibited: never select, including on explicit request. Reads alike with medium on the operator's evidence (restated 2026-09-28), so the lower tier wins: route medium, or xhigh when a task needs the step up"
   [[model.effort]]
   effort = "xhigh"
   rank = { "openai-codex" = 5 }
   use = "the try-harder tier for high-stakes planning, resolving an argued discussion, and high-stakes review; uncalibrated"
   [[model.effort]]
   effort = "max"
-  use = "uncalibrated; unrouted"
+  use = "prohibited: never select, including on explicit request. Banned on operator direction (2026-09-28); Artificial Analysis puts it 0.3 Intelligence Index points over xhigh for 41% more per task"
 
 [[model]]
 id = "gpt-6-luna"
