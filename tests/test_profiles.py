@@ -562,42 +562,70 @@ role = "steered generator for tests only"
                 self.assertEqual(completed.returncode, 0, completed.stderr)
                 self.assertIn(f"not prohibited: {expected}", completed.stdout)
 
-    def test_sonnet_5_5_is_an_experimental_selection_that_refuses_max(self):
+    def test_sonnet_5_5_is_an_experimental_selection_at_every_tier(self):
         for model in ("sonnet-5.5", "sonnet-5-5", "claude-sonnet-5-5"):
-            with self.subTest(model=model):
-                selection = self.direct_selection(
-                    profile_id="implement",
-                    backend="claude",
-                    model=model,
-                    effort="high",
-                    provider="anthropic",
-                )
-                self.assertEqual(selection["canonical_model"], "sonnet-5.5")
-                self.assertEqual(selection["backend_model"], "claude-sonnet-5-5")
-                self.assertEqual(selection["stability"], "experimental")
-                self.assertEqual(selection["selection_kind"], "operator-directed")
-                self.assertFalse(selection["rostered"])
-                with self.assertRaises(RouteRefusal) as caught:
-                    self.direct_selection(
+            for effort in ("low", "medium", "high", "xhigh", "max"):
+                with self.subTest(model=model, effort=effort):
+                    selection = self.direct_selection(
                         profile_id="implement",
                         backend="claude",
                         model=model,
-                        effort="max",
+                        effort=effort,
                         provider="anthropic",
                     )
-                self.assertEqual(caught.exception.kind, "prohibited")
+                    self.assertEqual(selection["canonical_model"], "sonnet-5.5")
+                    self.assertEqual(selection["backend_model"], "claude-sonnet-5-5")
+                    self.assertEqual(selection["effort"], effort)
+                    self.assertEqual(selection["stability"], "experimental")
+                    self.assertEqual(selection["selection_kind"], "operator-directed")
+                    self.assertFalse(selection["rostered"])
 
-    def test_check_bans_sonnet_5_5_max_under_every_name(self):
+    def test_sonnet_5_5_max_still_requires_the_experimental_opt_in(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(
+                profile_id="implement",
+                backend="claude",
+                model="sonnet-5.5",
+                effort="max",
+                provider="anthropic",
+                allow_experimental=False,
+            )
+        self.assertEqual(caught.exception.kind, "stability")
+
+    def test_check_names_sonnet_5_5_max_explicit_only_under_every_name(self):
         command = ROOT / "bin" / "routing-check"
         for argument in ("sonnet-5.5", "sonnet-5-5", "claude-sonnet-5-5"):
-            with self.subTest(argument=argument):
-                banned = subprocess.run([command, argument, "max"], capture_output=True, text=True)
-                self.assertEqual(banned.returncode, 1)
-                self.assertIn("prohibited: sonnet-5.5 at max", banned.stderr)
-        for effort in ("low", "medium", "high", "xhigh"):
+            for effort in ("low", "xhigh", "max"):
+                with self.subTest(argument=argument, effort=effort):
+                    completed = subprocess.run([command, argument, effort], capture_output=True, text=True)
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    self.assertIn(f"explicit-only: sonnet-5.5 at {effort}", completed.stdout)
+        for effort in ("medium", "high"):
             with self.subTest(effort=effort):
-                allowed = subprocess.run([command, "sonnet-5.5", effort], capture_output=True, text=True)
-                self.assertEqual(allowed.returncode, 0, allowed.stderr)
+                completed = subprocess.run([command, "sonnet-5.5", effort], capture_output=True, text=True)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertIn(f"not prohibited: sonnet-5.5 at {effort}", completed.stdout)
+
+    def test_sonnet_5_5_max_cannot_back_a_profile(self):
+        root = self.fixture_root()
+        self.add_implement_variant(
+            root,
+            '''  [[profile.variant]]
+  id = "sonnet-max"
+  provider = "anthropic"
+  model = "sonnet-5.5"
+  backend_model = "claude-sonnet-5-5"
+  effort = "max"
+  stability = "experimental"
+  backends = ["claude"]
+''',
+        )
+        self.assertTrue(
+            any(
+                "sonnet-5.5 max requires an explicit model request and cannot back a profile" in problem
+                for problem in validation_problems(root)
+            )
+        )
 
     def test_experimental_variant_fails_closed(self):
         """A variant carries its own stability, independent of its profile's.

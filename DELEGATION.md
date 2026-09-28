@@ -378,9 +378,10 @@ Backend selection between the two GPT routes:
   <tier>` through a validated operator-directed selection:
   `agent-routing validate --profile <shape> --backend claude --model
   sonnet-5.5 --effort <tier> --provider anthropic --reason <text>
-  --allow-experimental`. Max is prohibited; low and xhigh are explicit-only;
-  medium and high are the trial tiers, and the first comparison is high
-  against Opus 5.5 medium on the same real work. Record the model, requested
+  --allow-experimental`. Low, xhigh, and max are explicit-only, and max is a
+  bounded trial under a token or time cap, never an escalation; medium and
+  high are the trial tiers, and the first comparison is high against Opus 5.5
+  medium on the same real work. Record the model, requested
   and effective effort, harness, and evaluator with every result. At its top
   tier the agent fanned out into subagents, timeouts, and out-of-scope
   edits, so read a run's diff against its brief's scope ceiling.

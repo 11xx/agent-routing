@@ -1,7 +1,7 @@
-# Model era: Sonnet 5.5 enters on trial, max prohibited (2026-09-28 → )
+# Model era: Sonnet 5.5 enters on trial (2026-09-28 → )
 
 Sonnet 5.5 entered the roster as an unmeasured trial row on the Claude
-subscription, with its max tier prohibited. Opus 5.5 stays the head model and
+subscription. Opus 5.5 stays the head model and
 holds every seat it held; nothing was reseated. The Sonnet name carries a bad
 prior — `sonnet-5` measured dominated and token-hungry and is restricted to
 relay shells — and this row inherits none of it and none of that row's
@@ -41,25 +41,28 @@ model.
 The Terminal-Bench spread is the reason a score is stored with model, effort,
 harness, evaluator, and benchmark version and never as `TerminalBench = X`.
 
-## Why max is prohibited
+## Why max is explicit-only
 
-The ban is the operator's, and the launch record gives it four independent
-reasons, so it is a decision about a tier rather than an unmeasured tier:
+Max scales with effort on the operator's read, and the launch index agrees: 56
+against xhigh's 52. It is still not an escalation tier, for reasons the same
+record gives:
 
-- Max buys 4 index points over xhigh (56 against 52) for 2.8x the cost per
-  task ($7.60 against $2.74).
+- It buys 4 index points over xhigh for 2.8x the cost per task ($7.60 against
+  $2.74).
 - Opus 5.5 xhigh reaches the same 56 for $3.46, so past xhigh a sideways move
   to Opus is cheaper than more Sonnet effort.
 - It emits the highest output volume Artificial Analysis had measured, so the
   cash column understates wall-clock and window weight.
 - On FrontierCode it scored below xhigh. More reasoning changed the agent's
   behavior — subagent fan-out, out-of-scope edits, timeouts — in a way that
-  cost mergeable results, which makes effort a non-monotonic dial on this
-  model, not a slower one.
+  cost mergeable results, which makes effort a non-monotonic dial on that
+  harness, not only a slower one.
 
-`agent-routing check` refuses max under `sonnet-5.5`, `sonnet-5-5`, and the
-callable id `claude-sonnet-5-5`, and `validate` refuses it as `prohibited`
-even with `--allow-experimental`.
+So it is reachable by a direct request and nothing else: a bounded task under
+a token or time cap, with the diff read against the brief's scope ceiling.
+`agent-routing check` answers `explicit-only` under `sonnet-5.5`, `sonnet-5-5`,
+and the callable id `claude-sonnet-5-5`, and lint keeps an explicit-only tier
+from backing a profile.
 
 ## Why no route was added
 
@@ -78,9 +81,10 @@ flag names `claude-sonnet-5-5`.
 
 Tier statuses follow what a first trial needs. Medium and high are
 probationary: medium is Claude Code's default, and high is the last tier
-before the launch data stops paying. Low and xhigh are explicit-only, because
-no case is made for either and xhigh is 2.5x high's cost for 5 index points. No tier is ranked; a
-rank orders seated tiers and none is seated.
+before the launch data stops paying. Low, xhigh, and max are explicit-only:
+no case is made for low, xhigh is 2.5x high's cost for 5 index points, and
+max is the section above. No tier is ranked; a rank orders seated tiers and
+none is seated.
 
 ## What the trial has to answer
 
@@ -98,6 +102,9 @@ synthetic bench. In priority order:
 4. **Review calibration**: the same flawed and clean diffs, counting serious
    defects found and missed, false alarms, whether the verdict was right, and
    whether extra effort added noise instead of signal.
+5. **Max, on a bounded task under a token or time cap**: whether the scaling
+   the operator reads survives the fan-out the vendor's harness showed, and
+   what it costs in window weight when it does.
 
 ## What this pass deliberately leaves
 
