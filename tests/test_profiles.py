@@ -109,16 +109,23 @@ role = "steered generator for tests only"
                     resolve(ROOT, "computer-use", backend, variant_id=variant)
                 route = resolve(ROOT, "computer-use", backend, variant_id=variant,
                                 allow_experimental=True)
-                self.assertEqual((route["model"], route["effort"]), ("gpt-6-sol", effort))
+                self.assertEqual((route["model"], route["effort"]), ("gpt-6.1-sol", effort))
 
     def test_sol_max_is_prohibited_while_computer_use_tiers_remain_available(self):
         for effort in ("low", "medium", "high", "xhigh"):
-            self.direct_selection(profile_id="computer-use", model="gpt-6-sol",
+            self.direct_selection(profile_id="computer-use", model="gpt-6.1-sol",
                                   effort=effort)
         with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(profile_id="computer-use", model="gpt-6-sol",
+            self.direct_selection(profile_id="computer-use", model="gpt-6.1-sol",
                                   effort="max")
         self.assertEqual(caught.exception.kind, "prohibited")
+
+    def test_superseded_sol_is_refused_at_every_tier(self):
+        for effort in ("low", "medium", "high", "xhigh"):
+            with self.assertRaises(RouteRefusal) as caught:
+                self.direct_selection(profile_id="computer-use", model="gpt-6-sol",
+                                      effort=effort)
+            self.assertEqual(caught.exception.kind, "model-role")
 
     def test_opus_computer_use_requires_explicit_claude_selection(self):
         with self.assertRaises(RouteRefusal):
@@ -282,7 +289,7 @@ role = "steered generator for tests only"
         values = {
             "profile_id": "review",
             "backend": "pi",
-            "model": "gpt-6-sol",
+            "model": "gpt-6.1-sol",
             "effort": "high",
             "provider": "opencode-go",
         }
@@ -321,7 +328,7 @@ role = "steered generator for tests only"
         self.assertEqual(route["selection_kind"], "operator-directed")
 
     def test_a_stable_variant_is_stable_only_on_its_own_backend(self):
-        values = {"profile_id": "review", "model": "gpt-6-sol", "effort": "high"}
+        values = {"profile_id": "review", "model": "gpt-6.1-sol", "effort": "high"}
         route = self.direct_selection(allow_experimental=False, **values)
         self.assertEqual(route["direction"], "downgrade")
         self.assertEqual(route["stability"], "stable")
@@ -701,7 +708,7 @@ role = "steered generator for tests only"
         self.assertEqual(route["stability"], "stable")
 
         fast = resolve(ROOT, "review", "codex", variant_id="fast")
-        self.assertEqual((fast["model"], fast["effort"]), ("gpt-6-sol", "high"))
+        self.assertEqual((fast["model"], fast["effort"]), ("gpt-6.1-sol", "high"))
         high_stakes = resolve(ROOT, "review", "codex", variant_id="high-stakes")
         self.assertEqual((high_stakes["model"], high_stakes["effort"]), ("gpt-6-astra", "xhigh"))
 
@@ -807,7 +814,7 @@ backends = ["claude"]
         variant = '''  [[profile.variant]]
   id = "go-sol"
   provider = "opencode-go"
-  model = "gpt-6-sol"
+  model = "gpt-6.1-sol"
   effort = "high"
   stability = "stable"
   backends = ["pi"]
@@ -823,14 +830,14 @@ backends = ["claude"]
         refusal = caught.exception
         self.assertEqual(refusal.kind, "pool")
         payload = refusal.payload()
-        self.assertEqual(payload["model"], "gpt-6-sol")
+        self.assertEqual(payload["model"], "gpt-6.1-sol")
         self.assertEqual(payload["override"], "--allow-cross-pool")
         self.assertIn("openai-codex", payload["alternative"])
 
     def test_crossing_a_pool_is_opt_in_and_recorded(self):
         root = self.cross_pool_root()
         route = resolve(root, "review", "pi", variant_id="go-sol", allow_cross_pool=True)
-        self.assertEqual(route["model"], "gpt-6-sol")
+        self.assertEqual(route["model"], "gpt-6.1-sol")
         self.assertIn("cross_pool", route)
 
     def test_one_pool_violation_does_not_block_an_unrelated_route(self):
@@ -973,7 +980,7 @@ class RankLintTest(unittest.TestCase):
         root = self.fixture_root()
         self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 3 }\n', "")
         self.assertIn(
-            "model 'gpt-6-sol' effort 'high': seated on pool 'openai-codex' without a rank",
+            "model 'gpt-6.1-sol' effort 'high': seated on pool 'openai-codex' without a rank",
             self.problems(root),
         )
 
