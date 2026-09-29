@@ -111,14 +111,14 @@ role = "steered generator for tests only"
                                 allow_experimental=True)
                 self.assertEqual((route["model"], route["effort"]), ("gpt-6.1-sol", effort))
 
-    def test_sol_max_is_prohibited_while_computer_use_tiers_remain_available(self):
-        for effort in ("low", "medium", "high", "xhigh"):
+    def test_sol_max_is_explicit_only_beside_the_computer_use_tiers(self):
+        for effort in ("low", "medium", "high", "xhigh", "max"):
             self.direct_selection(profile_id="computer-use", model="gpt-6.1-sol",
                                   effort=effort)
         with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(profile_id="computer-use", model="gpt-6.1-sol",
-                                  effort="max")
-        self.assertEqual(caught.exception.kind, "prohibited")
+            self.direct_selection(profile_id="execute", model="gpt-6.1-sol",
+                                  effort="max", allow_experimental=False)
+        self.assertEqual(caught.exception.kind, "stability")
 
     def test_superseded_sol_is_refused_at_every_tier(self):
         for effort in ("low", "medium", "high", "xhigh"):

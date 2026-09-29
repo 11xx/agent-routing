@@ -14,7 +14,7 @@ this matrix, so this record states what the moves rest on.
 | review | gpt-6.1-sol high (codex); `astra` variant gpt-6-astra medium; `high-stakes` gpt-6-astra xhigh |
 | computer-use (experimental) | gpt-6.1-sol low; `medium`, `high`, `xhigh` comparison variants (codex, pi) |
 
-Its max tier is prohibited. `gpt-6-sol` is superseded and refused at every tier.
+Its max tier is explicit-only. `gpt-6-sol` is superseded and refused at every tier.
 
 ## What the move rests on
 
@@ -47,12 +47,15 @@ they already held. Nothing about the seat itself was re-decided.
 The vendor's own post refused automated reads, so its figures are recorded as the
 coverage reports them.
 
-## Why max is prohibited
+## Why max is explicit-only
 
 The curve flattens above high. Xhigh buys 0.8 index points for 23% more per task,
-and max buys another 0.8 for 84% more than xhigh and twice its wall-clock. GPT-6
-Sol max was already banned, and nothing in the successor's curve argues against
-carrying that ban forward.
+and max buys another 0.8 for 84% more than xhigh and twice its wall-clock; the
+field report's DeepSWE fork scored both below low and high. That keeps max out
+of every automatic path and off the escalation ladder. It is not banned, by
+operator direction: a prohibition has no override, and GPT-6 Sol max's ban was
+a judgment about that model. A direct request runs it as a bounded trial read
+against xhigh, on codex, since pi clamps it to high.
 
 ## Review moves off Astra
 
