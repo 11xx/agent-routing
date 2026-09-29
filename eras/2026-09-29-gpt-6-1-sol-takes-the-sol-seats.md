@@ -1,16 +1,17 @@
 # Model era: GPT-6.1 Sol takes the Sol seats (2026-09-29 → )
 
 GPT-6.1 Sol replaced GPT-6 Sol in every seat it held, at the same tier, by
-operator direction on its release day. Astra and Luna keep their seats, and pi's
-profile defaults stay on DeepSeek. No GPT-6 row exists on this matrix, so this
-record states what the move rests on.
+operator direction on its release day, and took the review seat from Astra
+medium the same day. Astra keeps plan and the high-stakes variants, Luna keeps
+its seats, and pi's profile defaults stay on DeepSeek. No GPT-6 row exists on
+this matrix, so this record states what the moves rest on.
 
 ## Seats
 
 | Profile | Route |
 | :--- | :--- |
 | execute | gpt-6.1-sol high (codex) |
-| review, `fast` variant | gpt-6.1-sol high (codex) |
+| review | gpt-6.1-sol high (codex); `astra` variant gpt-6-astra medium; `high-stakes` gpt-6-astra xhigh |
 | computer-use (experimental) | gpt-6.1-sol low; `medium`, `high`, `xhigh` comparison variants (codex, pi) |
 
 Its max tier is prohibited. `gpt-6-sol` is superseded and refused at every tier.
@@ -53,16 +54,53 @@ and max buys another 0.8 for 84% more than xhigh and twice its wall-clock. GPT-6
 Sol max was already banned, and nothing in the successor's curve argues against
 carrying that ban forward.
 
+## Review moves off Astra
+
+The launch-day index put 6.1 Sol high level with Astra medium at a fifth of the
+cost per task. A field report from early access then supplied what an index
+point cannot: review on real codebases. Theo Browne ("OpenAI fights back",
+t3.gg, 2026-09-29, https://www.youtube.com/watch?v=vu8X3YroB-w) reports:
+
+- a deep audit of his orchestrator level with Astra's, slightly above it on one
+  scoring, at about half the price;
+- first place at 87.4 in a blind ten-model codebase-improvement comparison,
+  against Astra's 83.8;
+- a real regression on a pull request, caught with code reading and computer
+  use, that Opus 5.5 and Fable 5.1 had both missed;
+- a blind Opus 5.5 judgment that it would pick this model over Astra for
+  finding what is wrong, and rank it about level with Opus.
+
+Review is where Codex spend concentrates, and 6.1 Sol's credits are a fifth of
+Astra's at every token class (a tenth for cached input). So review moved to Sol
+high on operator direction, and `fast` folded into the default. Astra medium
+stays reachable as the `astra` variant for a second Codex-side judgment, and
+Astra xhigh keeps `high-stakes`.
+
+The same report sets the limits of the seat:
+
+- **Long unattended building is below frontier.** It follows its process rules
+  even when they stop all progress, and does not ask for help. A multi-day
+  compiler port burned tokens without progress, and Opus 5.5 then made that
+  progress in a day.
+- **First drafts are harder to merge** than Opus 5.5's and carried real bugs.
+- **Its judgment running machines** made more slips than Astra's.
+- **Front-end work has no taste**, and fills the UI with slop copy.
+- **Computer use is slightly below Astra**, and close enough to use it there.
+
+Its author also runs the site the Artificial Analysis curve above was read
+from, so the report and the curve are one source, not two.
+
 ## What did not move
 
-- **Astra keeps plan and review.** GPT-6.1 Sol high sits level with Astra medium
-  (50.2 against 49.6) at about a fifth of the cost per task. That comparison is
-  the obvious next trial. An index point is not a review record, though, and
-  Astra's seat rests on the operator's judgment of its verdicts.
+- **Astra keeps plan and the high-stakes variants.** Nothing in the field
+  report tests planning, and it has Astra making the fewest judgment slips of
+  the models it compared, which is the axis a plan and a costly approval turn
+  on.
 - **The Sol line's fences stay.** 5.6 Sol's overbuild and over-determination
   weaknesses were fenced on GPT-6 Sol without a field arc to lift them. The
   restriction figure improved from 64.4% to 23.5%, which is still well short of
-  lifting a fence.
+  lifting a fence. The field report adds a third, stalling without asking, so a
+  long execute arc names a no-progress stop condition in its brief.
 - **Pi's catalog lags.** Pi 0.99.0 does not list the model, so it is sent as a
   custom id with no thinking-level mapping. There, a requested xhigh or max
   clamps to high without saying so, and the computer-use xhigh comparison is a
@@ -71,5 +109,5 @@ carrying that ban forward.
 ## What would move a seat
 
 A Datacurve row for GPT-6.1 Sol, a field arc where it fails a judgment-bearing
-arc GPT-6 Sol landed, or a review trial putting it against Astra medium on the
-same diffs.
+arc GPT-6 Sol landed, or a Sol approval that an Astra or Opus review on the
+same diff overturns.
