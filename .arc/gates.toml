@@ -1,5 +1,5 @@
 # Routing's integration gates. The consumer lint reads the sibling repositories
-# under AI_AGENT_CODE_ROOT, so it catches a roster pin that lands in a consumer
+# under AGENT_CODE_ROOT, so it catches a roster pin that lands in a consumer
 # as well as one that lands here.
 [gates.test]
 command = "python3 -m pytest -q"
@@ -8,4 +8,4 @@ command = "python3 -m pytest -q"
 command = "bin/lint-routing"
 
 [gates.consumers]
-command = "AI_AGENT_CODE_ROOT=$HOME/code bin/lint-consumers"
+command = "AGENT_CODE_ROOT=$HOME/code bin/lint-consumers"

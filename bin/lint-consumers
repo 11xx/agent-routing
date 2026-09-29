@@ -9,7 +9,7 @@ import sys
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-CODE = pathlib.Path(os.environ.get("AI_AGENT_CODE_ROOT", ROOT.parent))
+CODE = pathlib.Path(os.environ.get("AGENT_CODE_ROOT", ROOT.parent))
 
 
 def load(path):

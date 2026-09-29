@@ -72,7 +72,7 @@ class ConsumerLintTest(unittest.TestCase):
     def run_lint(self, code):
         environment = {
             **os.environ,
-            "AI_AGENT_CODE_ROOT": str(code),
+            "AGENT_CODE_ROOT": str(code),
             "AGENT_HARNESS_BIN": str(self.harness),
         }
         return subprocess.run([ROOT / "bin" / "lint-consumers"], capture_output=True, text=True, env=environment)
@@ -116,13 +116,13 @@ class ConsumerLintTest(unittest.TestCase):
         for directory in ("bin", "routing"):
             shutil.copytree(ROOT / directory, root / directory)
         (root / "routing" / "consumers.toml").write_text(
-            '[repository]\nskills = "ai-agent-harnesses"\ndelegate = "ai-agent-delegate"\n'
+            '[repository]\nskills = "agent-harnesses"\ndelegate = "agent-delegate"\n'
         )
         result = subprocess.run(
             [root / "bin" / "lint-consumers"],
             capture_output=True,
             text=True,
-            env={**os.environ, "AI_AGENT_CODE_ROOT": str(root / "code")},
+            env={**os.environ, "AGENT_CODE_ROOT": str(root / "code")},
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("declares no delegation consumer", result.stderr)
