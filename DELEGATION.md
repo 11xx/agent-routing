@@ -184,7 +184,7 @@ with the routing policy:
 - Effort inheritance is the wrong direction. A high-effort orchestrator
   spawning same-effort context gatherers is the most expensive possible
   configuration; the ladder routes fixed-shape calls to Luna low, bounded
-  implementation to Luna max, planning and review to Astra, and
+  implementation to Luna max, planning to Astra, and review and
   judgment-bearing execution to Sol high.
 - Whole-conversation inheritance is unscoped context transfer. It pays for
   the entire session history in every child and buries the task signal.

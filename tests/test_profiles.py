@@ -111,14 +111,14 @@ role = "steered generator for tests only"
                                 allow_experimental=True)
                 self.assertEqual((route["model"], route["effort"]), ("gpt-6.1-sol", effort))
 
-    def test_sol_max_is_prohibited_while_computer_use_tiers_remain_available(self):
-        for effort in ("low", "medium", "high", "xhigh"):
+    def test_sol_max_is_explicit_only_beside_the_computer_use_tiers(self):
+        for effort in ("low", "medium", "high", "xhigh", "max"):
             self.direct_selection(profile_id="computer-use", model="gpt-6.1-sol",
                                   effort=effort)
         with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(profile_id="computer-use", model="gpt-6.1-sol",
-                                  effort="max")
-        self.assertEqual(caught.exception.kind, "prohibited")
+            self.direct_selection(profile_id="execute", model="gpt-6.1-sol",
+                                  effort="max", allow_experimental=False)
+        self.assertEqual(caught.exception.kind, "stability")
 
     def test_superseded_sol_is_refused_at_every_tier(self):
         for effort in ("low", "medium", "high", "xhigh"):
@@ -328,7 +328,22 @@ role = "steered generator for tests only"
         self.assertEqual(route["selection_kind"], "operator-directed")
 
     def test_a_stable_variant_is_stable_only_on_its_own_backend(self):
-        values = {"profile_id": "review", "model": "gpt-6.1-sol", "effort": "high"}
+        root = self.fixture_root()
+        profiles = root / "routing" / "profiles.toml"
+        anchor = '  [[profile.variant]]\n  id = "high-stakes"'
+        text = profiles.read_text()
+        self.assertIn(anchor, text)
+        variant = '''  [[profile.variant]]
+  id = "luna"
+  provider = "openai-codex"
+  model = "gpt-6-luna"
+  effort = "max"
+  stability = "stable"
+  backends = ["codex"]
+
+'''
+        profiles.write_text(text.replace(anchor, variant + anchor, 1))
+        values = {"root": root, "profile_id": "review", "model": "gpt-6-luna", "effort": "max"}
         route = self.direct_selection(allow_experimental=False, **values)
         self.assertEqual(route["direction"], "downgrade")
         self.assertEqual(route["stability"], "stable")
@@ -704,11 +719,11 @@ role = "steered generator for tests only"
         route = resolve(ROOT, "review", "codex")
         self.assertEqual(route["profile"], "review")
         self.assertEqual(route["provider"], "openai-codex")
-        self.assertEqual((route["model"], route["effort"]), ("gpt-6-astra", "medium"))
+        self.assertEqual((route["model"], route["effort"]), ("gpt-6.1-sol", "high"))
         self.assertEqual(route["stability"], "stable")
 
-        fast = resolve(ROOT, "review", "codex", variant_id="fast")
-        self.assertEqual((fast["model"], fast["effort"]), ("gpt-6.1-sol", "high"))
+        astra = resolve(ROOT, "review", "codex", variant_id="astra")
+        self.assertEqual((astra["model"], astra["effort"]), ("gpt-6-astra", "medium"))
         high_stakes = resolve(ROOT, "review", "codex", variant_id="high-stakes")
         self.assertEqual((high_stakes["model"], high_stakes["effort"]), ("gpt-6-astra", "xhigh"))
 
@@ -844,7 +859,7 @@ backends = ["claude"]
         """A pool pairing is a property of one route. Blocking every other
         resolution would make a single bad variant an outage."""
         root = self.cross_pool_root()
-        self.assertEqual(resolve(root, "review", "codex")["model"], "gpt-6-astra")
+        self.assertEqual(resolve(root, "review", "codex")["model"], "gpt-6.1-sol")
         self.assertEqual(len(pool_problems(root)), 1)
 
     def test_a_refusal_carries_its_kind(self):

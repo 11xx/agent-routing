@@ -225,13 +225,13 @@ backends = ["codex"]
 id = "review"
 escalation_sources = ["plan"]
 purpose = "read-only correctness and regression review of a bounded behavior-affecting change"
-# Astra medium is the first gate and its verdict discharges review. The named
-# variants are exceptions: `fast` when the verdict is on the critical path,
+# Sol high is the first gate and its verdict discharges review. The named
+# variants are exceptions: `astra` for a second Codex-side judgment,
 # `high-stakes` where a wrong approval is expensive, and the Claude variant as
 # the cross-provider path for GPT-authored diffs.
 provider = "openai-codex"
-model = "gpt-6-astra"
-effort = "medium"
+model = "gpt-6.1-sol"
+effort = "high"
 stability = "stable"
 backends = ["codex"]
 
@@ -259,10 +259,10 @@ backends = ["codex"]
   default_for_backend = true
 
   [[profile.variant]]
-  id = "fast"
+  id = "astra"
   provider = "openai-codex"
-  model = "gpt-6.1-sol"
-  effort = "high"
+  model = "gpt-6-astra"
+  effort = "medium"
   stability = "stable"
   backends = ["codex"]
 
