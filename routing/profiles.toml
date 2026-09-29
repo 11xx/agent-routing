@@ -196,7 +196,7 @@ purpose = "broad or multi-slice implementation where technical judgment and long
 # Judgment-bearing arcs take the Codex-side technical peer rather than the
 # bounded-work Luna seat.
 provider = "openai-codex"
-model = "gpt-6-sol"
+model = "gpt-6.1-sol"
 effort = "high"
 stability = "stable"
 backends = ["codex"]
@@ -261,7 +261,7 @@ backends = ["codex"]
   [[profile.variant]]
   id = "fast"
   provider = "openai-codex"
-  model = "gpt-6-sol"
+  model = "gpt-6.1-sol"
   effort = "high"
   stability = "stable"
   backends = ["codex"]
@@ -288,7 +288,7 @@ backends = ["claude"]
 id = "computer-use"
 purpose = "explicit visible-desktop tasks with bounded context and retained follow-ups"
 provider = "openai-codex"
-model = "gpt-6-sol"
+model = "gpt-6.1-sol"
 effort = "low"
 stability = "experimental"
 backends = ["codex", "pi"]
@@ -296,7 +296,7 @@ backends = ["codex", "pi"]
   [[profile.variant]]
   id = "medium"
   provider = "openai-codex"
-  model = "gpt-6-sol"
+  model = "gpt-6.1-sol"
   effort = "medium"
   stability = "experimental"
   backends = ["codex", "pi"]
@@ -304,7 +304,7 @@ backends = ["codex", "pi"]
   [[profile.variant]]
   id = "high"
   provider = "openai-codex"
-  model = "gpt-6-sol"
+  model = "gpt-6.1-sol"
   effort = "high"
   stability = "experimental"
   backends = ["codex", "pi"]
@@ -312,7 +312,7 @@ backends = ["codex", "pi"]
   [[profile.variant]]
   id = "xhigh"
   provider = "openai-codex"
-  model = "gpt-6-sol"
+  model = "gpt-6.1-sol"
   effort = "xhigh"
   stability = "experimental"
   backends = ["codex", "pi"]

@@ -133,7 +133,7 @@ id = "codex"
 status = "verified"
 providers = ["openai-codex"]
 entrypoint = "codex exec \"<prompt>\""
-model_flag = "-m gpt-6-{luna,sol,astra}"
+model_flag = "-m gpt-6-{luna,astra} | gpt-6.1-sol"
 effort_flag = "-c model_reasoning_effort=\"low|medium|high|xhigh\""
 workdir_flag = "-C <dir>"
 capture = "-o <file>; stdout is the full transcript (noisy)"
@@ -148,7 +148,7 @@ status = "verified"
 providers = ["openai-codex", "deepseek", "opencode-go"]
 version_probed = "0.84.3 (2026-08-29)"
 entrypoint = "pi -p \"<prompt>\" (also @file args to inline specs)"
-model_flag = "GPT: --provider openai-codex --model gpt-6-{luna,sol,astra}; DeepSeek: --provider opencode-go --model deepseek-v4.1-flash on the Go pool, or --provider deepseek --model deepseek-flash on DeepSeek's own billing; MiMo trial: --provider opencode-go --model mimo-v2.6-flash or mimo-v2.6-pro. --provider is never optional: a model name authenticated on two providers aborts the run"
+model_flag = "GPT: --provider openai-codex --model gpt-6-{luna,astra} or gpt-6.1-sol; DeepSeek: --provider opencode-go --model deepseek-v4.1-flash on the Go pool, or --provider deepseek --model deepseek-flash on DeepSeek's own billing; MiMo trial: --provider opencode-go --model mimo-v2.6-flash or mimo-v2.6-pro. --provider is never optional: a model name authenticated on two providers aborts the run"
 effort_flag = "--thinking off|minimal|low|medium|high|xhigh|max (or :level model suffix). xhigh and max reach the provider only when the model definition maps them; an unmapped model drops both from its supported set and clamps a requested max to high without reporting it"
 workdir_flag = "none; cd first"
 capture = "stdout is exactly the final message"
@@ -224,7 +224,7 @@ why = "a dollar-metered small plan whose value is cheap-tier capacity off both s
 [[pool]]
 provider = "openai-codex"
 plan = "the Codex subscription"
-serves = ["gpt-5.6-sol", "gpt-5.6-luna", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna"]
+serves = ["gpt-5.6-sol", "gpt-5.6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"]
 pays_for = "itself: Sol runs here and nowhere else"
 why = "Sol belongs to the subscription that already covers it. pi and opencode reach it with the same OpenAI login, so the backend is never a reason to route Sol elsewhere"
 
