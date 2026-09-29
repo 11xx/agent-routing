@@ -55,7 +55,7 @@ field report's DeepSWE fork scored both below low and high. That keeps max out
 of every automatic path and off the escalation ladder. It is not banned, by
 operator direction: a prohibition has no override, and GPT-6 Sol max's ban was
 a judgment about that model. A direct request runs it as a bounded trial read
-against xhigh, on codex, since pi clamps it to high.
+against xhigh, on codex or on a pi that declares the model.
 
 ## Review moves off Astra
 
@@ -104,10 +104,12 @@ from, so the report and the curve are one source, not two.
   restriction figure improved from 64.4% to 23.5%, which is still well short of
   lifting a fence. The field report adds a third, stalling without asking, so a
   long execute arc names a no-progress stop condition in its brief.
-- **Pi's catalog lags.** Pi 0.99.0 does not list the model, so it is sent as a
-  custom id with no thinking-level mapping. There, a requested xhigh or max
-  clamps to high without saying so, and the computer-use xhigh comparison is a
-  codex-only reading until the catalog carries the model.
+- **Pi's catalog lags.** Pi 0.99.0 does not list the model. Undeclared, it is
+  sent as a custom id with no thinking-level mapping, and a requested xhigh or
+  max clamps to high without saying so. A `models` entry under the
+  `openai-codex` provider in pi's `models.json`, carrying GPT-6 Sol's
+  thinking-level map, restores every tier; a `modelOverrides` entry does not,
+  because pi ignores overrides for ids its catalog lacks.
 
 ## What would move a seat
 
