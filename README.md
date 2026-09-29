@@ -1,4 +1,4 @@
-# ai-agent-routing
+# agent-routing
 
 Which model to pick, at which effort, reached by which mechanism — as data,
 with one accessor, for every harness and tool on this machine.
@@ -67,7 +67,7 @@ doctrine/guide.md          ─→ agent-routing           the guide, bare invoca
 doctrine/model-routing.md  ─→ agent-routing doctrine  the policy in full
 ```
 
-`ai-agent-harnesses` composes that pointer into `~/.claude/CLAUDE.md`,
+`agent-harnesses` composes that pointer into `~/.claude/CLAUDE.md`,
 `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and
 `~/.pi/agent/AGENTS.md`. Its `agent-harness delegation-sources` accessor
 declares the instruction and agent surfaces to `agent-routing lint-consumers`;
@@ -189,7 +189,7 @@ decision legible and the prohibitions unambiguous.
 3. Run `agent-routing lint`. The harness instruction files name the verb
    rather than embedding the roster, so a roster edit needs no rebuild there.
    Changing the `interactive` profile is the exception: Pi's settings name that
-   route, so `~/code/ai-agent-harnesses/bin/agent-harness build` has to
+   route, so `~/code/agent-harnesses/bin/agent-harness build` has to
    materialize it.
 
 Prohibitions carry a `use` string starting with `prohibited`; `check` keys on
