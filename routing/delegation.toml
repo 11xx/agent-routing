@@ -36,7 +36,7 @@ rules = "do not call self-review independent; a lead may review delegated work i
 actor = "codex"
 task = "execute a local arc"
 mechanism = "import bundle, read journal spec, work locally in assigned worktree"
-rules = "implement, verify, commit, arc snapshot, stop for review; no codex exec, no delegation, no merge, no integrate"
+rules = "under `read-only`, inspect and report; under `workspace-write`, implement and verify, then leave the diff for the lead to commit and snapshot; under full access, implement, verify, commit, and arc snapshot before stopping for review. In every mode, no codex exec, no delegation, no merge, no integrate"
 
 [[route]]
 actor = "codex"
@@ -90,7 +90,7 @@ policy = "resolve the extract profile for fixed-shape calls and the stable imple
 id = "deepseek-invocation"
 harness = "pi"
 policy = "V4.1 Flash is pi's default for every GPT profile, reached on the Go pool as `--provider opencode-go --model deepseek-v4.1-flash` through each profile's deepseek-go variant, and the steered generator on the same pool through the `generate` profile. Brief it fully — exact targets, a scope ceiling, named acceptance probes — and check every identifier it emits against source, because the predecessor build fabricated confidently rather than visibly."
-why = "four field arcs on the build in service landed implementation work with approvals on first read and no fabricated identifier in anything a lead probed, and the operator directed pi's defaults onto it; the identifier check is what the predecessor's record still buys"
+why = "five field arcs on the build in service measured implementation work without a fabricated identifier in anything a lead probed, and the operator directed pi's defaults onto it; the identifier check is what the predecessor's record still buys"
 
 
 [[rule]]
@@ -108,7 +108,8 @@ why = "an unmeasured model is reached by a deliberate selection so probation end
 [[rule]]
 id = "sandboxed-executors"
 harness = "codex"
-policy = "sandboxed executors that commit and snapshot need the main repo .git in writable_roots (worktree git-dirs and the default arc store live there); ARC_DATA_ROOT moves the store out"
+policy = "Under Codex `workspace-write`, every writable root's `.git` and a linked worktree's git dir (`<common>/worktrees/<name>`) remain read-only; a root added with `--add-dir` gets the same carve-out. Adding the common dir keeps objects, refs, and the default Arc store writable, but the worktree index and HEAD stay read-only, so the executor leaves its diff for the lead to commit and snapshot. Under `read-only`, the executor inspects and reports; under full access, it follows its authorized commit and snapshot workflow"
+why = "Codex 0.159.1 keeps Git metadata read-only in `workspace-write`, including linked-worktree metadata, so an executor in that sandbox cannot stage or commit its diff"
 
 [[rule]]
 id = "launcher-stdin-hygiene"
@@ -188,7 +189,7 @@ clean_room = "on v1, --pure drops external plugins only; AGENTS.md and ~/.config
 resume = "-c | -s <session-id> | --fork on v1; v2 uses --session <id> and --session <id> --fork"
 quota_pool = "opencode-go subscription: an independent third pool drawing on neither the Claude window nor the Codex credit schedule"
 default_for = "nothing: no profile routes to the opencode backend. Pi reaches the same Go pool with working effort, and pi's profile defaults resolve there"
-notes = "the only Go route with no pi equivalent is gpt-5.6-luna: pi's bundled opencode-go catalog carries 16 of the 17 models and omits exactly that one, with no catalog refresh path (`pi update models` fails). Reach Luna-on-Go through this backend"
+notes = "pi 0.99.1's bundled opencode-go catalog lists both gpt-5.6-luna and gpt-6-luna. Catalog presence describes client model metadata; profile seats and pool eligibility remain defined by this routing manifest"
 
 [[rule]]
 id = "opencode-go-availability"
@@ -217,7 +218,7 @@ policy = "usage-limit errors are routine: report and fall back to the other subs
 [[pool]]
 provider = "opencode-go"
 plan = "OpenCode Go, an optional flat subscription"
-serves = ["gpt-5.6-luna", "glm-5.3-flash", "mimo-v2.6-flash", "mimo-v2.6-pro", "deepseek-flash"]
+serves = ["gpt-5.6-luna", "gpt-6-luna", "glm-5.3-flash", "mimo-v2.6-flash", "mimo-v2.6-pro", "deepseek-flash"]
 pays_for = "openai-codex for the GPT frontier tiers, anthropic for the Claude models"
 why = "a dollar-metered small plan whose value is cheap-tier capacity off both standing windows, not a cheaper way to buy a frontier tier"
 
