@@ -28,7 +28,7 @@ caught by review or not at all.
 | Claude | Plan an arc chain | Write the arc JSON export and a detailed journal spec | Make dependencies and ownership explicit. Generated executor prompts stop before review, merge, or integration. |
 | Claude | Delegate implementation to Codex | Use `agent-delegate` with an Arc change and bounded brief; Claude may invoke `codex exec` only through the delegation mechanism | Name the Codex sandbox and its commit/snapshot boundary in the prompt. Put executor commands only in instructions Claude itself will run. Record the Arc subject, executor attribution, gates, and debt/follow-up; do not ask the executor to delegate again. |
 | Claude | Review and merge | Review `base..head`, record the verdict, then use `arc integrate` when every gate passes | Do not skip review or merge automatically from an implementation prompt. |
-| Codex | Execute a local arc | Import the bundle, read the journal spec, and work locally in the assigned worktree | Under `read-only`, inspect and report. Under `workspace-write`, implement and verify, then leave the diff for the lead to commit and snapshot. Under full access, implement, verify, commit, and run `arc snapshot` before stopping for review. Never run `codex exec`, delegate, merge, or integrate. |
+| Codex | Execute a local arc | Read the journal spec and work in the assigned worktree; import the bundle only when the sandbox and Arc store permit writes, otherwise the lead imports it and provides the spec | Under `read-only`, inspect and report. Under `workspace-write`, implement and verify, then leave the diff for the lead to commit and snapshot. Under full access, implement, verify, and commit; snapshot when the Arc store is writable, otherwise the lead snapshots. Never run `codex exec`, delegate, merge, or integrate. |
 | Codex | Orchestrate sub-Codex work (rare and explicit) | Run `codex exec` with a self-contained plan and wait for its result | Do this only when the prompt explicitly assigns Codex the orchestrator role. Preserve Claude's review and merge boundary. |
 | `/arc` skill | Coordinate the workflow | Use the `arc` CLI ledger, worktrees, blockers, snapshots, gates, reviews, and integration checks | Assign one writer per branch/worktree. Give Codex local-only prompts with sandbox-specific commit and snapshot instructions. The lead owns dependency order and integration. |
 
@@ -93,7 +93,10 @@ Before generating a prompt, classify its recipient:
 - **Codex executing:** local work only, with actions bounded by the sandbox:
   `read-only` means inspect and report, `workspace-write` means leave the
   verified diff for the lead to commit and snapshot, and full access permits
-  the authorized commit and snapshot workflow. No `codex exec`.
+  the authorized commit and snapshot workflow when the Arc store is writable.
+  Arc imports, claims, stages, verification records, and snapshots write the
+  Arc store. If the sandbox or store prevents one of those writes, the lead
+  performs it. No `codex exec`.
 - **Claude delegating to Codex:** use `agent-delegate` against an Arc change
   or bounded range; Claude may run the resolved executor command. Arc owns the
   brief, provenance, rounds, debt, review choice, and integration record.
@@ -129,16 +132,22 @@ A Codex executor prompt should name the sandbox and use this shape:
 You're in a Codex harness. This is LOCAL execution only.
 
 1. Set `ARC_ROLE=implementer`.
-2. Import the arc bundle and read the journal spec.
-3. In a sandbox that permits Arc writes, claim the change and record typed
-   progress stages in the assigned worktree. A read-only executor reports
-   without claims or stages.
+2. Import the Arc bundle and read the journal spec only when the sandbox and
+   Arc store permit writes. Under `read-only`, or when the store is not
+   writable, the lead imports the bundle and provides the spec for inspection.
+3. Claim the change and record typed progress stages only when the sandbox and
+   Arc store permit writes; otherwise the lead records progress.
 4. Implement in the assigned worktree when the sandbox permits writes.
-5. Run the specified build and test gates.
+5. Run the specified build and test gates when the sandbox permits execution;
+   under `read-only`, inspect and report without running gates.
 6. Under `workspace-write`, leave the verified diff for the lead to commit and
-   snapshot. Under full access, commit the scoped changes and run
-   `arc snapshot <change>`; under `read-only`, report without writing.
-7. Signal: "Arc improvements ready for review."
+   snapshot. Under full access, commit the scoped changes when authorized and
+   run `arc snapshot <change>` only when the Arc store is writable. Under
+   `read-only`, inspect and report without writing. If the store prevents an
+   import, evidence record, or snapshot, the lead performs that write.
+7. Under full access, signal readiness for review after the required gates and
+   snapshot. Under `workspace-write`, report the verified diff for the lead to
+   commit and snapshot; under `read-only`, report inspection findings.
 
 DO NOT run `codex exec`, delegate to another harness, merge, or integrate.
 ```
@@ -152,8 +161,9 @@ Do:
 - Under `read-only`, inspect the repository and spec, then report without
   writing. Under `workspace-write`, implement and verify in the assigned
   worktree, then leave the diff for the lead to commit and snapshot. Under full
-  access, follow the authorized claim, implementation, verification, commit,
-  and snapshot workflow.
+  access, follow the authorized claim, implementation, verification, and
+  commit workflow; snapshot only when the Arc store is writable. The lead
+  performs any Arc-state write the executor cannot make.
 - Stop before review and integration and report the commits and gate results.
 - Flag a prompt as misrouted if it tells a local Codex executor to run
   `codex exec`.
@@ -228,7 +238,11 @@ because the executor was faithful to what it was told.
 
 So the brief names acceptance probes: runnable commands whose outcome
 distinguishes the intended behavior from the plausible substitute. The
-executor runs each at its final head and records it with
+executor runs each at its final head when the sandbox permits execution. It
+records the result with `arc verify --command` only when both the sandbox and
+Arc store permit that write; otherwise it reports the command and result for
+the lead to record. A read-only executor inspects and reports without running
+gates or probes.
 
     arc verify --command '<the probe>'
 
@@ -425,10 +439,12 @@ Arm two watchdog tiers at launch, always:
   before assuming work is happening; a hung process and a working one are
   otherwise indistinguishable.
 
-Codex executors use the claim and stage sequence only when their sandbox
-permits Arc writes. A read-only executor inspects and reports without claims or
-stages; a workspace-write executor leaves the commit and snapshot to the lead;
-full access retains the authorized claim, commit, and snapshot workflow.
+Codex executors use the claim and stage sequence only when their sandbox and
+Arc store permit those writes. A read-only executor inspects and reports
+without claims or stages; a workspace-write executor leaves the commit and
+snapshot to the lead; full access retains the authorized claim and commit
+workflow, with a snapshot only when the Arc store is writable. When the store
+prevents an import, evidence record, or snapshot, the lead performs it.
 Executors record typed progress with their native identity:
 
 ```sh
@@ -470,7 +486,9 @@ instructions.
 Codex reads the journal spec and works in the assigned worktree. A read-only
 executor reports without writes; a workspace-write executor edits and verifies
 then leaves the diff for the lead to commit and snapshot; a full-access
-executor follows its authorized claim, commit, and snapshot workflow. Claude
+executor follows its authorized claim and commit workflow, then snapshots when
+the Arc store is writable. The lead imports, records evidence, or snapshots
+whenever the executor's sandbox or store does not permit those writes. Claude
 later reviews and integrates.
 
 ### Incorrect: the implementation prompt merges
@@ -479,8 +497,12 @@ later reviews and integrates.
 After tests pass, run `arc integrate --cleanup` and merge to master.
 ```
 
-The executor does not own that decision. It must stop after the snapshot so
-Claude can review the exact patchset.
+The executor does not own that decision. A full-access executor stops after
+its authorized snapshot when the Arc store is writable. A workspace-write
+executor leaves the diff for the lead to commit and snapshot; a read-only
+executor reports its inspection without writing. If the sandbox or Arc store
+prevents an import, evidence record, or snapshot, the lead performs that write
+before reviewing the exact patchset.
 
 ### Correct: `/arc` coordinates a chain
 

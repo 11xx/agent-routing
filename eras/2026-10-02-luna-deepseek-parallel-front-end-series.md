@@ -11,8 +11,8 @@ returning it as a bounded round.
 Luna max on `opencode-go` through Pi was not a usable lane. Bare
 `400 {"model":"gpt-6-luna"}` errors appeared first, followed by the
 provider's upstream token rate limit. It stopped six parallel lanes, then two,
-then one lane running alone, while the subscription's dollar windows remained
-unspent.
+then one lane running alone, while the subscription's dollar windows were not
+exhausted.
 
 Luna max on Codex was reliable, with the workspace-write sandbox limiting its
 repository actions. The lead committed the resulting diffs. The sandbox also
@@ -41,6 +41,8 @@ from a clean worktree except where it completed Luna's deploy draft.
 ### DeepSeek V4.1 Flash
 
 - Fabricated no identifier in anything the lead probed.
+- Its Go lanes ran without rate limiting; it committed changes, bound sockets,
+  and ran browsers.
 - Mutation-checked its regression tests against pre-fix code without being
   asked.
 - Reported false premises and contradictions in briefs precisely, including a
@@ -52,6 +54,7 @@ from a clean worktree except where it completed Luna's deploy draft.
 ### GPT-6 Luna on Codex
 
 - Correct and literal.
+- It handled the operator's verbatim text exactly.
 - Its blind spots were whole-suite effects: fixtures placed in shared test
   roots, a clippy limit, and a schema family it did not enumerate. The Codex
   sandbox hid these because its gates stopped early.
