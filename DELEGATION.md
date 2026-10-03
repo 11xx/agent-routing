@@ -26,11 +26,11 @@ caught by review or not at all.
 | Actor | Task | Mechanism | Rules |
 | --- | --- | --- | --- |
 | Claude | Plan an arc chain | Write the arc JSON export and a detailed journal spec | Make dependencies and ownership explicit. Generated executor prompts stop before review, merge, or integration. |
-| Claude | Delegate implementation to Codex | Use `agent-delegate` with an Arc change and bounded brief; Claude may invoke `codex exec` only through the delegation mechanism | Put executor commands only in instructions Claude itself will run. Record the Arc subject, executor attribution, gates, and debt/follow-up; do not ask the executor to delegate again. |
+| Claude | Delegate implementation to Codex | Use `agent-delegate` with an Arc change and bounded brief; Claude may invoke `codex exec` only through the delegation mechanism | Name the Codex sandbox and its commit/snapshot boundary in the prompt. Put executor commands only in instructions Claude itself will run. Record the Arc subject, executor attribution, gates, and debt/follow-up; do not ask the executor to delegate again. |
 | Claude | Review and merge | Review `base..head`, record the verdict, then use `arc integrate` when every gate passes | Do not skip review or merge automatically from an implementation prompt. |
-| Codex | Execute a local arc | Import the bundle, read the journal spec, and work locally in the assigned worktree | Implement, verify, commit, run `arc snapshot`, and stop for review. Do not run `codex exec`, delegate, merge, or integrate. |
+| Codex | Execute a local arc | Read the journal spec and work in the assigned worktree; import the bundle only when the sandbox and Arc store permit writes, otherwise the lead imports it and provides the spec | Under `read-only`, inspect and report. Under `workspace-write`, implement and verify, then leave the diff for the lead to commit and snapshot. Under full access, implement, verify, and commit; snapshot when the Arc store is writable, otherwise the lead snapshots. Never run `codex exec`, delegate, merge, or integrate. |
 | Codex | Orchestrate sub-Codex work (rare and explicit) | Run `codex exec` with a self-contained plan and wait for its result | Do this only when the prompt explicitly assigns Codex the orchestrator role. Preserve Claude's review and merge boundary. |
-| `/arc` skill | Coordinate the workflow | Use the `arc` CLI ledger, worktrees, blockers, snapshots, gates, reviews, and integration checks | Assign one writer per branch/worktree. Give Codex local-only executor prompts. The lead owns dependency order and integration. |
+| `/arc` skill | Coordinate the workflow | Use the `arc` CLI ledger, worktrees, blockers, snapshots, gates, reviews, and integration checks | Assign one writer per branch/worktree. Give Codex local-only prompts with sandbox-specific commit and snapshot instructions. The lead owns dependency order and integration. |
 
 ## Roles and boundaries
 
@@ -90,7 +90,13 @@ Never tell an executor to delegate to itself.
 
 Before generating a prompt, classify its recipient:
 
-- **Codex executing:** local implementation only; no `codex exec`.
+- **Codex executing:** local work only, with actions bounded by the sandbox:
+  `read-only` means inspect and report, `workspace-write` means leave the
+  verified diff for the lead to commit and snapshot, and full access permits
+  the authorized commit and snapshot workflow when the Arc store is writable.
+  Arc imports, claims, stages, verification records, and snapshots write the
+  Arc store. If the sandbox or store prevents one of those writes, the lead
+  performs it. No `codex exec`.
 - **Claude delegating to Codex:** use `agent-delegate` against an Arc change
   or bounded range; Claude may run the resolved executor command. Arc owns the
   brief, provenance, rounds, debt, review choice, and integration record.
@@ -105,8 +111,10 @@ Before generating a prompt, classify its recipient:
 Do:
 
 - State whether a prompt is for Claude or for Codex before including commands.
-- For a Codex executor, say that execution is local to the current harness and
-  assigned worktree.
+- For a Codex executor, name the sandbox and assigned worktree: `read-only`
+  means inspect and report, `workspace-write` leaves the verified diff for the
+  lead to commit and snapshot, and full access retains the authorized commit
+  and snapshot workflow.
 - Provide the bundle location, journal spec, done condition, verification gates,
   and the exact ready-for-review signal.
 - Review the final `base..head` diff and retain control of `arc integrate`.
@@ -118,18 +126,28 @@ Do not:
 - Tell an implementer to merge to the target branch.
 - Treat a generated implementation prompt as approval to skip review.
 
-A Codex executor prompt should use this shape:
+A Codex executor prompt should name the sandbox and use this shape:
 
 ```markdown
 You're in a Codex harness. This is LOCAL execution only.
 
 1. Set `ARC_ROLE=implementer`.
-2. Import the arc bundle and read the journal spec.
-3. Claim the change and record typed progress stages in the assigned worktree.
-4. Implement in the assigned worktree.
-5. Run the specified build and test gates.
-6. Commit the scoped changes and run `arc snapshot <change>`.
-7. Signal: "Arc improvements ready for review."
+2. Import the Arc bundle and read the journal spec only when the sandbox and
+   Arc store permit writes. Under `read-only`, or when the store is not
+   writable, the lead imports the bundle and provides the spec for inspection.
+3. Claim the change and record typed progress stages only when the sandbox and
+   Arc store permit writes; otherwise the lead records progress.
+4. Implement in the assigned worktree when the sandbox permits writes.
+5. Run the specified build and test gates when the sandbox permits execution;
+   under `read-only`, inspect and report without running gates.
+6. Under `workspace-write`, leave the verified diff for the lead to commit and
+   snapshot. Under full access, commit the scoped changes when authorized and
+   run `arc snapshot <change>` only when the Arc store is writable. Under
+   `read-only`, inspect and report without writing. If the store prevents an
+   import, evidence record, or snapshot, the lead performs that write.
+7. Under full access, signal readiness for review after the required gates and
+   snapshot. Under `workspace-write`, report the verified diff for the lead to
+   commit and snapshot; under `read-only`, report inspection findings.
 
 DO NOT run `codex exec`, delegate to another harness, merge, or integrate.
 ```
@@ -140,9 +158,12 @@ Do:
 
 - Treat an imported implementation plan as local work unless it explicitly
   names Codex as an orchestrator.
-- Import the bundle, inspect the repository and spec, claim the change, record
-  typed stages, implement in the assigned worktree, verify, commit, and
-  snapshot.
+- Under `read-only`, inspect the repository and spec, then report without
+  writing. Under `workspace-write`, implement and verify in the assigned
+  worktree, then leave the diff for the lead to commit and snapshot. Under full
+  access, follow the authorized claim, implementation, verification, and
+  commit workflow; snapshot only when the Arc store is writable. The lead
+  performs any Arc-state write the executor cannot make.
 - Stop before review and integration and report the commits and gate results.
 - Flag a prompt as misrouted if it tells a local Codex executor to run
   `codex exec`.
@@ -163,7 +184,8 @@ Do:
 - Use the `arc` ledger as the source of truth for snapshots, gates, findings,
   verdicts, blockers, and integration readiness.
 - Give every concurrent writer a separate branch and worktree.
-- Emit local-only instructions when Codex is the implementer.
+- Emit local-only instructions that name the sandbox and its commit/snapshot
+  boundary when Codex is the implementer.
 
 Do not:
 
@@ -216,7 +238,11 @@ because the executor was faithful to what it was told.
 
 So the brief names acceptance probes: runnable commands whose outcome
 distinguishes the intended behavior from the plausible substitute. The
-executor runs each at its final head and records it with
+executor runs each at its final head when the sandbox permits execution. It
+records the result with `arc verify --command` only when both the sandbox and
+Arc store permit that write; otherwise it reports the command and result for
+the lead to record. A read-only executor inspects and reports without running
+gates or probes.
 
     arc verify --command '<the probe>'
 
@@ -298,7 +324,7 @@ Adapter contract (probe checklist for onboarding any new harness):
 | Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high` | `--variant high\|max` |
 | Working dir | `-C <dir>` | none — `cd` first | none — `cd` first; `--add-dir=<path>` adds explicit read roots | `--dir <dir>` |
 | Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message | stdout for one-shot calls; `--output-format stream-json` for supervised runs | stdout is the final message under a `> build · <model>` header; `--format json` gives a JSONL event stream with per-step token counts |
-| Isolation | OS sandbox, which `agent-delegate` opens to `-s danger-full-access` by default; `-s read-only` / `-s workspace-write` (+ `writable_roots`) narrows a run | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access | permission mode plus tool allowlist; `plan` is the read-only consultation mode | **none**; permission config, and `--auto` approves everything not explicitly denied |
+| Isolation | OS sandbox; `agent-delegate` defaults to `danger-full-access` unless the caller supplies a sandbox. `read-only` inspects only. Under `workspace-write`, Git metadata and linked-worktree index/HEAD remain read-only, so the lead commits and snapshots; full access permits authorized executor commits and snapshots. | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access | permission mode plus tool allowlist; `plan` is the read-only consultation mode | **none**; permission config, and `--auto` approves everything not explicitly denied |
 | Clean-room | curated prompt; reads repo AGENTS.md | `--no-session --no-extensions --no-skills --no-context-files` | `--safe-mode --disable-slash-commands --no-session-persistence` with a curated stdin prompt | `--pure` drops external plugins only; AGENTS.md and `~/.config/opencode/skills` still load |
 | Resume | `codex exec resume --last` | `--session <id>` / `-c` / `--fork` | `--resume <session-id>` | `-c` / `-s <id>` / `--fork` |
 | Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota; `opencode-go` draws the Go subscription, metered in usage dollars | Claude subscription through the first-party client | Conditional OpenCode Go subscription — a third pool metered in usage dollars ($12/5h, $30/week, $60/month), locally readable via `opencode stats`. Limit signature unprobed |
@@ -323,7 +349,8 @@ Backend selection between the two GPT routes:
   profile's `deepseek-go` variant and through `generate`. The vendor's 54.4
   DeepSWE result and the independent testing that measured confident
   fabrication describe the 0731 predecessor; the build in service carries
-  four field arcs of its own, and the operator seated it on that record.
+  five field arcs of its own, including ten implementation slices across four
+  repositories on 2026-10-02, and the operator seated it on that record.
   Brief it fully and check every identifier it emits against source. V4 Pro
   is deprecated in favour of it.
 - **MiMo V2.6 Flash and Pro are probation, and the preference between them
@@ -354,10 +381,9 @@ Backend selection between the two GPT routes:
   state no manifest can observe, so every route through it is experimental,
   opt-in, and fails closed; confirm the credential before routing and treat
   its absence as a stop rather than a fallback.
-- **Reach Luna-on-Go through opencode, not pi.** pi's bundled `opencode-go`
-  catalog carries 16 of the 17 Go models and omits exactly `gpt-5.6-luna`,
-  with no refresh path — `pi update models` fails outright. For the other 16
-  either backend works.
+- Pi 0.99.1's bundled `opencode-go` catalog lists both `gpt-5.6-luna` and
+  `gpt-6-luna`. Catalog presence describes client model metadata; profile
+  seats and pool eligibility remain defined by the routing manifests.
 - **Some Go models are hosted in China** and run only while the workspace's
   data-residency opt-in is on. With it on, as it was on 2026-09-22, they route
   normally; switched off, they refuse with "only available hosted in China and
@@ -413,8 +439,13 @@ Arm two watchdog tiers at launch, always:
   before assuming work is happening; a hung process and a working one are
   otherwise indistinguishable.
 
-Executors claim immediately and record typed progress with their native
-identity:
+Codex executors use the claim and stage sequence only when their sandbox and
+Arc store permit those writes. A read-only executor inspects and reports
+without claims or stages; a workspace-write executor leaves the commit and
+snapshot to the lead; full access retains the authorized claim and commit
+workflow, with a snapshot only when the Arc store is writable. When the store
+prevents an import, evidence record, or snapshot, the lead performs it.
+Executors record typed progress with their native identity:
 
 ```sh
 ARC_HARNESS=codex ARC_SESSION="${CODEX_THREAD_ID:?}" arc claim <change>
@@ -437,8 +468,8 @@ about but does not block on one.
 ### Correct: Claude invokes Codex
 
 Claude prepares an Arc change or journal brief and runs the resolved
-`agent-delegate`/`codex exec` mechanism itself. The nested prompt tells Codex
-what to implement locally, where to record its result, and which gate proves it.
+`agent-delegate`/`codex exec` mechanism itself. The nested prompt names Codex's
+sandbox, local worktree, commit/snapshot boundary, result location, and gate.
 
 ### Incorrect: Codex is told to invoke itself
 
@@ -452,10 +483,13 @@ instructions.
 
 ### Correct: Codex completes an arc implementation
 
-Codex imports the bundle, reads the journal spec, claims the change, records
-typed stages, edits and tests in its worktree, makes scoped commits, runs
-`arc snapshot`, and signals that the arc is ready for review. Claude later
-reviews and integrates.
+Codex reads the journal spec and works in the assigned worktree. A read-only
+executor reports without writes; a workspace-write executor edits and verifies
+then leaves the diff for the lead to commit and snapshot; a full-access
+executor follows its authorized claim and commit workflow, then snapshots when
+the Arc store is writable. The lead imports, records evidence, or snapshots
+whenever the executor's sandbox or store does not permit those writes. Claude
+later reviews and integrates.
 
 ### Incorrect: the implementation prompt merges
 
@@ -463,8 +497,12 @@ reviews and integrates.
 After tests pass, run `arc integrate --cleanup` and merge to master.
 ```
 
-The executor does not own that decision. It must stop after the snapshot so
-Claude can review the exact patchset.
+The executor does not own that decision. A full-access executor stops after
+its authorized snapshot when the Arc store is writable. A workspace-write
+executor leaves the diff for the lead to commit and snapshot; a read-only
+executor reports its inspection without writing. If the sandbox or Arc store
+prevents an import, evidence record, or snapshot, the lead performs that write
+before reviewing the exact patchset.
 
 ### Correct: `/arc` coordinates a chain
 
