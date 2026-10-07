@@ -207,7 +207,7 @@ with the routing policy:
   spawning same-effort context gatherers is the most expensive possible
   configuration; the ladder routes fixed-shape calls to Luna low, bounded
   implementation to Luna max, planning to Astra, and review and
-  judgment-bearing execution to Sol high.
+  judgment-bearing execution to Sol xhigh.
 - Whole-conversation inheritance is unscoped context transfer. It pays for
   the entire session history in every child and buries the task signal.
   Delegated work gets a curated, self-contained brief: the spec, the done
@@ -221,7 +221,7 @@ stated. Revisit if a harness ships per-subagent model/effort/context
 controls and they prove reliable.
 
 Explicit model selection does not remove prompting safeguards. Every
-implementation prompt routed below the Sol-high floor must name exact targets,
+implementation prompt routed below the Sol-xhigh floor must name exact targets,
 set a scope ceiling, prohibit unrequested tests and refactors, and state abort
 conditions. Every Sol write-mode prompt keeps the same fence at all efforts.
 If a named target or prerequisite is absent, the executor stops and reports it;

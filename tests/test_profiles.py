@@ -158,17 +158,17 @@ role = "steered generator for tests only"
         self.assertEqual(route["backend"], "claude")
         self.assertEqual(route["provider"], "anthropic")
         self.assertEqual(route["model"], "claude-opus-5-5")
-        self.assertEqual(route["effort"], "medium")
+        self.assertEqual(route["effort"], "xhigh")
         self.assertEqual(route["stability"], "stable")
 
-    def test_claude_backend_defaults_to_opus_medium_for_work_and_review(self):
+    def test_claude_backend_defaults_to_opus_xhigh_for_work_and_review(self):
         for profile in ("implement", "execute", "review"):
             route = resolve(ROOT, profile, "claude")
             self.assertEqual(route["profile"], f"{profile}:opus")
             self.assertEqual(route["backend"], "claude")
             self.assertEqual(route["provider"], "anthropic")
             self.assertEqual(route["model"], "claude-opus-5-5")
-            self.assertEqual(route["effort"], "medium")
+            self.assertEqual(route["effort"], "xhigh")
             self.assertEqual(route["stability"], "stable")
 
     def test_only_one_variant_can_default_for_each_backend(self):
@@ -256,7 +256,7 @@ role = "steered generator for tests only"
         self.assertEqual(route["profile"], "review:opus")
         self.assertEqual(route["backend"], "claude")
         self.assertEqual(route["model"], "claude-opus-5-5")
-        self.assertEqual(route["effort"], "medium")
+        self.assertEqual(route["effort"], "xhigh")
         self.assertEqual(route["stability"], "stable")
 
     def test_direct_selection_refuses_a_prohibited_tier(self):
@@ -371,9 +371,17 @@ role = "steered generator for tests only"
         )
         self.assertEqual(pi["baseline"], "deepseek-flash#max")
         claude = self.direct_selection(
-            profile_id="explore", backend="claude", model="opus-5.5", effort="medium", provider="anthropic"
+            profile_id="explore", backend="claude", model="opus-5.5", effort="xhigh",
+            provider="anthropic", allow_experimental=False,
         )
-        self.assertEqual(claude["baseline"], "opus-5.5#medium")
+        self.assertEqual(claude["baseline"], "opus-5.5#xhigh")
+        self.assertEqual(claude["stability"], "stable")
+        sol = self.direct_selection(
+            profile_id="execute", model="gpt-6.1-sol", effort="xhigh",
+            allow_experimental=False,
+        )
+        self.assertEqual(sol["baseline"], "gpt-6.1-sol#xhigh")
+        self.assertEqual(sol["stability"], "stable")
 
     def test_a_profile_without_a_baseline_on_the_backend_stays_experimental(self):
         root = self.fixture_root()
@@ -719,7 +727,7 @@ role = "steered generator for tests only"
         route = resolve(ROOT, "review", "codex")
         self.assertEqual(route["profile"], "review")
         self.assertEqual(route["provider"], "openai-codex")
-        self.assertEqual((route["model"], route["effort"]), ("gpt-6.1-sol", "high"))
+        self.assertEqual((route["model"], route["effort"]), ("gpt-6.1-sol", "xhigh"))
         self.assertEqual(route["stability"], "stable")
 
         astra = resolve(ROOT, "review", "codex", variant_id="astra")
@@ -923,7 +931,7 @@ backends = ["claude"]
         self.assertEqual(route["profile"], "explore:opus")
         self.assertEqual(route["provider"], "anthropic")
         self.assertEqual(route["model"], "claude-opus-5-5")
-        self.assertEqual(route["effort"], "medium")
+        self.assertEqual(route["effort"], "xhigh")
         self.assertEqual(route["stability"], "stable")
 
         for profile in ("extract", "plan", "generate", "interactive"):
@@ -995,7 +1003,7 @@ class RankLintTest(unittest.TestCase):
         root = self.fixture_root()
         self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 3 }\n', "")
         self.assertIn(
-            "model 'gpt-6.1-sol' effort 'high': seated on pool 'openai-codex' without a rank",
+            "model 'gpt-6.1-sol' effort 'xhigh': seated on pool 'openai-codex' without a rank",
             self.problems(root),
         )
 

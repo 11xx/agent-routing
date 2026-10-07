@@ -58,12 +58,12 @@ revisit = "if a harness ships reliable per-subagent model/effort/context control
 
 [[rule]]
 id = "executor-write-fence"
-policy = "every implementation prompt routed below the Sol-high floor names exact targets, a scope ceiling, no extra tests or refactors, and abort conditions. Every Sol write-mode prompt keeps the same fence at all efforts. If a named target or prerequisite is absent, stop and report rather than substituting another target or working around it"
+policy = "every implementation prompt routed below the Sol-xhigh floor names exact targets, a scope ceiling, no extra tests or refactors, and abort conditions. Every Sol write-mode prompt keeps the same fence at all efforts. If a named target or prerequisite is absent, stop and report rather than substituting another target or working around it"
 why = "A cheap executor is safe only when the lead makes scope and failure loud. Sol adds a field-measured persistence risk: ambiguity can become overbuild or destructive literal goal completion"
 
 [[rule]]
 id = "acceptance-probes"
-policy = "every implementation brief routed below the Sol-high floor names acceptance probes as runnable commands that discriminate its material risks; the executor runs each at the final head when its sandbox permits execution and records it with `arc verify --command` only when both the sandbox and Arc store permit that write. If the sandbox or store prevents execution or recording, the executor reports the probe and result for the lead to run or record. A brief whose material risk has no such command is not ready to delegate — resolve it or escalate the tier. If no authorized actor can run a required probe, the executor stops and asks for a new brief rather than skipping it"
+policy = "every implementation brief routed below the Sol-xhigh floor names acceptance probes as runnable commands that discriminate its material risks; the executor runs each at the final head when its sandbox permits execution and records it with `arc verify --command` only when both the sandbox and Arc store permit that write. If the sandbox or store prevents execution or recording, the executor reports the probe and result for the lead to run or record. A brief whose material risk has no such command is not ready to delegate — resolve it or escalate the tier. If no authorized actor can run a required probe, the executor stops and asks for a new brief rather than skipping it"
 why = "gates catch compile, regression, and lint failures, and diff review catches overbuild; neither sees a plausible implementation of the wrong semantics, which is the one failure mode that stays green. A named probe converts that from a tier problem into a specification problem"
 caveat = "readiness consults declared gates only, so probe evidence is recorded and reviewable but never gating; this convention is enforced by the reviewer, not by the tool"
 
@@ -165,13 +165,13 @@ status = "verified"
 providers = ["anthropic"]
 entrypoint = "claude -p \"<prompt>\""
 model_flag = "--model claude-opus-5-5; claude-fable-5-1 and claude-sonnet-5-5 are also available on the same login when the user selects one explicitly, and no automatic profile names either"
-effort_flag = "--effort low|medium|high|xhigh|max; every route resolves medium"
+effort_flag = "--effort low|medium|high|xhigh|max; standing Opus routes resolve xhigh"
 workdir_flag = "none; cd first"
 capture = "--output-format stream-json --verbose; retain the final result as the report"
 isolation = "no OS sandbox: plan mode for read-only work, bypassPermissions for write work in a dedicated explicit repository"
 resume = "--resume <session-id>; fork adds --fork-session"
 quota_pool = "claude-subscription"
-default_for = "Opus 5.5 medium read-only reconnaissance, implementation, execution, review, taste, UX, copy, API ergonomics, and landing quality through the first-party Claude client"
+default_for = "Opus 5.5 xhigh read-only reconnaissance, implementation, execution, review, taste, UX, copy, API ergonomics, and landing quality through the first-party Claude client"
 
 [[backend]]
 id = "opencode"

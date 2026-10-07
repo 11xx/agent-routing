@@ -22,7 +22,7 @@
 
 [meta]
 schema = "routing-profiles/1"
-updated = "2026-09-23"
+updated = "2026-10-07"
 
 # Pi routes to DeepSeek V4.1 Flash on the OpenCode Go pool by operator
 # direction: the GPT profiles name the codex backend alone, and a
@@ -82,15 +82,13 @@ backends = ["codex"]
   backends = ["pi"]
   default_for_backend = true
 
-  # Reconnaissance on the Claude window takes the same Opus medium tier as
-  # every other first-party route: medium is the routing ceiling, and low is
-  # unrouted absent a measured capacity need.
+  # Reconnaissance on the Claude window uses the head model's standing tier.
   [[profile.variant]]
   id = "opus"
   provider = "anthropic"
   model = "opus-5.5"
   backend_model = "claude-opus-5-5"
-  effort = "medium"
+  effort = "xhigh"
   stability = "stable"
   backends = ["claude"]
   default_for_backend = true
@@ -117,15 +115,13 @@ backends = ["codex"]
   backends = ["pi"]
   default_for_backend = true
 
-  # The first-party Claude subscription has one production implementation
-  # tier in this model era. Opus medium is the backend default; low rarely
-  # saves enough window to justify replacing the much cheaper Luna workhorse.
+  # First-party Claude implementation uses the head model's standing tier.
   [[profile.variant]]
   id = "opus"
   provider = "anthropic"
   model = "opus-5.5"
   backend_model = "claude-opus-5-5"
-  effort = "medium"
+  effort = "xhigh"
   stability = "stable"
   backends = ["claude"]
   default_for_backend = true
@@ -197,7 +193,7 @@ purpose = "broad or multi-slice implementation where technical judgment and long
 # bounded-work Luna seat.
 provider = "openai-codex"
 model = "gpt-6.1-sol"
-effort = "high"
+effort = "xhigh"
 stability = "stable"
 backends = ["codex"]
 
@@ -216,7 +212,7 @@ backends = ["codex"]
   provider = "anthropic"
   model = "opus-5.5"
   backend_model = "claude-opus-5-5"
-  effort = "medium"
+  effort = "xhigh"
   stability = "stable"
   backends = ["claude"]
   default_for_backend = true
@@ -225,13 +221,13 @@ backends = ["codex"]
 id = "review"
 escalation_sources = ["plan"]
 purpose = "read-only correctness and regression review of a bounded behavior-affecting change"
-# Sol high is the first gate and its verdict discharges review. The named
+# Sol xhigh is the first gate and its verdict discharges review. The named
 # variants are exceptions: `astra` for a second Codex-side judgment,
 # `high-stakes` where a wrong approval is expensive, and the Claude variant as
 # the cross-provider path for GPT-authored diffs.
 provider = "openai-codex"
 model = "gpt-6.1-sol"
-effort = "high"
+effort = "xhigh"
 stability = "stable"
 backends = ["codex"]
 
@@ -253,7 +249,7 @@ backends = ["codex"]
   provider = "anthropic"
   model = "opus-5.5"
   backend_model = "claude-opus-5-5"
-  effort = "medium"
+  effort = "xhigh"
   stability = "stable"
   backends = ["claude"]
   default_for_backend = true
@@ -280,7 +276,7 @@ purpose = "read-only judgment on UX, copy, API ergonomics, or architectural simp
 provider = "anthropic"
 model = "opus-5.5"
 backend_model = "claude-opus-5-5"
-effort = "medium"
+effort = "xhigh"
 stability = "stable"
 backends = ["claude"]
 

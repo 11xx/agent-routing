@@ -52,7 +52,7 @@ class ConsumerLintTest(unittest.TestCase):
             str(self.proxy): "model: sonnet\neffort: low\n",
             str(delegate_root / "agents/pi.md"): "model: sonnet\neffort: low\n",
             str(delegate_root / "agents/opencode.md"): "model: sonnet\neffort: low\n",
-            str(delegate_root / "agents/implement-opus.md"): "model: opus\neffort: medium\n",
+            str(delegate_root / "agents/implement-opus.md"): "model: opus\neffort: xhigh\n",
         }
         directories = [
             f"{instructions}/fragments",
