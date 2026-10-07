@@ -13,6 +13,11 @@
 # tiers within a pool so a directed selection can be read as an upgrade or a
 # downgrade; they are not measured capability and never compare across pools.
 # The lint requires one on every seated tier and refuses one anywhere else.
+#
+# `review_tier` compares author and reviewer floors across families: 1 is
+# bounded work, 2 a working technical peer, 3 a deliberate high-stakes tier,
+# and 4 an explicit top effort beyond every offered review seat. It is
+# conservative review policy, not a benchmark score or a pool-local rank.
 
 [meta]
 benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-09-02, with operator evidence added for Astra on 2026-09-05"
@@ -33,21 +38,26 @@ api_price_per_million = { input = 4.0, cached_input = 0.20, output = 20.0 }
 notes = "Released 2026-09-22 as `claude-opus-5-5`: 1M context, 128k maximum output, five effort levels (low, medium, high, xhigh, max; the API default is medium). Thinking cannot be disabled at any effort, and forced tool_choice (`any`/`tool`) returns a 400, so a harness route that relied on either needs its own probe. Cache writes $5 per million; fast mode $8 / $40. Vendor launch figures, recorded as the vendor's scale and never as pass@1 (Opus 5.5 / Fable 5.1 / Opus 5 / GPT-6 Astra / GPT-5.6 Sol): Terminal-Bench 4.0 66.4 / 55.8 / 52.3 / 57.9 / 37.3; FrontierCode v1.1 Main 54.4 / 50.3 / 48.0 / 53.3 / 47.5; CursorBench 4.0 57.8 / 51.8 / 46.6 / — / 41.7; GDPval-AA v2.1 Elo 1846 / 1735 / 1708 / 1542 / 1588; AutomationBench 40.0 / 31.4 / 26.9 / 41.4 / 28.8; Humanity's Last Exam with tools 67.7 / 65.6 / 63.6 / 57.2 / —; Terminal-Bench-Science 0.1 58.7 / 52.6 / 29.0 / 64.6 / 22.4; OSWorld 2.0 partial 81.8 / 80.7 / 74.0; Chartography with tools 89.0 / 88.4 / 83.4. The published table names no effort per cell. See eras/2026-09-22-opus-5-5-head-model.md"
   [[model.effort]]
   effort = "max"
+  review_tier = 4
   status = "explicit-only"
   use = "explicit selection only; unmeasured here, and never an escalation tier"
   [[model.effort]]
   effort = "xhigh"
+  review_tier = 2
   rank = { "anthropic" = 1 }
   use = "the stable default head, Claude implementation, and first-party review tier by operator direction; no benchmark row calibrates its effort curve"
   [[model.effort]]
   effort = "high"
+  review_tier = 2
   status = "explicit-only"
   use = "explicit lower-effort selection; unmeasured here"
   [[model.effort]]
   effort = "medium"
+  review_tier = 1
   use = "available lower-effort tier; the standing head and first-party routes use xhigh"
   [[model.effort]]
   effort = "low"
+  review_tier = 1
   use = "available but not routed; unmeasured here. Claude implementation defaults to xhigh; add a low route only for an explicit measured capacity need"
 
 [[model]]
@@ -361,6 +371,7 @@ open_weights = true
 niches = ["the open-weight route carries no frontier refusal surface, which makes it the practical choice for authorized security work — probing one's own systems for vulnerabilities — where hosted frontier models lecture, refuse, or degrade mid-task. Authorization is the operator's to establish; the model will not ask", "generation quality responds to exemplars rather than to constraints. Out of the box its code is functional and graceless, and the fix is showing it what the target should look like. Briefs that fence what it may not do get verbose noise; briefs carrying concrete style references get usable raw material", "field reports credit it with real medium-horizon agency — orchestrating subagents, checking its own work, catching and correcting its own wrong turns. That is compatible with everything measured here and changes nothing: the ceiling on its use is trust, not capability, and horizon buys no trust"]
   [[model.effort]]
   effort = "max"
+  review_tier = 1
   rank = { "opencode-go" = 1 }
   predecessor = "V4 Flash 0731"
   predecessor_pass_at_1 = 0.53
@@ -448,20 +459,25 @@ weaknesses = ["FIELD-MEASURED, 2026-09-20, 25 sessions / 2,924 requests / 768M i
 notes = "Priced 2026-09-20 from the vendor model page: $10 input, $1 cached input, $12.50 cache write, $50 output per million. Batch and Flex run at 50% of standard, Fast at 2x. The published long-context surcharge above 272k input tokens is an API list-price term; it is not observed Codex subscription spend, where the field records show no visible quota discontinuity at that threshold. The published API input rate is exactly 50x Luna's and the output rate 41.7x, but those ratios do not predict subscription consumption. Capability remains unprobed and no automatic profile names Astra; the field arc measures context and quota behavior, not pass@1 or implementation quality. The intended workflow is bounded Astra planning and review followed by bounded implementation through the current `implement` profile, which resolves to Luna max. This is a workflow description, not a capability or savings guarantee. An explicit session instruction to implement locally or not delegate is owned by the instruction layer and overrides that default. The current Codex client addresses the model as gpt-6-astra."
   [[model.effort]]
   effort = "low"
+  review_tier = 2
   use = "uncalibrated; unrouted. Operator evidence suggests Sol-max-class capability. Field test pending on operator direction (2026-09-28): a few low runs on knowledge work (adjudication and review), each compared with medium on the same input; the model and its size are the same at every effort, so knowledge work may hold up at low"
   [[model.effort]]
   effort = "medium"
+  review_tier = 2
   rank = { "openai-codex" = 4 }
   use = "the plan seat and the review `astra` variant, a second Codex-side judgment beside the Sol review gate. Chosen on capability, not cost: medium and high read alike on the operator's evidence, so the lower tier wins. Measured medium requests averaged the widest contexts of any tier, so a long review round is a context cost to watch"
   [[model.effort]]
   effort = "high"
+  review_tier = 3
   use = "prohibited: never select, including on explicit request. Reads alike with medium on the operator's evidence (restated 2026-09-28), so the lower tier wins: route medium, or xhigh when a task needs the step up"
   [[model.effort]]
   effort = "xhigh"
+  review_tier = 3
   rank = { "openai-codex" = 5 }
   use = "the try-harder tier for high-stakes planning, resolving an argued discussion, and high-stakes review; uncalibrated"
   [[model.effort]]
   effort = "max"
+  review_tier = 4
   use = "prohibited: never select, including on explicit request. Banned on operator direction (2026-09-28); Artificial Analysis puts it 0.3 Intelligence Index points over xhigh for 41% more per task"
 
 [[model]]
@@ -475,19 +491,24 @@ subscription_credits_per_million = { input = 2.5, cached_input = 0.25, output = 
 notes = "Codex usage estimates published on the Codex pricing page (read 2026-09-22), local messages per five-hour window: Plus 350-3,000, Pro 5x 1,750-14,000, Pro 20x 7,000-56,000, against 5.6 Luna's 250-2,000, 1,250-10,000 and 5,000-40,000, about 1.4-1.5x the allowance. That read carried no per-token credit rates; the 2026-09-29 read publishes them at 25 credits per API dollar, as recorded above. Released 2026-09-22 as `gpt-6-luna`; the Codex CLI model cache lists efforts low through max (default medium) and a 272k context. Answered through `codex exec` at low and at high effort on 2026-09-22. The cached-input price is unpublished, so it is omitted rather than assumed. Discussion: journal 20260922T185057Z-gpt-6-sol-and-luna-discussion.md. Pi 0.99.1 also lists gpt-6-luna in its opencode-go catalog, but no Pi profile seats it there; an operator-directed Go selection remains experimental. The Codex pool is its working route."
   [[model.effort]]
   effort = "low"
+  review_tier = 1
   rank = { "openai-codex" = 1 }
   use = "fixed-shape workflow calls: classify, extract, aggregate, summarize one bounded thing. Whether 5.6 Luna's low-effort cliff carries over is unmeasured, so nothing agentic routes here"
   [[model.effort]]
   effort = "medium"
+  review_tier = 1
   use = "bounded function-shaped calls; uncalibrated"
   [[model.effort]]
   effort = "high"
+  review_tier = 1
   use = "uncalibrated; unrouted"
   [[model.effort]]
   effort = "xhigh"
+  review_tier = 1
   use = "uncalibrated; unrouted"
   [[model.effort]]
   effort = "max"
+  review_tier = 1
   rank = { "openai-codex" = 2 }
   use = "the stable bounded-implementation and reconnaissance tier, at the seat 5.6 Luna max earned. The 2026-10-02 Codex field arc adds a second max-effort sample but does not compare effort tiers, so its effort curve remains uncalibrated"
 
@@ -504,19 +525,24 @@ subscription_credits_per_million = { input = 50.0, cached_input = 2.5, output = 
 notes = "Released 2026-09-29 as `gpt-6.1-sol` to Plus, Pro, Business, Enterprise, and Edu in Codex and ChatGPT Work, and on the API with a 1.05M context, 128k maximum output, and an April 2026 knowledge cutoff. The Codex pricing page (read 2026-09-29) estimates Plus at 15-160 local messages per five-hour window against GPT-6 Sol's 15-150. The Codex CLI 0.159.0 model cache lists efforts low through max plus ultra, defaults to low, and carries a 272k context (872k maximum); ultra is not carried as a tier. An Ultrafast Codex mode, up to 8x faster generation, was announced for the following days and is not carried either. Answered through `codex exec` at low and high, and through pi's `openai-codex` provider at low as a custom model id and at xhigh once declared in `models.json`, on 2026-09-29. OpenAI withheld a GPT-6.1 Astra over safety findings, so Astra remains on its 6.0 build. Field report: Theo Browne, \"OpenAI fights back\", t3.gg, 2026-09-29 (https://www.youtube.com/watch?v=vu8X3YroB-w), from early access; its author also runs the site the Artificial Analysis curve above was read from, so the two are not independent sources. See eras/2026-09-29-gpt-6-1-sol-takes-the-sol-seats.md"
   [[model.effort]]
   effort = "low"
+  review_tier = 1
   use = "the experimental computer-use default; uncalibrated, with task outcomes establishing whether low is sufficient. Index 42.1 at $0.13 per task at launch, GPT-6 Sol's medium score at half its cost"
   [[model.effort]]
   effort = "medium"
+  review_tier = 1
   use = "uncalibrated; explicit computer-use comparison tier. Codex's default for GPT-6 Sol, not for this model"
   [[model.effort]]
   effort = "high"
+  review_tier = 2
   use = "available lower-effort tier for a named capacity need; the standing review and execute routes use xhigh"
   [[model.effort]]
   effort = "xhigh"
+  review_tier = 2
   rank = { "openai-codex" = 3 }
   use = "the stable review and execute seat by operator direction; also an explicit computer-use comparison tier. No benchmark row calibrates its effort curve"
   [[model.effort]]
   effort = "max"
+  review_tier = 4
   status = "explicit-only"
   use = "explicit selection only, and never an escalation tier; explicit-only rather than banned on operator direction (2026-09-29). Artificial Analysis puts it 0.8 index points over xhigh for 84% more per task and twice the wall-clock, and a third-party DeepSWE run scored it below low and high, so a request for it is a bounded trial read against xhigh. Through pi it reaches the model only when `models.json` declares it, and clamps to high otherwise"
 
@@ -618,4 +644,4 @@ review_generation = "defect generation and defect adjudication are separable and
 escalation = "an escalation above the caller's own seat, or into a scarcer pool, is offered to the user by default, naming the route, what it buys, and the pool it spends; a standing user instruction pre-authorizing escalation replaces the ask for the work it covers. Routing upward within what the caller's seat costs, or to the caller's own tier (preferring an equivalent tier from another lab), is ordinary. A declined offer leaves work without a floor at the caller's tier; work under a floor waits. Candidates compare as model-and-effort tiers, capability and cost together, and taste breaks ties"
 taste = "taste is the larger models' edge on work no benchmark scores and varies by domain: on the operator's read Fable 5.1 leads engineering design and front-end visual work with Opus 5.5 just behind on front end, and Opus 5.5 leads prose and copy, well above Astra. Taste breaks ties between close tiers and decides before cost for design, visual, and copy work; operator judgment, not a measurement"
 founding_slices = "a clean repository's founding slices set the conventions later models imitate, so they route to the head model at its routing ceiling and the conventions land in AGENTS.md and the fmt and lint gates; operator direction, not a measurement"
-review = "the verdict never claims independence from the model that authored the diff; a lead reviewing delegated work it did not author is valid coverage. Independent review is an escalation for policy, explicit user requirements, or high-consequence approvals, and routine deferred coverage is recorded as Arc debt. Concrete reviewer routes come from profiles and current roster data rather than this frozen sentence. Debt never overrides changes-requested"
+review = "the verdict never claims independence from the model that authored the diff; a lead reviewing delegated work it did not author is valid coverage. Independent review is an escalation for policy, explicit user requirements, or high-consequence approvals, and routine deferred coverage is recorded as Arc debt. Independent-review resolution takes the recorded diff author via --author, excludes the reviewer family, and compares cross-family review_tier floors. Authorless results report unverified independence; no eligible stable route recommends Arc debt. Route eligibility is not an actor identity check or a verdict. Debt never overrides changes-requested"

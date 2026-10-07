@@ -1,4 +1,5 @@
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -979,6 +980,143 @@ backends = ["claude"]
         self.assertEqual(payload["kind"], "manifest-invalid")
 
 
+class ReviewAuthorTest(unittest.TestCase):
+    def fixture_root(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = pathlib.Path(temporary.name)
+        shutil.copytree(ROOT / "routing", root / "routing")
+        return root
+
+    def test_gpt_author_keeps_the_opus_route(self):
+        for author in ("gpt-6-luna#max", "gpt-6.1-sol#xhigh", "gpt-6-astra#medium"):
+            for variant in (None, "opus"):
+                with self.subTest(author=author, variant=variant):
+                    baseline = resolve(ROOT, "review", "claude", variant_id=variant)
+                    route = resolve(ROOT, "review", "claude", variant_id=variant, author=author)
+                    self.assertEqual(
+                        {key: value for key, value in route.items() if key != "review"},
+                        {key: value for key, value in baseline.items() if key != "review"},
+                    )
+                    self.assertEqual(route["review"]["independence"], "eligible")
+                    self.assertGreaterEqual(route["review"]["reviewer_tier"], route["review"]["author_tier"])
+
+    def test_claude_author_cannot_use_claude_for_independent_review(self):
+        for author in ("opus-5.5#xhigh", "claude-opus-5-5#xhigh", "opus-5-5#medium"):
+            with self.subTest(author=author), self.assertRaises(RouteRefusal) as caught:
+                resolve(ROOT, "review", "claude", author=author, allow_experimental=True, allow_cross_pool=True)
+            payload = caught.exception.payload()
+            self.assertEqual(payload["kind"], "review-independence")
+            self.assertEqual(payload["author_family"], "claude")
+            self.assertEqual(payload["recommendation"], "record-debt")
+            self.assertIn("record Arc review debt", payload["message"])
+
+    def test_author_above_every_offered_review_tier_is_refused(self):
+        for backend in ("codex", "claude", "pi"):
+            with self.subTest(backend=backend), self.assertRaises(RouteRefusal) as caught:
+                resolve(ROOT, "review", backend, author="gpt-6.1-sol#max")
+            self.assertEqual(caught.exception.payload()["author_tier"], 4)
+            self.assertEqual(caught.exception.payload()["recommendation"], "record-debt")
+
+    def test_missing_author_exposes_constraints_on_every_review_route(self):
+        cases = (("codex", None, "openai"), ("codex", "astra", "openai"),
+                 ("codex", "high-stakes", "openai"), ("claude", None, "claude"),
+                 ("pi", None, "deepseek"))
+        for backend, variant, family in cases:
+            with self.subTest(backend=backend, variant=variant):
+                review = resolve(ROOT, "review", backend, variant_id=variant)["review"]
+                self.assertIsNone(review["author"])
+                self.assertEqual(review["independence"], "unverified")
+                self.assertIn(family, review["excluded_author_families"])
+                self.assertGreater(review["reviewer_tier"], 0)
+
+    def test_opus_author_can_use_the_codex_peer(self):
+        route = resolve(ROOT, "review", "codex", author="opus-5.5#xhigh")
+        self.assertEqual(route["profile"], "review")
+        self.assertEqual(route["review"]["independence"], "eligible")
+
+    def test_unknown_author_facts_recommend_debt(self):
+        for author, reason in (("missing#xhigh", "unknown-author"),
+                               ("opus-5.5#ultra", "unknown-author-effort"),
+                               ("sonnet-5.5#high", "unknown-author-tier"),
+                               ("", "unknown-author")):
+            with self.subTest(author=author), self.assertRaises(RouteRefusal) as caught:
+                resolve(ROOT, "review", "codex", author=author)
+            self.assertEqual(caught.exception.payload()["reason"], reason)
+            self.assertEqual(caught.exception.payload()["recommendation"], "record-debt")
+
+    def test_omitted_effort_uses_the_highest_declared_author_floor(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "review", "claude", author="gpt-6.1-sol")
+        self.assertEqual(caught.exception.payload()["author_tier"], 4)
+        self.assertEqual(resolve(ROOT, "review", "claude", author="gpt-6-luna")["review"]["author_tier"], 1)
+
+    def test_backend_default_can_escalate_but_an_explicit_variant_cannot(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        text = path.read_text()
+        anchor = '  effort = "xhigh"\n  review_tier = 2\n  rank = { "anthropic" = 1 }'
+        self.assertIn(anchor, text)
+        path.write_text(text.replace(anchor, anchor.replace('review_tier = 2', 'review_tier = 3'), 1))
+        route = resolve(root, "review", "codex", author="opus-5.5#xhigh")
+        self.assertEqual(route["profile"], "review:high-stakes")
+        with self.assertRaises(RouteRefusal):
+            resolve(root, "review", "codex", variant_id="astra", author="opus-5.5#xhigh")
+
+    def test_experimental_opt_in_does_not_establish_independence(self):
+        root = self.fixture_root()
+        path = root / "routing" / "profiles.toml"
+        text = path.read_text()
+        start = text.index('  id = "high-stakes"')
+        path.write_text(text[:start] + text[start:].replace('stability = "stable"', 'stability = "experimental"', 1))
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(root, "review", "codex", variant_id="high-stakes", author="opus-5.5#xhigh", allow_experimental=True)
+        self.assertEqual(caught.exception.kind, "review-independence")
+
+    def test_review_policy_lint_rejects_missing_or_ineffective_constraints(self):
+        for replacement in ('[]', '["unknown"]', '["openai"]', '"claude"'):
+            root = self.fixture_root()
+            path = root / "routing" / "profiles.toml"
+            path.write_text(path.read_text().replace('excluded_author_families = ["claude"]',
+                                                     f'excluded_author_families = {replacement}', 1))
+            with self.subTest(replacement=replacement):
+                self.assertTrue(any("author famil" in problem or "excluded_author_families" in problem
+                                    for problem in validation_problems(root)))
+
+    def test_review_policy_lint_rejects_invalid_or_missing_tiers(self):
+        for replacement in ('review_tier = true', 'review_tier = 0', ''):
+            root = self.fixture_root()
+            path = root / "routing" / "models.toml"
+            path.write_text(path.read_text().replace('review_tier = 2', replacement, 1))
+            with self.subTest(replacement=replacement):
+                self.assertTrue(any("review_tier" in problem for problem in validation_problems(root)))
+
+    def test_author_is_only_valid_for_review(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "implement", "codex", author="opus-5.5#xhigh")
+        self.assertEqual(caught.exception.kind, "invalid-author")
+        self.assertNotIn("review", resolve(ROOT, "implement", "codex"))
+
+    def test_cli_author_contract_and_caller_environment(self):
+        command = [ROOT / "bin" / "agent-routing", "resolve", "review", "--backend", "claude", "--json"]
+        cases = (([], 0), (["--author", "gpt-6.1-sol#xhigh"], 0),
+                 (["--author", "opus-5.5#xhigh"], 1), (["--author", "gpt-6.1-sol#max"], 1))
+        for arguments, status in cases:
+            with self.subTest(arguments=arguments):
+                result = subprocess.run(command + arguments, capture_output=True, text=True,
+                                        env={**os.environ, "ARC_MODEL": "opus-5.5#xhigh"})
+                self.assertEqual(result.returncode, status, result.stderr)
+                if status:
+                    self.assertEqual(result.stdout, "")
+                    refusal = json.loads(result.stderr.splitlines()[-1])
+                    self.assertEqual(refusal["schema"], "agent-routing-refusal/1")
+                    self.assertEqual(refusal["recommendation"], "record-debt")
+                else:
+                    self.assertEqual(result.stderr, "")
+                    review = json.loads(result.stdout)["review"]
+                    self.assertEqual(review["independence"], "eligible" if arguments else "unverified")
+
+
 class RankLintTest(unittest.TestCase):
     def fixture_root(self):
         temporary = tempfile.TemporaryDirectory()
@@ -1012,8 +1150,8 @@ class RankLintTest(unittest.TestCase):
         self.rewrite(
             root,
             "models.toml",
-            '  effort = "low"\n  use = "uncalibrated; unrouted. Operator evidence',
-            '  effort = "low"\n  rank = { "openai-codex" = 3 }\n  use = "uncalibrated; unrouted. Operator evidence',
+            '  effort = "low"\n  review_tier = 2\n  use = "uncalibrated; unrouted. Operator evidence',
+            '  effort = "low"\n  review_tier = 2\n  rank = { "openai-codex" = 3 }\n  use = "uncalibrated; unrouted. Operator evidence',
         )
         self.assertIn("model 'gpt-6-astra' effort 'low': rank on a tier no stable route seats", self.problems(root))
 

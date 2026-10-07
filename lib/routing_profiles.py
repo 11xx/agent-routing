@@ -26,6 +26,7 @@ PROFILE_KEYS = frozenset(
         "backends",
         "variant",
         "escalation_sources",
+        "excluded_author_families",
     }
 )
 VARIANT_KEYS = frozenset(
@@ -39,6 +40,7 @@ VARIANT_KEYS = frozenset(
         "backends",
         "default_for_backend",
         "role_exception",
+        "excluded_author_families",
     }
 )
 UNROUTABLE_MODEL_STATUSES = {"deprecated", "inactive", "restricted", "retired", "superseded"}
@@ -60,13 +62,13 @@ class RouteRefusal(ValueError):
     payload is for the tool that has to decide what to do next.
     """
 
-    def __init__(self, kind: str, message: str, **fields: str | list[str]) -> None:
+    def __init__(self, kind: str, message: str, **fields: object) -> None:
         super().__init__(message)
         self.kind = kind
         self.message = message
         self.fields = {key: value for key, value in fields.items() if value is not None}
 
-    def payload(self) -> dict[str, str | list[str]]:
+    def payload(self) -> dict[str, object]:
         return {"schema": REFUSAL_SCHEMA, "kind": self.kind, "message": self.message, **self.fields}
 
 
@@ -293,6 +295,40 @@ def escalation_source_problems(profiles: list[dict]) -> list[str]:
     return problems
 
 
+def review_policy_problems(models: list[dict], profiles: list[dict]) -> list[str]:
+    by_model = {model["id"]: model for model in models}
+    families = {model.get("family") for model in models}
+    problems: list[str] = []
+    for model in models:
+        for tier in model.get("effort", []):
+            value = tier.get("review_tier")
+            if value is not None and (type(value) is not int or value < 1):
+                problems.append(f"model {model['id']!r} effort {tier['effort']!r}: review_tier must be a positive integer")
+    for profile in profiles:
+        for route in [profile, *profile.get("variant", [])]:
+            label = profile["id"] if route is profile else f"{profile['id']}:{route['id']}"
+            if profile["id"] != "review":
+                if "excluded_author_families" in route:
+                    problems.append(f"{label}: excluded_author_families is only valid for review")
+                continue
+            excluded = route.get("excluded_author_families", profile.get("excluded_author_families"))
+            if not isinstance(excluded, list) or not excluded or not all(isinstance(family, str) for family in excluded):
+                problems.append(f"{label}: excluded_author_families must be a nonempty list of model families")
+                continue
+            for family in excluded:
+                if family not in families:
+                    problems.append(f"{label}: unknown excluded author family {family!r}")
+            model = by_model.get(route.get("model"))
+            if model is None:
+                continue
+            if model.get("family") not in excluded:
+                problems.append(f"{label}: excluded_author_families must exclude the reviewer's family")
+            tier = next((tier for tier in model.get("effort", []) if tier.get("effort") == route.get("effort")), {})
+            if "review_tier" not in tier:
+                problems.append(f"{label}: reviewer model/effort has no review_tier")
+    return problems
+
+
 def structural_problems(root: pathlib.Path) -> list[str]:
     profiles_path = root / "routing" / "profiles.toml"
     profiles = load_toml(profiles_path).get("profile", [])
@@ -415,6 +451,7 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                     problems.append(f"{label}: provider {provider!r} is unsupported by backend {backend_id!r}")
     problems.extend(rank_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
     problems.extend(escalation_source_problems(profiles))
+    problems.extend(review_policy_problems(models, profiles))
     return problems
 
 
@@ -893,6 +930,44 @@ def validate_selection(
     return selection
 
 
+def _review_author(root: pathlib.Path, author: str, profile: str, backend: str) -> dict:
+    model_id, separator, effort = author.partition("#")
+    facts = model_effort_facts(root, model_id, effort if separator else None)
+    model = facts["model"]
+    reason = None
+    if not model:
+        reason = "unknown-author"
+    elif separator and facts["tier"] is None:
+        reason = "unknown-author-effort"
+    else:
+        tiers = [facts["tier"]] if separator else model.get("effort", [])
+        if not tiers or any("review_tier" not in tier for tier in tiers):
+            reason = "unknown-author-tier"
+    if reason:
+        raise RouteRefusal(
+            "review-independence",
+            f"cannot establish the review tier of author {author!r}; record Arc review debt",
+            profile=profile,
+            backend=backend,
+            author=author,
+            reason=reason,
+            recommendation="record-debt",
+        )
+    return {
+        "coordinate": facts["model_id"] + (f"#{effort}" if separator else ""),
+        "family": model["family"],
+        "tier": max(tier["review_tier"] for tier in tiers),
+    }
+
+
+def _review_constraints(root: pathlib.Path, profile: dict, selected: dict) -> dict:
+    tier = model_effort_facts(root, selected["model"], selected["effort"])["tier"]
+    return {
+        "excluded_author_families": selected.get("excluded_author_families", profile["excluded_author_families"]),
+        "reviewer_tier": tier["review_tier"],
+    }
+
+
 def resolve(
     root: pathlib.Path,
     profile_id: str,
@@ -901,7 +976,8 @@ def resolve(
     variant_id: str | None = None,
     allow_experimental: bool = False,
     allow_cross_pool: bool = False,
-) -> dict[str, str]:
+    author: str | None = None,
+) -> dict[str, object]:
     # Structural validity is a property of the manifest and gates every
     # resolution. A pool violation is a property of one route, so it is judged
     # against the route actually selected rather than blocking an unrelated
@@ -922,6 +998,13 @@ def resolve(
         raise RouteRefusal(
             "unknown-profile",
             f"unknown profile {profile_id!r}",
+            profile=profile_id,
+            backend=backend,
+        )
+    if author is not None and profile_id != "review":
+        raise RouteRefusal(
+            "invalid-author",
+            "--author is only valid when resolving review",
             profile=profile_id,
             backend=backend,
         )
@@ -976,6 +1059,49 @@ def resolve(
             profile_backends=profile_backends,
             backend_routes=backend_routes,
         )
+    review = None
+    if profile_id == "review":
+        constraints = _review_constraints(root, profile, selected)
+        review = {"author": None, "independence": "unverified", **constraints}
+        if author is not None:
+            author_facts = _review_author(root, author, resolved_profile, backend)
+            candidates = [selected] if variant_id else [selected, *(
+                route for route in [profile, *profile.get("variant", [])] if route is not selected
+            )]
+            eligible = None
+            for candidate in candidates:
+                if backend not in candidate.get("backends", []) or candidate["stability"] != "stable":
+                    continue
+                constraints = _review_constraints(root, profile, candidate)
+                if author_facts["family"] in constraints["excluded_author_families"]:
+                    continue
+                if constraints["reviewer_tier"] < author_facts["tier"]:
+                    continue
+                if pool_refusal(pools(root), profile_id, candidate["provider"], candidate["model"]) and not allow_cross_pool:
+                    continue
+                eligible = candidate
+                break
+            if eligible is None:
+                raise RouteRefusal(
+                    "review-independence",
+                    f"no independent stable review route at or above author {author!r} on backend {backend!r}; "
+                    "record Arc review debt",
+                    profile=resolved_profile,
+                    backend=backend,
+                    author=author_facts["coordinate"],
+                    author_family=author_facts["family"],
+                    author_tier=author_facts["tier"],
+                    recommendation="record-debt",
+                    reason="no-eligible-route",
+                )
+            selected = eligible
+            resolved_profile = profile_id if selected is profile else f"{profile_id}:{selected['id']}"
+            review = {
+                "author": author_facts["coordinate"],
+                "author_tier": author_facts["tier"],
+                "independence": "eligible",
+                **constraints,
+            }
     stability = selected["stability"]
     if stability != "stable" and not allow_experimental:
         raise RouteRefusal(
@@ -1006,8 +1132,10 @@ def resolve(
         route["cross_pool"] = refusal.fields["plan"]
     if "role_exception" in selected:
         route["role_exception"] = selected["role_exception"]
+    if review is not None:
+        route["review"] = review
     return route
 
 
-def dumps(route: dict[str, str]) -> str:
+def dumps(route: dict[str, object]) -> str:
     return json.dumps(route, sort_keys=True, separators=(",", ":"))

@@ -95,9 +95,9 @@ and the central delegation manifest records that shell-only policy.
 
 Callers classify work by task shape and pass that choice to the resolver. The
 resolver is a pure local table read: it does not inspect the task, access the
-network, cache results on disk, or choose a profile. A successful response has
-exactly the concrete route and a hash of the three routing manifests for durable
-logs:
+network, cache results on disk, or choose a profile. A successful response carries
+the concrete route and a hash of the three routing manifests for durable logs.
+Review responses also carry author eligibility constraints:
 
 ```sh
 agent-routing resolve extract --backend pi --json
@@ -124,6 +124,58 @@ or an operator-directed model selection. There is no Claude default for
 
 Desktop access and the retained run/resume lifecycle are owned by agent-delegate.
 The route does not restrict CU capabilities or claim a measured cost/quality win.
+
+### Author-aware independent review
+
+Supply the diff author's model and effort when resolving independent review:
+
+```sh
+agent-routing resolve review --backend claude --author 'gpt-6.1-sol#xhigh' --json
+```
+
+`--author` is valid only for `review`. Roster aliases and backend model IDs are
+canonicalized; `ARC_MODEL` is not read, because the caller may differ from the
+diff author. A model without `#effort` uses its highest declared review floor.
+If any of that model's efforts lacks a floor, supply the recorded effort or
+expect a refusal. Unknown author models, efforts, or review floors recommend
+debt rather than inferring eligibility.
+
+Each review route declares `excluded_author_families` in `profiles.toml`.
+Variants inherit the base profile's exclusions unless they declare their own;
+every route must exclude its reviewer's family. This fences the Claude and GPT
+pools by model lineage, including a model reached through another provider.
+`review_tier` in `models.toml` orders author and reviewer floors across families:
+1 is bounded work, 2 a working technical peer, 3 the high-stakes tier, and 4
+an explicit top effort beyond the offered review seats. These are conservative
+policy floors, independent of benchmark scores and pool-local escalation ranks.
+An unclassified model or effort has no assumed position on this scale.
+
+An author-aware result requires a stable route outside the excluded families
+with `reviewer_tier >= author_tier`. The backend default keeps precedence when
+eligible; otherwise the resolver checks the remaining routes in manifest order
+on that same backend. An explicit `--variant` confines eligibility to that
+variant. It never switches backends. Experimental opt-in cannot waive
+independence or the author floor.
+
+Successful review JSON adds `review` with `author`, `independence`,
+`excluded_author_families`, and `reviewer_tier`; author-aware results also carry
+`author_tier` and report `independence: "eligible"`. This is route eligibility,
+not a review verdict or proof that a different actor performed the review.
+For a diff with multiple authors, check every author; one coordinate does not
+certify the others.
+
+Without `--author`, the same concrete route remains available and `review`
+reports `author: null` and `independence: "unverified"`, alongside its family
+exclusions and reviewer tier. Callers must inspect this field before claiming
+independence. Existing consumers that parse only the concrete route fields
+continue to run, but do not establish author eligibility.
+
+If no eligible route exists, resolution exits 1 with empty stdout. The final
+stderr line is an `agent-routing-refusal/1` payload with
+`kind: "review-independence"`, a `reason`, and `recommendation: "record-debt"`.
+Record Arc review debt or wait for eligible capacity according to repository
+policy; debt never overrides a changes-requested verdict. Non-review routes
+keep their concrete output contract.
 
 ## Operator-directed selection
 
@@ -165,7 +217,8 @@ reports `selection_kind = "operator-escalation"`; every other selection is
 `--allow-experimental`. `rostered` stays false for both, because the route
 did not choose the tuple.
 
-`resolve` keeps its existing output and remains the route-selected surface.
+`resolve` is the route-selected surface; its review eligibility metadata does
+not certify an operator-directed `validate` selection's independence.
 Both commands emit machine-readable refusal payloads with the
 `agent-routing-refusal/1` schema on stderr.
 

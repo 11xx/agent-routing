@@ -16,6 +16,7 @@ def main() -> int:
     parser.add_argument("profile")
     parser.add_argument("--backend", required=True)
     parser.add_argument("--variant")
+    parser.add_argument("--author", help="diff author model[#effort]; review routes only")
     parser.add_argument("--allow-experimental", action="store_true")
     parser.add_argument(
         "--allow-cross-pool",
@@ -32,6 +33,7 @@ def main() -> int:
             variant_id=args.variant,
             allow_experimental=args.allow_experimental,
             allow_cross_pool=args.allow_cross_pool,
+            author=args.author,
         )
     except RouteRefusal as refusal:
         # Stdout carries the route contract and nothing else, so a caller can

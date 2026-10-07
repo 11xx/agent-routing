@@ -56,8 +56,14 @@ deferred coverage as Arc debt, including what was read and what remains owed.
 Debt never overrides an actual `changes-requested` verdict.
 
 Concrete reviewer routes are current roster data, not a permanent sentence in
-this document. Resolve the `review` profile for the backend in use and inspect
-its current stability and effort before dispatch. Sol low never reviews under
+this document. Resolve the `review` profile for the backend in use with
+`--author '<model>#<effort>'` naming the diff author, and inspect its current
+stability, effort, and `review.independence` before independent-review dispatch.
+A result without the author reports `unverified`; it is not evidence of
+independence. The resolver refuses when no stable route outside the author's
+family meets its review floor and recommends Arc debt. `ARC_MODEL` identifies
+the caller and is not an author fallback. Operator-directed selections require
+their own independence check. Sol low never reviews under
 the current roster; future roster changes belong in `agent-routing models` and
 profiles, not here. Machine form: `agent-routing models` (`[policy].review`).
 

@@ -17,6 +17,21 @@ RESOLVE A ROUTE
   experimental routes need --allow-experimental — a whole profile as much as a
   variant — so a route that is not ready cannot be reached by accident.
 
+  For independent review, add --author '<model>#<effort>' using the diff
+  author's recorded coordinate. Review routes exclude their own model family
+  and require a stable reviewer at or above the author's review_tier. An
+  ineligible default may select an eligible variant on the same backend;
+  --variant confines the choice. No eligible route means a refusal recommending
+  Arc review debt, not a weaker or same-family reviewer. Unknown author floors
+  also recommend debt. Omitting #effort uses the highest declared author floor;
+  missing floors are not inferred.
+
+  Without --author, review JSON carries independence: "unverified", the
+  excluded author families, and the reviewer tier inside `review`. With an
+  eligible author it carries independence: "eligible" and the author floor.
+  Eligibility is not a verdict. ARC_MODEL is never used as the author, since
+  the caller may not have written the diff. --author is only valid for review.
+
 VALIDATE AN OPERATOR-DIRECTED SELECTION
   agent-routing validate --profile <profile> --backend <backend>
     --model <model> --effort <effort> --provider <provider>
