@@ -22,7 +22,7 @@
 [meta]
 benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-09-02, with operator evidence added for Astra on 2026-09-05"
 metric = "pass@1 / avg $ / output tokens"
-updated = "2026-09-29"
+updated = "2026-10-07"
 pricing_update = "OpenAI cut standard short-context Terra token prices by 20% and Luna by 80% on 2026-07-30. Per-task costs below apply the uniform price change to the measured benchmark token mix; capability and output-token results did not change."
 era_notes = "Opus 5.5 replaced Opus 5 as head model on 2026-09-22 on vendor evidence and operator direction, with no row of this matrix behind it. Opus 5 replaced Opus 4.8 on 2026-07-25 and took the head-model seat Fable 5 held. OpenAI's 2026-07-30 Terra/Luna price and credit reset moved the workhorse roles. DeepSeek V4 Flash 0731 reached general availability on 2026-07-31 while V4 Pro remained preview. Meta released Muse Spark 1.2 and the Muse Code harness on 2026-08-05, which enters as an unreachable future row rather than a routable tier. The Luna-implements/Sol-reviews cost share was measured on 2026-08-26 and changes no seat, only how many review passes are bought. The September 2026 releases entered on 2026-09-03: Fable 5.1 returned a Fable to the subscription as an unmeasured head candidate; Gemini 3.8 Flash, GLM 5.3, Grok 4.6, DeepSeek V4 Pro 0813, Muse Spark 1.2, DeepSeek V4 Flash, and GLM 5.3 Flash gained independent rows from the Datacurve board. Astra is now reported as available to the operator; operator evidence says low/medium may cover Sol-max-class work, medium looks most efficient, and high is the deliberate try-harder tier. Astra was priced on 2026-09-20 at $10/$1/$50 per million; its published 272k long-context surcharge is an API list-price term, not observed Codex subscription spend. The standard API input rate is exactly 50x Luna's, and a separate cost field arc recorded subscription quota observations; capability remains unprobed and no Astra route is promoted on a cost arc alone. DeepSeek's Flash line moved to the V4.1 build on 2026-09-17, served under the unversioned id `deepseek-flash` at 0.30/1.20 per million; the `generate` route and the roster row follow the provider id, and the 0731 build's board row stays predecessor evidence until V4.1 has one of its own. MiMo V2.6 Flash and Pro entered on 2026-09-22 as unmeasured probation rows reached through pi on the Go pool — Flash the standing benchmark subject, Pro the sibling the operator reads as a little stronger — with no profile and no score beside them. History in eras/ The GPT-6 family took every Codex-side seat on 2026-09-23 by operator direction: Luna for bounded work, Sol for judgment-bearing execution, Astra for planning and review; the 5.6 rows are superseded and DeepSeek V4 Pro is deprecated in favour of V4.1 Flash, which became pi's default for every GPT profile on the Go pool. Sonnet 5.5 entered on 2026-09-28 as an unmeasured trial row reached through the first-party Claude backend by operator direction, with no profile beside it. GPT-6.1 Sol took every GPT-6 Sol seat at the same tier on 2026-09-29 by operator direction, on an Artificial Analysis curve above its predecessor at every tier for no more per task, with its max tier explicit-only; the review seat moved to it from Astra medium the same day on a third-party field report, with Astra keeping plan and the high-stakes variants."
 vendor_benchmarks = "a vendor's own harness produces its own scale, not a row on this one, and so does an aggregator board: the mini-swe-agent public board scores Opus 5 at 68.8% and Terra at 70.0% where this matrix measures 74% and 70% at max, so an aggregator figure is recorded as third_party_reported_deepswe and never as pass@1. The pass@1 column holds only rows the Datacurve board measured under its own harness — the one every existing row came from. Meta's launch numbers score Terra high at 64.8% and Opus 5 at 65.0% on nominally the same DeepSWE v1.1 where this matrix measures 54% and 73%; DeepSeek's 54.4% came from an unreleased minimal harness. Vendor figures are recorded as availability and direction-of-travel evidence and never merged into the pass@1 column"
@@ -158,6 +158,43 @@ notes = "Released 2026-09-28 as `claude-sonnet-5-5` with five effort levels (low
   effort = "low"
   status = "explicit-only"
   use = "explicit selection only; unmeasured here. The cheapest tier, index 36 at $0.41 at launch, and no route asks for it"
+
+[[model]]
+id = "haiku-5.5"
+family = "claude"
+aliases = ["haiku-5-5", "claude-haiku-5-5"]
+status = "experimental"
+role = "Claude-side candidate for fixed-shape, latency-sensitive and bounded delegated work. Operator-directed trials may select it, but no standing profile or fallback routes to it until real work establishes whether it complements or displaces Luna or DeepSeek"
+character = "Anthropic reports GDPval-AA v2.1 Elo 1620 against GPT-6 Luna's 1437, Terminal-Bench 4.0 39.2% against 16.4%, FrontierCode 1.1 Main 46.4% against 42.4%, and OSWorld 2.1 offline 72.4% against 48.9%. These are vendor-run scales, not this roster's DeepSWE pass@1. A launch-day Artificial Analysis proxy places Haiku xhigh at index 41.25 / $0.124 per benchmark task and max at 43.40 / $0.213; Luna max is 38.12 / $0.068 and DeepSeek V4.1 Flash max is 39.46 / $0.265. The proxy has no Haiku speed or time and no cost at low through high, so its curve motivates a trial rather than a route change"
+weaknesses = ["No measured DeepSWE row or local field arc. The launch-day Artificial Analysis proxy labels its highest variant 'max with fallback' without establishing how that fallback affects the score; benchmark index and cost per task do not prove mergeable code, quota efficiency, or latency on this workflow", "Prompts over 100k input tokens cost five times the short-prompt Claude API price for the whole request. The newer tokenizer counts approximately 30% more tokens than Haiku 4.5 for the same text, and this subscription's quota weight is unmeasured", "Anthropic warns that low effort can skip search or coding checks and that xhigh can finish with no visible text after putting the answer in thinking. A trial checks completion and the actual artifact, rather than trusting a successful process exit", "The vendor describes stricter cyber safeguards than Haiku 4.5. DeepSeek's open-weight and local-data roles are separate advantages that a stronger benchmark score does not replace"]
+api_price_per_million = { input = 0.10, cached_input = 0.01, cache_write = 0.125, output = 0.50 }
+long_context_surcharge = { threshold_input_tokens = 100000, input_multiplier = 5.0, cache_multiplier = 5.0, output_multiplier = 5.0, applies = "the full request, not only the excess", scope = "Claude API list price; not observed Claude subscription spend" }
+notes = "Released 2026-10-07 as the fixed id `claude-haiku-5-5`: 1M context, 128k output, adaptive thinking and five effort levels with medium as the Claude Code and API default. Short-prompt prices are $0.10 input, $0.01 cache read, $0.125 five-minute cache write, and $0.50 output per million; above 100k prompt tokens they become $0.50, $0.05, $0.625, and $2.50. Anthropic's launch table and pricing guide are recorded separately from the 2026-10-07T19:25:38Z Slopalytics snapshot of Artificial Analysis data in eras/2026-10-07-haiku-5-5-candidate.md. Claude Code entitlement and effective effort on this account have not been probed by a model call"
+  [[model.effort]]
+  effort = "low"
+  review_tier = 1
+  status = "explicit-only"
+  use = "short, fixed-shape trial only; vendor guidance says low can skip a needed search or verification in long agent prompts"
+  [[model.effort]]
+  effort = "medium"
+  review_tier = 1
+  status = "probationary"
+  use = "Claude Code and API default; compare bounded work against Luna max and DeepSeek V4.1 Flash max with the same acceptance probes"
+  [[model.effort]]
+  effort = "high"
+  review_tier = 1
+  status = "probationary"
+  use = "longer bounded trial requiring source checks and completion; measure repair rounds, latency and window weight"
+  [[model.effort]]
+  effort = "xhigh"
+  review_tier = 1
+  status = "explicit-only"
+  use = "targeted comparison tier; inspect for an empty visible answer despite completed thinking"
+  [[model.effort]]
+  effort = "max"
+  review_tier = 1
+  status = "explicit-only"
+  use = "bounded explicit trial only; no field evidence makes it a default or escalation tier"
 
 [[model]]
 id = "gpt-5.6-sol"
