@@ -8,4 +8,4 @@ command = "python3 -m pytest -q"
 command = "bin/lint-routing"
 
 [gates.consumers]
-command = "AGENT_CODE_ROOT=$HOME/code bin/lint-consumers"
+command = "AGENT_CODE_ROOT=${AGENT_CODE_ROOT:-$HOME/code} bin/lint-consumers"
