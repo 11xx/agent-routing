@@ -326,8 +326,8 @@ Adapter contract (probe checklist for onboarding any new harness):
 | Contract | codex CLI (`codex exec`) | pi (`pi -p`), v0.83.0 | Claude CLI (`claude -p`) | opencode (`opencode run`), v1.18.10 |
 | --- | --- | --- | --- | --- |
 | Entrypoint | `codex exec "<prompt>"` | `pi -p "<prompt>"`; `@file` args inline files (specs) | `claude -p "<prompt>"` | `opencode run "<prompt>"` |
-| Model | `-m gpt-6-{luna,astra}` or `-m gpt-6.1-sol` | GPT: `--provider openai-codex --model gpt-6-{luna,astra}` or `gpt-6.1-sol`; DeepSeek: `--provider opencode-go --model deepseek-v4.1-flash` on the Go pool, `--provider deepseek --model deepseek-flash` (V4.1) on DeepSeek's own billing; MiMo trial: `--provider opencode-go --model mimo-v2.6-flash` / `mimo-v2.6-pro` | `--model claude-opus-5-5` | `-m opencode-go/<model>` |
-| Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high` | `--variant high\|max` |
+| Model | `-m gpt-6-{luna,astra}` or `-m gpt-6.1-sol` | GPT: `--provider openai-codex --model gpt-6-{luna,astra}` or `gpt-6.1-sol`; DeepSeek: `--provider opencode-go --model deepseek-v4.1-flash` on the Go pool, `--provider deepseek --model deepseek-flash` (V4.1) on DeepSeek's own billing; MiMo trial: `--provider opencode-go --model mimo-v2.6-flash` / `mimo-v2.6-pro` | `--model claude-opus-5-5`; explicit Haiku trial: `--model claude-haiku-5-5` | `-m opencode-go/<model>` |
+| Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high\|xhigh\|max` | `--variant high\|max` |
 | Working dir | `-C <dir>` | none — `cd` first | none — `cd` first; `--add-dir=<path>` adds explicit read roots | `--dir <dir>` |
 | Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message | stdout for one-shot calls; `--output-format stream-json` for supervised runs | stdout is the final message under a `> build · <model>` header; `--format json` gives a JSONL event stream with per-step token counts |
 | Isolation | OS sandbox; `agent-delegate` defaults to `danger-full-access` unless the caller supplies a sandbox. `read-only` inspects only. Under `workspace-write`, Git metadata and linked-worktree index/HEAD remain read-only, so the lead commits and snapshots; full access permits authorized executor commits and snapshots. | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access | permission mode plus tool allowlist; `plan` is the read-only consultation mode | **none**; permission config, and `--auto` approves everything not explicitly denied |
@@ -417,6 +417,20 @@ Backend selection between the two GPT routes:
   and effective effort, harness, and evaluator with every result. At its top
   tier the agent fanned out into subagents, timeouts, and out-of-scope
   edits, so read a run's diff against its brief's scope ceiling.
+
+- **Haiku 5.5 is an explicit trial, not a seat.** It is available as the fixed
+  id `claude-haiku-5-5`; no profile resolves to it. Select a bounded Claude
+  task through `agent-routing validate --profile <shape> --backend claude
+  --model haiku-5.5 --effort <tier> --provider anthropic --reason <text>
+  --allow-experimental`, then pass the returned model and effort to the
+  first-party client. Medium and high are probationary; low, xhigh, and max
+  are explicit-only. Above 100k prompt tokens the Claude API price is five
+  times its short-prompt rate, and this subscription's quota weight is
+  unmeasured. The initial field comparison asks whether Haiku complements or
+  displaces Luna max and DeepSeek V4.1 Flash max on identical bounded briefs;
+  no score alone moves those seats. The Anthropic pool serves Opus 5.5,
+  Fable 5.1, Sonnet 5.5, and Haiku 5.5; Opus 5, Fable 5, Sonnet 5, and
+  Haiku 4.5 are outside its served set.
 
 ## Launcher hygiene and liveness
 

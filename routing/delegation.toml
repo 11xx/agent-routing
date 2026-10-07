@@ -5,7 +5,7 @@
 # `harness` field marks harness-specific rows; omit = shared policy.
 
 [meta]
-updated = "2026-09-23"
+updated = "2026-10-07"
 golden_rule = "never tell an executor to delegate to itself"
 
 [[route]]
@@ -164,7 +164,7 @@ id = "claude"
 status = "verified"
 providers = ["anthropic"]
 entrypoint = "claude -p \"<prompt>\""
-model_flag = "--model claude-opus-5-5; claude-fable-5-1 and claude-sonnet-5-5 are also available on the same login when the user selects one explicitly, and no automatic profile names either"
+model_flag = "--model claude-opus-5-5; claude-fable-5-1 and claude-sonnet-5-5 are operator-directed candidates on this login; claude-haiku-5-5 is a documented trial id whose local entitlement is unprobed; no automatic profile names them"
 effort_flag = "--effort low|medium|high|xhigh|max; standing Opus routes resolve xhigh"
 workdir_flag = "none; cd first"
 capture = "--output-format stream-json --verbose; retain the final result as the report"
@@ -232,6 +232,6 @@ why = "Sol belongs to the subscription that already covers it. pi and opencode r
 [[pool]]
 provider = "anthropic"
 plan = "the Claude subscription"
-serves = ["opus-5.5", "opus-5", "fable-5.1", "fable-5", "sonnet-5.5", "sonnet-5", "haiku-4.5"]
+serves = ["opus-5.5", "fable-5.1", "sonnet-5.5", "haiku-5.5"]
 pays_for = "itself: never reach a Claude model through metered credits when the subscription covers it"
 why = "the same rule as Sol, on the other window"

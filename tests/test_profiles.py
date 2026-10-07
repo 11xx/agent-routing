@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -592,6 +593,65 @@ role = "steered generator for tests only"
                 )
                 self.assertEqual(completed.returncode, 0, completed.stderr)
                 self.assertIn(f"not prohibited: {expected}", completed.stdout)
+
+    def test_haiku_5_5_is_an_explicit_claude_trial_without_reseating_defaults(self):
+        for model in ("haiku-5.5", "haiku-5-5", "claude-haiku-5-5"):
+            for effort in ("low", "medium", "high", "xhigh", "max"):
+                with self.subTest(model=model, effort=effort):
+                    selection = self.direct_selection(
+                        profile_id="implement",
+                        backend="claude",
+                        model=model,
+                        effort=effort,
+                        provider="anthropic",
+                    )
+                    self.assertEqual(selection["canonical_model"], "haiku-5.5")
+                    self.assertEqual(selection["backend_model"], "claude-haiku-5-5")
+                    self.assertEqual(selection["stability"], "experimental")
+                    self.assertEqual(selection["selection_kind"], "operator-directed")
+                    self.assertFalse(selection["rostered"])
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(
+                profile_id="implement",
+                backend="claude",
+                model="haiku-5.5",
+                effort="medium",
+                provider="anthropic",
+                allow_experimental=False,
+            )
+        self.assertEqual(caught.exception.kind, "stability")
+        self.assertEqual(resolve(ROOT, "implement", "codex")["model"], "gpt-6-luna")
+        self.assertEqual(resolve(ROOT, "implement", "pi")["model"], "deepseek-v4.1-flash")
+        self.assertEqual(resolve(ROOT, "implement", "claude")["model"], "claude-opus-5-5")
+
+    def test_deprecated_claude_models_are_outside_the_served_pool(self):
+        pools = tomllib.loads((ROOT / "routing" / "delegation.toml").read_text())["pool"]
+        served = set(next(pool for pool in pools if pool["provider"] == "anthropic")["serves"])
+        self.assertIn("haiku-5.5", served)
+        self.assertTrue({"opus-5", "fable-5", "sonnet-5", "haiku-4.5"}.isdisjoint(served))
+        for model in ("opus-5", "fable-5", "sonnet-5", "haiku-4.5"):
+            with self.subTest(model=model), self.assertRaises(RouteRefusal):
+                self.direct_selection(
+                    profile_id="implement",
+                    backend="claude",
+                    model=model,
+                    effort="medium",
+                    provider="anthropic",
+                )
+
+    def test_haiku_trial_tiers_are_named_under_every_model_id(self):
+        command = ROOT / "bin" / "routing-check"
+        for model in ("haiku-5.5", "haiku-5-5", "claude-haiku-5-5"):
+            for effort in ("low", "xhigh", "max"):
+                with self.subTest(model=model, effort=effort):
+                    completed = subprocess.run([command, model, effort], capture_output=True, text=True)
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    self.assertIn(f"explicit-only: haiku-5.5 at {effort}", completed.stdout)
+        for effort in ("medium", "high"):
+            with self.subTest(effort=effort):
+                completed = subprocess.run([command, "haiku-5.5", effort], capture_output=True, text=True)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertIn(f"not prohibited: haiku-5.5 at {effort}", completed.stdout)
 
     def test_sonnet_5_5_is_an_experimental_selection_at_every_tier(self):
         for model in ("sonnet-5.5", "sonnet-5-5", "claude-sonnet-5-5"):
