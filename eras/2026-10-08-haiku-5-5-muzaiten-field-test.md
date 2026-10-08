@@ -61,3 +61,12 @@ Evidence: muzaiten project journal
 `20261007T223448Z-playlist-import-haiku-field-handoff-handoff.md`, with the
 frozen input, run reports, failed pilot, sources and checksums in their named
 private evidence bundles.
+
+## Historical lead provenance
+
+Recorded model contexts establish the lead who inspected and transferred the
+playlist edits as GPT-6 Sol xhigh. The intended GPT-6.1 model was not active
+for that work. The lead's inspection is not an independent GPT-6.1 review;
+the unfinished draft retains its acceptance holds. A later GPT-6.1 Sol xhigh
+and Opus xhigh retrospective audit identified additional draft correctness
+and lifetime findings, which remain separate from the measured effort trial.

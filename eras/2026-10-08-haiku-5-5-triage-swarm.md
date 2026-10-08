@@ -48,3 +48,12 @@ Evidence: muzaiten project journal
 `20261008T032959Z-haiku-open-work-triage-conclusion-conclusion.md`, with
 frozen input, reader reports, lead corrections, exact run metrics and
 checksums in the named private evidence bundle.
+
+## Historical lead provenance
+
+Recorded model contexts identify the lead who reconciled this swarm as
+GPT-6 Sol xhigh, not the intended GPT-6.1 Sol. Later independent GPT-6.1 Sol
+xhigh and Opus xhigh readers inspected the retained synthesis and its source
+claims; that does not turn the original lead corrections into a GPT-6.1
+inspection. The read-only constraint was in the briefs: the Claude runs used
+bypass-permissions mode, so they were not OS-sandboxed read-only executions.
