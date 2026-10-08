@@ -426,9 +426,11 @@ Backend selection between the two GPT routes:
   first-party client. Medium and high are probationary; low, xhigh, and max
   are explicit-only. Above 100k prompt tokens the Claude API price is five
   times its short-prompt rate, and this subscription's quota weight is
-  unmeasured. The initial field comparison asks whether Haiku complements or
-  displaces Luna max and DeepSeek V4.1 Flash max on identical bounded briefs;
-  no score alone moves those seats. The Anthropic pool serves Opus 5.5,
+  unmeasured. A first same-input xhigh/max task is recorded in
+  `eras/2026-10-08-haiku-5-5-muzaiten-field-test.md`; Luna and DeepSeek worked
+  different tasks, so it does not compare their seats. Further matched briefs
+  and acceptance probes must establish where Haiku helps before any route moves.
+  The Anthropic pool serves Opus 5.5,
   Fable 5.1, Sonnet 5.5, and Haiku 5.5; Opus 5, Fable 5, Sonnet 5, and
   Haiku 4.5 are outside its served set.
 
