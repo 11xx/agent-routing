@@ -24,7 +24,7 @@ delayed and is not a valid first-content latency measure in these samples.
 
 The taste repair reproduced a 31-seed store that successful imports made too
 large for its own reader, then unified read/write bounds while retaining the
-indented storage format. The delivered signed commit `9270654`, retained as
+indented storage format. The delivered signed commit `87c515a`, retained as
 `92706542` with the same source tree and corrected attribution, passed a full
 build and 83/83 suites, including real CLI boundary and legacy-store probes.
 It also rejects compact input exceeding the normalized exchange-size bound;
@@ -34,7 +34,7 @@ directory triggered an existing Unix-socket path limit before the final suite
 passed. The wall time includes that build and probe work.
 
 The notice repair admitted safe underscores in the filename grammar. Its
-signed commit `0459fc9`, retained as `0459fc99` with the same source tree and
+signed commit `28a39d6`, retained as `0459fc99` with the same source tree and
 corrected attribution, added actual-inventory and mixed-attribution probes,
 with baseline failure and candidate success. Four focused Python tooling
 suites passed; the lead independently reran the 20-test notice suite. The
