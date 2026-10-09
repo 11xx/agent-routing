@@ -418,21 +418,27 @@ Backend selection between the two GPT routes:
   tier the agent fanned out into subagents, timeouts, and out-of-scope
   edits, so read a run's diff against its brief's scope ceiling.
 
-- **Haiku 5.5 is an explicit trial, not a seat.** It is available as the fixed
-  id `claude-haiku-5-5`; no profile resolves to it. Select a bounded Claude
-  task through `agent-routing validate --profile <shape> --backend claude
-  --model haiku-5.5 --effort <tier> --provider anthropic --reason <text>
-  --allow-experimental`, then pass the returned model and effort to the
-  first-party client. Medium and high are probationary; low, xhigh, and max
-  are explicit-only. Above 100k prompt tokens the Claude API price is five
-  times its short-prompt rate, and this subscription's quota weight is
-  unmeasured. A first same-input xhigh/max task is recorded in
-  `eras/2026-10-08-haiku-5-5-muzaiten-field-test.md`; Luna and DeepSeek worked
-  different tasks, so it does not compare their seats. A later partitioned
-  [read-only triage swarm](eras/2026-10-08-haiku-5-5-triage-swarm.md) found
-  useful source facts but needed lead correction on live lifecycle and test
-  boundaries. Further matched briefs and acceptance probes must establish
-  where Haiku helps before any route moves.
+- **Haiku 5.5 high is the stable explore and extract seat on the claude
+  backend.** It is the fixed id `claude-haiku-5-5`, the cheap Claude
+  subscription seat for read-only reconnaissance (scouts) and fixed-shape
+  extraction: `resolve explore --backend claude` and `resolve extract
+  --backend claude` return it, and `--variant opus` selects Opus 5.5 xhigh for
+  reconnaissance instead. It is never routed through an API-billed pool: a pi
+  or OpenCode provider that bills the Claude API pays five times the
+  short-prompt price above 100k prompt tokens and draws a paid pool where the
+  subscription already covers the model, so only the Anthropic pool serves it
+  and no other backend declares it. It holds no implementation, execution,
+  planning or review seat. Medium is probationary; low, xhigh and max are
+  explicit-only. Select any of them for another shape through `agent-routing
+  validate --profile <shape> --backend claude --model haiku-5.5 --effort
+  <tier> --provider anthropic --reason <text> --allow-experimental`, then pass
+  the returned model and effort to the first-party client. A scout's report is
+  a lead, not an established fact: verify each load-bearing fact against
+  source, and give a fact the plan depends on to two overlapping lanes so one
+  misread is caught ([field record](eras/2026-10-09-claude-roster-refresh.md)).
+  Earlier trials are in `eras/2026-10-08-haiku-5-5-muzaiten-field-test.md` and
+  the [read-only triage swarm](eras/2026-10-08-haiku-5-5-triage-swarm.md); Luna
+  and DeepSeek worked different tasks, so neither compares their seats.
   The Anthropic pool serves Opus 5.5,
   Fable 5.1, Sonnet 5.5, and Haiku 5.5; Opus 5, Fable 5, Sonnet 5, and
   Haiku 4.5 are outside its served set.

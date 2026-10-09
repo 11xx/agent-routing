@@ -104,6 +104,11 @@ agent-routing resolve extract --backend pi --json
 agent-routing resolve generate --backend pi --allow-experimental --json
 ```
 
+On the Claude backend `explore` and `extract` default to Haiku 5.5 at high, the
+cheap subscription seat for read-only reconnaissance and fixed-shape
+extraction; `explore --variant opus` selects Opus 5.5 xhigh. Haiku is reached
+only through the `claude` backend, never through an API-billed pool.
+
 Profiles stay on one axis: extraction, exploration, candidate generation,
 bounded implementation,
 broad execution, planning, review, design, or an interactive harness default.
