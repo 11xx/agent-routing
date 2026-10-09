@@ -157,3 +157,16 @@ With GPT routes unavailable, one lead (Opus 5.5 xhigh) ran a nine-change series 
 | tapes pin-move scout | Haiku 5.5 high | read-only explore | 278s | 44 | 56145 | $0.35 | accurate API diff; flagged an unverified OpenCode schema column the pin move then checked |
 
 "API-equivalent" is the harness's list-price calculation for a run that drew the subscription; a warm resume reports a cumulative total, so its row gives the difference. The Sonnet tasks were smaller than the Opus slices, so the cost and time gap is not a matched comparison. What it does show: Sonnet 5.5 high landed four bounded briefs on the first snapshot, each with sensible, reported deviations, and Opus 5.5 xhigh landed four multi-area slices the same way. A matched comparison (same brief, both models) is still what would move a route.
+
+## History repair runs, 2026-10-09
+
+The same lead then repaired placeholder trailers across thirteen repositories' histories, signed every unsigned commit, and pushed after a leak review. Sonnet 5.5 took the implementation and data work by operator direction; Haiku 5.5 high took the reading and sweep work.
+
+| Run | Model | Shape | Wall | Turns | Output tokens | API-equivalent | Outcome |
+|---|---|---|---:|---:|---:|---:|---|
+| recovery maps | Sonnet 5.5 high | ledger evidence across 13 repositories into per-commit edit files | 500s | 51 | 48027 | $1.58 | 160 lines decided; spot-checked events matched; the data files were right but the report's prose miscounted one model (102 of 103 claimed as GPT-6 Sol; 14 were 6.1) |
+| arc commit retention | Sonnet 5.5 xhigh | danger-path feature across rewrite, doctor, bundles and release | 1525s | 130 | 130263 | $4.99 | green at first snapshot; widened retention from pins to ledger-cited commits, a correct call the brief had not made |
+| arc per-commit trailer edits | Sonnet 5.5 xhigh, warm resume | rewrite input format and applier | 771s | 37 | 60846 | ~$2.34 | green; it left the new module out of arc's danger classification, which the lead added afterwards |
+| leak review, 34 slices | Haiku 5.5 high | read one ~300 KB patch slice or one repository's messages | 5-81s each, median 38s | median 10 tool calls | 205290 total | $3.73 total | no high or medium findings; low findings verified by the lead; one real subagent id found, already public |
+
+Haiku read each slice in a few large reads, about 120-150k tokens per scout, which is why a full slice finished in under a minute. Sonnet xhigh landed two danger-path arc changes on their first snapshot. In both of its recorded slips (a miscounted summary, a missed classification) the data or code itself was right, and the lead's verification caught the slip.
