@@ -136,3 +136,24 @@ five-fold surcharge above 100k prompt tokens.
 - Subscription quota weight per scout is unmeasured; the cost figures above are
   list-price equivalents.
 - The 'max with fallback' label remains unexplained.
+
+## Implementation and scout runs on the Claude subscription, 2026-10-09
+
+With GPT routes unavailable, one lead (Opus 5.5 xhigh) ran a nine-change series across arc, agent-delegate, agent-routing, agent-harnesses and tapes on Claude models only. Each brief named exact targets, gates and file ownership, and each run committed, gated and snapshotted its own work. The lead read every diff and integrated with recorded `independent-review` debt; no independent reviewer ran, so these rows measure landing, not defect escape.
+
+| Run | Model | Shape | Wall | Turns | Output tokens | API-equivalent | Outcome |
+|---|---|---|---:|---:|---:|---:|---|
+| arc placeholder refusals | Opus 5.5 xhigh | multi-area, new module, 7 write sites | 1731s | 135 | 111560 | $8.82 | all gates green at first snapshot |
+| — rebase plus two same-class gaps | Opus 5.5 xhigh, warm resume | follow-up | 601s | 36 | 23821 | ~$2.93 | clean rebase, both gaps closed |
+| arc lookup reasons | Opus 5.5 xhigh | multi-area, event field | 1533s | 106 | 92295 | $6.71 | all gates green at first snapshot |
+| agent-delegate unfenced runs | Opus 5.5 xhigh | flag removal across 4 commands | 1362s | 102 | 96721 | $7.51 | green; flagged the downstream `--tools` consumer before it broke |
+| arc trailer projection | Opus 5.5 xhigh | projection, CLI flags, advisory | 1145s | 104 | 79561 | $5.86 | green at first snapshot |
+| — rebase | Opus 5.5 xhigh, warm resume | follow-up | 306s | 8 | 2461 | ~$0.49 | clean |
+| agent-routing roster refresh | Sonnet 5.5 high | manifest data and prose | 227s | 29 | 21937 | $0.79 | green; correct deviations from a brief premise (no `stable` status value; pool rank shift) |
+| tapes exact-lookup mismatch | Sonnet 5.5 high | single defect, 4 callers | 386s | 28 | 16828 | $0.54 | 7/7 gates; tests failed first |
+| agent-harnesses Pi access | Sonnet 5.5 high | TypeScript consumer change | 109s | 10 | 9467 | $0.31 | 4/4 gates |
+| arc tapes pin move | Sonnet 5.5 high | dependency pin | 487s | 33 | 13923 | $0.59 | green; found the pinned rev on no remote and a reason-bound defect the new reader exposed |
+| — rebase | Sonnet 5.5 high, warm resume | follow-up | 230s | 5 | 1420 | ~$0.07 | clean |
+| tapes pin-move scout | Haiku 5.5 high | read-only explore | 278s | 44 | 56145 | $0.35 | accurate API diff; flagged an unverified OpenCode schema column the pin move then checked |
+
+"API-equivalent" is the harness's list-price calculation for a run that drew the subscription; a warm resume reports a cumulative total, so its row gives the difference. The Sonnet tasks were smaller than the Opus slices, so the cost and time gap is not a matched comparison. What it does show: Sonnet 5.5 high landed four bounded briefs on the first snapshot, each with sensible, reported deviations, and Opus 5.5 xhigh landed four multi-area slices the same way. A matched comparison (same brief, both models) is still what would move a route.
