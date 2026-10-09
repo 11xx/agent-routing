@@ -376,7 +376,8 @@ role = "steered generator for tests only"
             profile_id="explore", backend="claude", model="opus-5.5", effort="xhigh",
             provider="anthropic", allow_experimental=False,
         )
-        self.assertEqual(claude["baseline"], "opus-5.5#xhigh")
+        self.assertEqual(claude["baseline"], "haiku-5.5#high")
+        self.assertEqual(claude["direction"], "upgrade")
         self.assertEqual(claude["stability"], "stable")
         sol = self.direct_selection(
             profile_id="execute", model="gpt-6.1-sol", effort="xhigh",
@@ -988,18 +989,74 @@ backends = ["claude"]
         self.assertEqual(json.loads(completed.stdout)["role_exception"], reason)
 
     def test_claude_backend_coverage_is_stated(self):
-        route = resolve(ROOT, "explore", "claude")
-        self.assertEqual(route["profile"], "explore:opus")
-        self.assertEqual(route["provider"], "anthropic")
-        self.assertEqual(route["model"], "claude-opus-5-5")
-        self.assertEqual(route["effort"], "xhigh")
-        self.assertEqual(route["stability"], "stable")
+        for profile in ("explore", "extract"):
+            with self.subTest(profile=profile):
+                route = resolve(ROOT, profile, "claude")
+                self.assertEqual(route["profile"], f"{profile}:haiku")
+                self.assertEqual(route["provider"], "anthropic")
+                self.assertEqual(route["model"], "claude-haiku-5-5")
+                self.assertEqual(route["effort"], "high")
+                self.assertEqual(route["stability"], "stable")
 
-        for profile in ("extract", "plan", "generate", "interactive"):
+        for profile in ("plan", "generate", "interactive"):
             with self.subTest(profile=profile):
                 with self.assertRaises(RouteRefusal) as caught:
                     resolve(ROOT, profile, "claude")
                 self.assertEqual(caught.exception.kind, "unsupported-backend")
+
+    def test_explore_keeps_opus_selectable_on_claude(self):
+        route = resolve(ROOT, "explore", "claude", variant_id="opus")
+        self.assertEqual(route["profile"], "explore:opus")
+        self.assertEqual(route["model"], "claude-opus-5-5")
+        self.assertEqual(route["effort"], "xhigh")
+        self.assertEqual(route["stability"], "stable")
+
+    def test_haiku_is_served_by_the_claude_backend_alone(self):
+        for profile in ("extract", "explore"):
+            for backend in ("codex", "pi", "opencode"):
+                with self.subTest(profile=profile, backend=backend):
+                    try:
+                        route = resolve(ROOT, profile, backend)
+                    except RouteRefusal:
+                        continue
+                    self.assertNotEqual(route["model"], "claude-haiku-5-5")
+                    self.assertNotEqual(route["provider"], "anthropic")
+        pools = tomllib.loads((ROOT / "routing" / "delegation.toml").read_text())["pool"]
+        for pool in pools:
+            if pool["provider"] != "anthropic":
+                self.assertNotIn("haiku-5.5", pool["serves"])
+        profiles = tomllib.loads((ROOT / "routing" / "profiles.toml").read_text())["profile"]
+        for profile in profiles:
+            for route in [profile, *profile.get("variant", [])]:
+                if route.get("model") == "haiku-5.5":
+                    self.assertEqual(route["backends"], ["claude"])
+                    self.assertEqual(route["provider"], "anthropic")
+
+    def test_haiku_high_alone_is_the_stable_tier(self):
+        models = tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]
+        haiku = next(model for model in models if model["id"] == "haiku-5.5")
+        self.assertNotIn("status", haiku)
+        tiers = {tier["effort"]: tier.get("status") for tier in haiku["effort"]}
+        self.assertEqual(
+            tiers,
+            {
+                "low": "explicit-only",
+                "medium": "probationary",
+                "high": None,
+                "xhigh": "explicit-only",
+                "max": "explicit-only",
+            },
+        )
+
+    def test_cache_hit_prices_follow_the_published_multipliers(self):
+        models = tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]
+        prices = {
+            model["id"]: model["api_price_per_million"] for model in models if "api_price_per_million" in model
+        }
+        self.assertEqual(prices["sonnet-5.5"]["cached_input"], 0.10)
+        self.assertEqual(prices["opus-5.5"]["cached_input"], 0.20)
+        self.assertEqual(prices["fable-5.1"]["cached_input"], 0.25)
+        self.assertEqual(prices["haiku-5.5"]["cached_input"], 0.01)
 
     def test_an_unsupported_backend_refusal_names_the_alternatives(self):
         with self.assertRaises(RouteRefusal) as caught:
@@ -1115,7 +1172,7 @@ class ReviewAuthorTest(unittest.TestCase):
         root = self.fixture_root()
         path = root / "routing" / "models.toml"
         text = path.read_text()
-        anchor = '  effort = "xhigh"\n  review_tier = 2\n  rank = { "anthropic" = 1 }'
+        anchor = '  effort = "xhigh"\n  review_tier = 2\n  rank = { "anthropic" = 2 }'
         self.assertIn(anchor, text)
         path.write_text(text.replace(anchor, anchor.replace('review_tier = 2', 'review_tier = 3'), 1))
         route = resolve(root, "review", "codex", author="opus-5.5#xhigh")

@@ -22,7 +22,7 @@
 
 [meta]
 schema = "routing-profiles/1"
-updated = "2026-10-07"
+updated = "2026-10-09"
 
 # Pi routes to DeepSeek V4.1 Flash on the OpenCode Go pool by operator
 # direction: the GPT profiles name the codex backend alone, and a
@@ -41,9 +41,10 @@ updated = "2026-10-07"
 id = "extract"
 escalation_sources = ["plan", "review"]
 purpose = "one fixed-input, fixed-output classification, extraction, aggregation, or bounded summary"
-# Fixed-shape labor belongs on the cheapest Luna tier. Spending the Claude
-# window on extraction is a caller-named capacity decision, and this profile
-# intentionally offers no route for it.
+# Fixed-shape labor belongs on the cheapest Luna tier. On the Claude window
+# the cheap seat is Haiku 5.5 at high, reached only through the claude backend:
+# an API-billed route to it pays a five-fold prompt surcharge above 100k tokens
+# and draws a paid pool, so none is declared.
 provider = "openai-codex"
 model = "gpt-6-luna"
 effort = "low"
@@ -58,6 +59,16 @@ backends = ["codex"]
   effort = "max"
   stability = "stable"
   backends = ["pi"]
+  default_for_backend = true
+
+  [[profile.variant]]
+  id = "haiku"
+  provider = "anthropic"
+  model = "haiku-5.5"
+  backend_model = "claude-haiku-5-5"
+  effort = "high"
+  stability = "stable"
+  backends = ["claude"]
   default_for_backend = true
 
 [[profile]]
@@ -82,7 +93,18 @@ backends = ["codex"]
   backends = ["pi"]
   default_for_backend = true
 
-  # Reconnaissance on the Claude window uses the head model's standing tier.
+  # Reconnaissance on the Claude window defaults to Haiku; Opus at the head
+  # model's standing tier is selected with `--variant opus`.
+  [[profile.variant]]
+  id = "haiku"
+  provider = "anthropic"
+  model = "haiku-5.5"
+  backend_model = "claude-haiku-5-5"
+  effort = "high"
+  stability = "stable"
+  backends = ["claude"]
+  default_for_backend = true
+
   [[profile.variant]]
   id = "opus"
   provider = "anthropic"
@@ -91,7 +113,6 @@ backends = ["codex"]
   effort = "xhigh"
   stability = "stable"
   backends = ["claude"]
-  default_for_backend = true
 
 [[profile]]
 id = "implement"
