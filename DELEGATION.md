@@ -330,7 +330,7 @@ Adapter contract (probe checklist for onboarding any new harness):
 | Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high\|xhigh\|max` | `--variant high\|max` |
 | Working dir | `-C <dir>` | none — `cd` first | none — `cd` first; `--add-dir=<path>` adds explicit read roots | `--dir <dir>` |
 | Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message | stdout for one-shot calls; `--output-format stream-json` for supervised runs | stdout is the final message under a `> build · <model>` header; `--format json` gives a JSONL event stream with per-step token counts |
-| Isolation | OS sandbox; `agent-delegate` defaults to `danger-full-access` unless the caller supplies a sandbox. `read-only` inspects only. Under `workspace-write`, Git metadata and linked-worktree index/HEAD remain read-only, so the lead commits and snapshots; full access permits authorized executor commits and snapshots. | **none**; read-only ≈ `--tools read,grep,find,ls` (no bash, so no git/shell inspection); write mode is unsandboxed user access | permission mode plus tool allowlist; `plan` is the read-only consultation mode | **none**; permission config, and `--auto` approves everything not explicitly denied |
+| Isolation | OS sandbox; `agent-delegate` defaults to `danger-full-access` unless the caller supplies a sandbox. `read-only` inspects only. Under `workspace-write`, Git metadata and linked-worktree index/HEAD remain read-only, so the lead commits and snapshots; full access permits authorized executor commits and snapshots. | **none**; every run has unsandboxed user access, and `agent-delegate` states read-only as an appended system-prompt instruction, never a tool allowlist | **none**; every delegated run uses `bypassPermissions`, and read-only is an appended instruction, never plan mode or a tool allowlist | **none**; permission config, and `--auto` approves everything not explicitly denied |
 | Clean-room | curated prompt; reads repo AGENTS.md | `--no-session --no-extensions --no-skills --no-context-files` | `--safe-mode --disable-slash-commands --no-session-persistence` with a curated stdin prompt | `--pure` drops external plugins only; AGENTS.md and `~/.config/opencode/skills` still load |
 | Resume | `codex exec resume --last` | `--session <id>` / `-c` / `--fork` | `--resume <session-id>` | `-c` / `-s <id>` / `--fork` |
 | Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota; `opencode-go` draws the Go subscription, metered in usage dollars | Claude subscription through the first-party client | Conditional OpenCode Go subscription — a third pool metered in usage dollars ($12/5h, $30/week, $60/month), locally readable via `opencode stats`. Limit signature unprobed |
@@ -372,10 +372,13 @@ Backend selection between the two GPT routes:
   price and not the read — is what would move either row. Both take a fully specified brief with exact targets,
   a scope ceiling, named acceptance probes, and lead review, and neither is
   the last model to touch shipped work.
-- pi "read-only" (`--tools read,grep,find,ls`) is tool-level, not
-  OS-level, and excludes bash entirely: file reading and search work,
-  `git log`/build commands do not. Investigations needing shell stay on
-  `codex exec -s read-only`.
+- Delegated runs are not fenced (operator decision
+  `delegated-runs-are-not-fenced`, agent-delegate journal). On Claude and pi,
+  read-only is an instruction `agent-delegate` appends to the system prompt:
+  change no repository or configuration file. Journal entries, the run's
+  scratch directory, its report and build and test output are always
+  writable, and the run keeps bash, so `git log` and gates work. No backend
+  receives a tool allowlist or Claude's plan mode.
 - Liveness, watchdog, and one-prompt-source stdin rules below apply to
   every backend. pi's stdin behavior under `-p` is unprobed: apply the
   same `< /dev/null` discipline defensively.
