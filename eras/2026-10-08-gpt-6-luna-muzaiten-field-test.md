@@ -8,7 +8,7 @@ come from different session/supervisor paths and are not a latency comparison.
 
 | Lane | Wall time including tools | First observed output | Session token counts | Result |
 | :-- | --: | --: | :-- | :-- |
-| Warm CLI cache-stream memory | 32m36s | 8.90s | 10,620,107 input, including 10,449,152 cached; 94,014 output, including 70,968 reasoning | Integrated signed `6e40c65` after lead repairs |
+| Warm CLI cache-stream memory | 32m36s | 8.90s | 10,620,107 input, including 10,449,152 cached; 94,014 output, including 70,968 reasoning | Integrated signed `316cb3c` after lead repairs |
 | Isolated artwork-cache measurement | 13m26s | 6.20s | 2,798,914 input, including 2,652,160 cached; 61,869 output, including 43,537 reasoning | Measured and archived; no product policy or source edit |
 
 The cache lane repaired an actual caller-visible memory shape: ephemeral

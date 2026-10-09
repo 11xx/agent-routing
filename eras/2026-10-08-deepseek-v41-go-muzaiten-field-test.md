@@ -9,7 +9,7 @@ are operational observations rather than a calibrated model latency.
 
 | Lane | Wall time including tools | First observed output | Pi-reported cost | Result |
 | :-- | --: | --: | --: | :-- |
-| Semantic-status descendant cleanup | 20m48s | 5.33s | $0.075105 | Signed `bff332f` integrated after lead repair and 83/83 exact-head tests |
+| Semantic-status descendant cleanup | 20m48s | 5.33s | $0.075105 | Signed `e30ed61` integrated after lead repair and 83/83 exact-head tests |
 | Shared-output routing timeout diagnosis | 17m23s | 4.34s | $0.106068366 | No product edit; historical timeout did not recur |
 
 The semantic lane first repaired a fixture-directory reuse defect, then
