@@ -53,7 +53,7 @@ rules = "one writer per branch/worktree; local-only executor prompts; the lead o
 [[rule]]
 id = "native-subagent-fence"
 policy = "do not route work through harness-native subagent defaults; invoke executors explicitly with stated model, effort, and a curated self-contained brief"
-why = "Codex 5.6 native subagents inherit the full conversation plus the parent's model family and reasoning level: the ladder deliberately routes fixed-shape calls to Luna low/medium, bounded implementation to Luna max, and lead judgment to Sol high, while whole-conversation inheritance is unscoped context transfer"
+why = "Codex 5.6 native subagents inherit the full conversation plus the parent's model family and reasoning level: the ladder deliberately routes fixed-shape calls to Luna low/medium, bounded implementation to Luna max, and lead judgment to Sol xhigh, while whole-conversation inheritance is unscoped context transfer"
 revisit = "if a harness ships reliable per-subagent model/effort/context controls"
 
 [[rule]]

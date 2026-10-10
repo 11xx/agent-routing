@@ -111,3 +111,24 @@ class RoutingInstructionTest(unittest.TestCase):
         instruction = self.instruction("Quota is bidirectional")
         self.assertIn(f"codex ({self.sol_display_model()})", instruction)
         self.assertNotIn("GPT-6 Sol", instruction)
+
+    def execute_profile(self):
+        profiles = tomllib.loads((ROOT / "routing" / "profiles.toml").read_text())["profile"]
+        return next(profile for profile in profiles if profile["id"] == "execute")
+
+    def test_judgment_instruction_uses_the_execute_effort(self):
+        instruction = self.instruction("Delegation effort is priced")
+        self.assertIn(f'Escalate to {self.sol_display_model()} **{self.execute_profile()["effort"]}**', instruction)
+
+    def test_migration_and_declined_escalation_instructions_keep_the_floor(self):
+        floor = f'Sol-{self.execute_profile()["effort"]} floor'
+        for title in ("Delegation effort is priced", "An escalation above the caller's own seat"):
+            with self.subTest(title=title):
+                instruction = self.instruction(title)
+                self.assertIn(floor, instruction)
+                self.assertNotIn("Sol-high floor", instruction)
+
+    def test_delegation_rationale_names_the_judgment_effort(self):
+        rules = tomllib.loads((ROOT / "routing" / "delegation.toml").read_text())["rule"]
+        rationale = next(rule["why"] for rule in rules if rule["id"] == "native-subagent-fence")
+        self.assertIn(f'lead judgment to Sol {self.execute_profile()["effort"]}', rationale)
