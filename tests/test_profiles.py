@@ -1233,6 +1233,64 @@ class ReviewAuthorTest(unittest.TestCase):
                 self.assertEqual(caught.exception.payload()["reason"], "unknown-author-family")
                 self.assertEqual(caught.exception.payload()["recommendation"], "record-debt")
 
+    def test_superseded_sol_author_resolves_an_independent_claude_peer(self):
+        result = subprocess.run(
+            [ROOT / "bin" / "agent-routing", "resolve", "review", "--backend", "claude",
+             "--author", "gpt-6-sol#xhigh", "--json"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        route = json.loads(result.stdout)
+        self.assertEqual((route["model"], route["effort"]), ("claude-opus-5-5", "xhigh"))
+        self.assertEqual(route["review"]["independence"], "eligible")
+        self.assertEqual(route["review"]["author_tier"], 2)
+
+    def test_shipped_superseded_authors_have_conservative_floors_at_every_effort(self):
+        models = {model["id"]: model for model in
+                  tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]}
+        for author, successor in (("gpt-6-sol", "gpt-6.1-sol"),
+                                  ("gpt-5.6-luna", "gpt-6-luna")):
+            successor_tiers = {tier["effort"]: tier.get("review_tier", tier.get("author_floor"))
+                               for tier in models[successor]["effort"]}
+            for tier in models[author]["effort"]:
+                with self.subTest(author=author, effort=tier["effort"]):
+                    self.assertIn("author_floor", tier)
+                    self.assertGreaterEqual(tier["author_floor"], successor_tiers[tier["effort"]])
+                    self.assertNotIn("review_tier", tier)
+                    self.assertIn("author_floor", models[author]["notes"])
+                    if tier["author_floor"] > 2:
+                        with self.assertRaises(RouteRefusal) as caught:
+                            resolve(ROOT, "review", "claude", author=f"{author}#{tier['effort']}")
+                        self.assertEqual(caught.exception.payload()["reason"], "no-eligible-route")
+                        self.assertEqual(caught.exception.payload()["author_tier"], tier["author_floor"])
+                    else:
+                        route = resolve(ROOT, "review", "claude", author=f"{author}#{tier['effort']}")
+                        self.assertEqual(route["review"]["author_tier"], tier["author_floor"])
+
+    def test_lint_accepts_superseded_tiers_with_and_without_author_floors(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        path.write_text(path.read_text() + '''
+[[model]]
+id = "fixture-retired"
+family = "fixture"
+status = "superseded"
+role = "retired fixture with no shipped authorship"
+  [[model.effort]]
+  effort = "high"
+  use = "never select"
+''')
+        self.assertEqual(validation_problems(root), [])
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(root, "review", "claude", author="fixture-retired#high")
+        self.assertEqual(caught.exception.payload()["reason"], "unknown-author-tier")
+        text = path.read_text()
+        start = text.index('id = "gpt-6-sol"')
+        path.write_text(text[:start] + text[start:].replace('  author_floor = 1',
+                                                         '  author_floor = 0', 1))
+        self.assertTrue(any("gpt-6-sol" in problem and "author_floor must be a positive integer" in problem
+                            for problem in validation_problems(root)))
+
     def test_trial_author_floor_resolves_a_stable_codex_peer(self):
         result = subprocess.run(
             [ROOT / "bin" / "agent-routing", "resolve", "review", "--backend", "codex",

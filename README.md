@@ -152,7 +152,10 @@ every route must exclude its reviewer's family. This fences the Claude and GPT
 pools by model lineage, including a model reached through another provider.
 `review_tier` in `models.toml` sets a seated tier's reviewer tier and author
 floor. An unseated tier may carry `author_floor`, which sets only the author
-requirement and grants no reviewer eligibility. Lint requires `review_tier`
+requirement and grants no reviewer eligibility. Superseded models with shipped
+implementation history carry floors at least as high as their successors at
+each declared effort; retirement does not remove a diff's review requirement.
+Superseded rows without shipped authorship need no floor. Lint requires `review_tier`
 on every seated tier and refuses either field on the other kind of tier.
 Both fields use the same cross-family scale:
 1 is bounded work, 2 a working technical peer, 3 the high-stakes tier, and 4

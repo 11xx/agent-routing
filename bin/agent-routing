@@ -42,7 +42,8 @@ keeps the profile as an execution shape while validating an explicit model
 selection. Both enforce declared backend/model effort support; opt-ins cannot
 waive it. `check` remains limited to the prohibition list.
 Review author requirements use a seated tier's review_tier or an unseated
-tier's author_floor; an author_floor grants no reviewer seat.
+tier's author_floor; an author_floor grants no reviewer seat. Superseded
+authors with shipped diffs retain floors at least as high as their successors.
 EOF
 }
 

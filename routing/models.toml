@@ -279,9 +279,10 @@ status = "superseded"
 role = "superseded by gpt-6-luna on 2026-09-23 across every seat it held; never select. Its measured rows stay as the evidence the successor's tiers were seated on. The GOAT pool that served only this build is no longer used."
 api_price_per_million = { input = 0.2, cached_input = 0.02, output = 1.2 }
 subscription_credits_per_million = { input = 5.0, cached_input = 0.5, output = 30.0 }
-notes = "reachable on two pools. The prices above are the Codex route. The same model also answers on the conditional opencode-go subscription through the opencode CLI, where capability rows transfer unchanged because the model is identical, but the quota accounting does not — see [quota].opencode_go_pool. pi 0.99.1's bundled opencode-go catalog lists both gpt-5.6-luna and gpt-6-luna."
+notes = "reachable on two pools. The prices above are the Codex route. The same model also answers on the conditional opencode-go subscription through the opencode CLI, where capability rows transfer unchanged because the model is identical, but the quota accounting does not — see [quota].opencode_go_pool. pi 0.99.1's bundled opencode-go catalog lists both gpt-5.6-luna and gpt-6-luna. Its author_floor is 1 at every effort, matching successor GPT-6 Luna whose seats rest on these measured predecessor tiers and operator evidence of better capability; no evidence places the predecessor above its successor, and an author floor grants no reviewer seat."
   [[model.effort]]
   effort = "max"
+  author_floor = 1
   pass_at_1 = 0.67
   usd_per_task = 0.61
   out_tokens = "73k"
@@ -289,6 +290,7 @@ notes = "reachable on two pools. The prices above are the Codex route. The same 
   use = "the stable bounded-implementation and review tier: 6 points over Sol medium at a third of its cost, and 2 points under Sol high for a sixth of it. Field-measured over one multi-change arc — fourteen findings, thirteen accepted, several of them silent-omission defects the author had missed, and one correct rebuttal of the lead. Read-only review is where its cost shape wins, because 2.6x the output tokens and 2.8x the steps buy thoroughness against a diff nobody is waiting on. Not a lead or an interactive tier: a large-diff round runs 20-40 minutes. One failure mode is still unmeasured — whether it approves something it should not — because every approval observed so far was independently confirmed. Implementation field data 2026-09-03 (five parallel codex runs, fully specified briefs, Fable lead reviewing): five of five shipped in 35-70 minutes each with measured probes and discriminating tests, including a 600-line CMake restructure that needed no correction; corrections the lead made were design-level (a sweep in a const getter, a Qt resource where #embed fit, and one run that hid a real test failure behind sandbox skip guards in unrelated tests). See eras/2026-09-03-luna-five-way-swarm-under-fable-lead.md"
   [[model.effort]]
   effort = "xhigh"
+  author_floor = 1
   status = "experimental"
   pass_at_1 = 0.57
   usd_per_task = 0.31
@@ -296,6 +298,7 @@ notes = "reachable on two pools. The prices above are the Codex route. The same 
   use = "experimental planned executor for clear tasks needing more than Luna high; it is still token- and latency-heavy against Sol medium, so use only in controlled trials and never for interactive or underspecified work"
   [[model.effort]]
   effort = "high"
+  author_floor = 1
   status = "probationary"
   pass_at_1 = 0.44
   usd_per_task = 0.16
@@ -303,12 +306,14 @@ notes = "reachable on two pools. The prices above are the Codex route. The same 
   use = "probationary pre-resolved executor: roughly Sol low's score for about 15% of its benchmark cash and subscription-credit cost, but capability is unchanged and local field reliability is unmeasured. Use only for controlled, fully specified trials with exact targets, scope ceilings, acceptance probes, and lead review"
   [[model.effort]]
   effort = "medium"
+  author_floor = 1
   pass_at_1 = 0.11
   usd_per_task = 0.04
   out_tokens = "8.2k"
   use = "bounded function-shaped calls only: classify, extract, aggregate, summarize one thing. The cliff disqualifies agentic or multi-file coding"
   [[model.effort]]
   effort = "low"
+  author_floor = 1
   pass_at_1 = 0.02
   usd_per_task = 0.01
   out_tokens = "3.1k"
@@ -600,21 +605,26 @@ character = "OpenAI's GPT-6 Sol, released 2026-09-22 at 2 input and 10 output pe
 weaknesses = ["no Datacurve row and no field arc; every figure above is vendor-scale"]
 api_price_per_million = { input = 2.0, output = 10.0 }
 subscription_credits_per_million = { input = 50.0, cached_input = 5.0, output = 250.0 }
-notes = "Codex usage estimates published on the Codex pricing page (read 2026-09-22), local messages per five-hour window: Plus 15-150, Pro 5x 70-700, Pro 20x 300-3,000, against 5.6 Sol's 10-100, 50-500 and 200-2,000, about 1.5x the allowance. That read carried no per-token credit rates; the 2026-09-29 read publishes them at 25 credits per API dollar, as recorded above. Released 2026-09-22 as `gpt-6-sol`; the Codex CLI model cache lists efforts low through max plus ultra (default medium) and a 272k context. Answered through `codex exec` at low and at high effort on 2026-09-22. Ultra is not carried as a tier. The cached-input price is unpublished and omitted. Discussion: journal 20260922T185057Z-gpt-6-sol-and-luna-discussion.md"
+notes = "Codex usage estimates published on the Codex pricing page (read 2026-09-22), local messages per five-hour window: Plus 15-150, Pro 5x 70-700, Pro 20x 300-3,000, against 5.6 Sol's 10-100, 50-500 and 200-2,000, about 1.5x the allowance. That read carried no per-token credit rates; the 2026-09-29 read publishes them at 25 credits per API dollar, as recorded above. Released 2026-09-22 as `gpt-6-sol`; the Codex CLI model cache lists efforts low through max plus ultra (default medium) and a 272k context. Answered through `codex exec` at low and at high effort on 2026-09-22. Ultra is not carried as a tier. The cached-input price is unpublished and omitted. Discussion: journal 20260922T185057Z-gpt-6-sol-and-luna-discussion.md. Its author_floor values match successor GPT-6.1 Sol at each effort (low/medium 1, high/xhigh 2, max 4), conservatively requiring the successor's review level because its Artificial Analysis curve is above GPT-6 Sol at every tier; these floors grant no reviewer seat."
   [[model.effort]]
   effort = "low"
+  author_floor = 1
   use = "superseded by gpt-6.1-sol low; never select. It was the experimental computer-use default"
   [[model.effort]]
   effort = "medium"
+  author_floor = 1
   use = "superseded by gpt-6.1-sol; never select"
   [[model.effort]]
   effort = "high"
+  author_floor = 2
   use = "superseded by gpt-6.1-sol; never select. It held the execute seat and the review fast variant, following the seat 5.6 Sol high earned"
   [[model.effort]]
   effort = "xhigh"
+  author_floor = 2
   use = "uncalibrated; explicit computer-use comparison tier"
   [[model.effort]]
   effort = "max"
+  author_floor = 4
   use = "prohibited: never select, including on explicit request. Computer-use trials have no evidence that max earns its cost or latency, and lower tiers remain available for comparison"
 
 
