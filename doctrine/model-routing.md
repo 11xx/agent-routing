@@ -186,7 +186,8 @@ free.
 
 Independent-review dispatch resolves `review` with `--author '<model>#<effort>'`
 from the diff's recorded authorship. Family exclusions in `profiles.toml` and
-cross-family `review_tier` floors in `models.toml` require a stable route outside
+cross-family `review_tier` floors on seated tiers and `author_floor` values on
+unseated tiers in `models.toml` require a stable route outside
 the author's family at or above its tier. Pool-local escalation ranks do not
 compare across providers. A missing author leaves `review.independence`
 `unverified`; no eligible route returns a debt recommendation. Route eligibility

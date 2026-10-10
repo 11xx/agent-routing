@@ -900,7 +900,7 @@ backends = ["claude"]
   id = "go-sol"
   provider = "opencode-go"
   model = "gpt-6.1-sol"
-  effort = "high"
+  effort = "xhigh"
   stability = "stable"
   backends = ["pi"]
 
@@ -1105,8 +1105,108 @@ class ReviewAuthorTest(unittest.TestCase):
         shutil.copytree(ROOT / "routing", root / "routing")
         return root
 
+    def test_trial_author_floor_resolves_a_stable_codex_peer(self):
+        result = subprocess.run(
+            [ROOT / "bin" / "agent-routing", "resolve", "review", "--backend", "codex",
+             "--author", "claude-sonnet-5-5#xhigh", "--json"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        route = json.loads(result.stdout)
+        self.assertEqual((route["model"], route["effort"]), ("gpt-6.1-sol", "xhigh"))
+        self.assertEqual(route["stability"], "stable")
+        self.assertEqual(route["review"]["independence"], "eligible")
+        self.assertEqual(route["review"]["author_tier"], 2)
+
+    def test_trial_max_and_omitted_effort_require_an_unoffered_tier_four(self):
+        for author in ("claude-sonnet-5-5#max", "sonnet-5.5"):
+            with self.subTest(author=author), self.assertRaises(RouteRefusal) as caught:
+                resolve(ROOT, "review", "codex", author=author)
+            payload = caught.exception.payload()
+            self.assertEqual(payload["reason"], "no-eligible-route")
+            self.assertEqual(payload["author_tier"], 4)
+
+    def test_trial_author_floors_cover_each_effort_without_waiving_family_exclusions(self):
+        for effort, floor in (("low", 1), ("medium", 1), ("high", 2), ("xhigh", 2)):
+            with self.subTest(effort=effort):
+                route = resolve(ROOT, "review", "codex", author=f"sonnet-5.5#{effort}")
+                self.assertEqual(route["review"]["author_tier"], floor)
+                with self.assertRaises(RouteRefusal) as caught:
+                    resolve(ROOT, "review", "claude", author=f"sonnet-5.5#{effort}")
+                self.assertEqual(caught.exception.payload()["reason"], "no-eligible-route")
+
+    def test_omitted_effort_refuses_an_incomplete_mix_of_author_fields(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        text = path.read_text()
+        path.write_text(text.replace('  author_floor = 4\n', '', 1))
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(root, "review", "codex", author="opus-5.5")
+        self.assertEqual(caught.exception.payload()["reason"], "unknown-author-tier")
+
+    def test_trial_floors_do_not_offer_a_reviewer(self):
+        models = tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]
+        sonnet = next(model for model in models if model["id"] == "sonnet-5.5")
+        self.assertEqual({tier["effort"]: tier["author_floor"] for tier in sonnet["effort"]},
+                         {"max": 4, "xhigh": 2, "high": 2, "medium": 1, "low": 1})
+        profiles = tomllib.loads((ROOT / "routing" / "profiles.toml").read_text())["profile"]
+        for profile in profiles:
+            for route in (profile, *profile.get("variant", [])):
+                self.assertNotEqual(route["model"], "sonnet-5.5")
+        root = self.fixture_root()
+        path = root / "routing" / "profiles.toml"
+        text = path.read_text()
+        anchor = '[[profile]]\nid = "review"'
+        start = text.index(anchor)
+        path.write_text(text[:start] + text[start:].replace('model = "gpt-6.1-sol"',
+                                                          'model = "sonnet-5.5"', 1)
+                        .replace('effort = "xhigh"', 'effort = "high"', 1)
+                        .replace('stability = "stable"', 'stability = "probationary"', 1))
+        self.assertIn("review: reviewer model/effort has no review_tier", validation_problems(root))
+
+    def test_lint_cli_separates_seated_review_tiers_from_author_floors(self):
+        for field, anchor, replacement, diagnostic in (
+            ("author_floor", '  effort = "xhigh"\n  review_tier = 2\n  rank = { "anthropic" = 2 }',
+             '  effort = "xhigh"\n  review_tier = 2\n  author_floor = 2\n  rank = { "anthropic" = 2 }',
+             "author_floor on a seated tier"),
+            ("review_tier", 'id = "sonnet-5.5"', 'id = "sonnet-5.5"',
+             "review_tier on a tier no stable route seats"),
+        ):
+            with self.subTest(field=field):
+                root = self.fixture_root()
+                for directory in ("bin", "lib", "doctrine"):
+                    shutil.copytree(ROOT / directory, root / directory)
+                path = root / "routing" / "models.toml"
+                text = path.read_text()
+                self.assertIn(anchor, text)
+                if field == "review_tier":
+                    start = text.index(anchor)
+                    end = text.index('[[model]]', start)
+                    section = text[start:end].replace('  effort = "high"',
+                                                     '  effort = "high"\n  review_tier = 2', 1)
+                    text = text[:start] + section + text[end:]
+                else:
+                    text = text.replace(anchor, replacement, 1)
+                path.write_text(text)
+                result = subprocess.run([root / "bin" / "lint-routing"], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn(diagnostic, result.stdout)
+
+    def test_author_floor_lint_rejects_nonpositive_or_noninteger_values(self):
+        for value in ("true", "0", "-1", "1.5", '"2"'):
+            with self.subTest(value=value):
+                root = self.fixture_root()
+                path = root / "routing" / "models.toml"
+                text = path.read_text()
+                start = text.index('id = "sonnet-5.5"')
+                path.write_text(text[:start] + text[start:].replace('  author_floor = 2',
+                                                                 f'  author_floor = {value}', 1))
+                self.assertTrue(any("author_floor must be a positive integer" in problem
+                                    for problem in validation_problems(root)))
+
     def test_gpt_author_keeps_the_opus_route(self):
-        for author in ("gpt-6-luna#max", "gpt-6.1-sol#xhigh", "gpt-6-astra#medium"):
+        for author in ("gpt-6-luna#max", "gpt-6-luna#medium", "gpt-6.1-sol#xhigh",
+                       "gpt-6.1-sol#high", "gpt-6-astra#medium"):
             for variant in (None, "opus"):
                 with self.subTest(author=author, variant=variant):
                     baseline = resolve(ROOT, "review", "claude", variant_id=variant)
@@ -1155,7 +1255,7 @@ class ReviewAuthorTest(unittest.TestCase):
     def test_unknown_author_facts_recommend_debt(self):
         for author, reason in (("missing#xhigh", "unknown-author"),
                                ("opus-5.5#ultra", "unknown-author-effort"),
-                               ("sonnet-5.5#high", "unknown-author-tier"),
+                               ("fable-5.1#high", "unknown-author-tier"),
                                ("", "unknown-author")):
             with self.subTest(author=author), self.assertRaises(RouteRefusal) as caught:
                 resolve(ROOT, "review", "codex", author=author)
@@ -1267,8 +1367,8 @@ class RankLintTest(unittest.TestCase):
         self.rewrite(
             root,
             "models.toml",
-            '  effort = "low"\n  review_tier = 2\n  use = "uncalibrated; unrouted. Operator evidence',
-            '  effort = "low"\n  review_tier = 2\n  rank = { "openai-codex" = 3 }\n  use = "uncalibrated; unrouted. Operator evidence',
+            '  effort = "low"\n  author_floor = 2\n  use = "uncalibrated; unrouted. Operator evidence',
+            '  effort = "low"\n  author_floor = 2\n  rank = { "openai-codex" = 3 }\n  use = "uncalibrated; unrouted. Operator evidence',
         )
         self.assertIn("model 'gpt-6-astra' effort 'low': rank on a tier no stable route seats", self.problems(root))
 

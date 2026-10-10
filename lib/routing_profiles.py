@@ -295,15 +295,24 @@ def escalation_source_problems(profiles: list[dict]) -> list[str]:
     return problems
 
 
-def review_policy_problems(models: list[dict], profiles: list[dict]) -> list[str]:
+def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict]) -> list[str]:
     by_model = {model["id"]: model for model in models}
     families = {model.get("family") for model in models}
+    seated = _seated_tiers(profiles, by_pool)
     problems: list[str] = []
     for model in models:
         for tier in model.get("effort", []):
-            value = tier.get("review_tier")
-            if value is not None and (type(value) is not int or value < 1):
-                problems.append(f"model {model['id']!r} effort {tier['effort']!r}: review_tier must be a positive integer")
+            label = f"model {model['id']!r} effort {tier['effort']!r}"
+            for field in ("review_tier", "author_floor"):
+                if field in tier and (type(tier[field]) is not int or tier[field] < 1):
+                    problems.append(f"{label}: {field} must be a positive integer")
+            if (model["id"], tier["effort"]) in seated:
+                if "review_tier" not in tier:
+                    problems.append(f"{label}: seated tier has no review_tier")
+                if "author_floor" in tier:
+                    problems.append(f"{label}: author_floor on a seated tier")
+            elif "review_tier" in tier:
+                problems.append(f"{label}: review_tier on a tier no stable route seats")
     for profile in profiles:
         for route in [profile, *profile.get("variant", [])]:
             label = profile["id"] if route is profile else f"{profile['id']}:{route['id']}"
@@ -451,7 +460,7 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                     problems.append(f"{label}: provider {provider!r} is unsupported by backend {backend_id!r}")
     problems.extend(rank_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
     problems.extend(escalation_source_problems(profiles))
-    problems.extend(review_policy_problems(models, profiles))
+    problems.extend(review_policy_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
     return problems
 
 
@@ -941,7 +950,7 @@ def _review_author(root: pathlib.Path, author: str, profile: str, backend: str) 
         reason = "unknown-author-effort"
     else:
         tiers = [facts["tier"]] if separator else model.get("effort", [])
-        if not tiers or any("review_tier" not in tier for tier in tiers):
+        if not tiers or any("review_tier" not in tier and "author_floor" not in tier for tier in tiers):
             reason = "unknown-author-tier"
     if reason:
         raise RouteRefusal(
@@ -956,7 +965,7 @@ def _review_author(root: pathlib.Path, author: str, profile: str, backend: str) 
     return {
         "coordinate": facts["model_id"] + (f"#{effort}" if separator else ""),
         "family": model["family"],
-        "tier": max(tier["review_tier"] for tier in tiers),
+        "tier": max(tier.get("review_tier", tier.get("author_floor")) for tier in tiers),
     }
 
 

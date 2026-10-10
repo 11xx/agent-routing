@@ -149,7 +149,11 @@ Each review route declares `excluded_author_families` in `profiles.toml`.
 Variants inherit the base profile's exclusions unless they declare their own;
 every route must exclude its reviewer's family. This fences the Claude and GPT
 pools by model lineage, including a model reached through another provider.
-`review_tier` in `models.toml` orders author and reviewer floors across families:
+`review_tier` in `models.toml` sets a seated tier's reviewer tier and author
+floor. An unseated tier may carry `author_floor`, which sets only the author
+requirement and grants no reviewer eligibility. Lint requires `review_tier`
+on every seated tier and refuses either field on the other kind of tier.
+Both fields use the same cross-family scale:
 1 is bounded work, 2 a working technical peer, 3 the high-stakes tier, and 4
 an explicit top effort beyond the offered review seats. These are conservative
 policy floors, independent of benchmark scores and pool-local escalation ranks.

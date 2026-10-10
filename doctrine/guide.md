@@ -19,7 +19,8 @@ RESOLVE A ROUTE
 
   For independent review, add --author '<model>#<effort>' using the diff
   author's recorded coordinate. Review routes exclude their own model family
-  and require a stable reviewer at or above the author's review_tier. An
+  and require a stable reviewer at or above the author's review_tier, or
+  author_floor for an unseated tier. An author_floor grants no reviewer seat. An
   ineligible default may select an eligible variant on the same backend;
   --variant confines the choice. No eligible route means a refusal recommending
   Arc review debt, not a weaker or same-family reviewer. Unknown author floors

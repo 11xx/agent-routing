@@ -16,7 +16,10 @@ def main() -> int:
     parser.add_argument("profile")
     parser.add_argument("--backend", required=True)
     parser.add_argument("--variant")
-    parser.add_argument("--author", help="diff author model[#effort]; review routes only")
+    parser.add_argument(
+        "--author",
+        help="diff author model[#effort]; review routes only; uses review_tier or unseated author_floor",
+    )
     parser.add_argument("--allow-experimental", action="store_true")
     parser.add_argument(
         "--allow-cross-pool",
