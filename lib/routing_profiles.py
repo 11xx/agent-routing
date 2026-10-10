@@ -295,9 +295,13 @@ def escalation_source_problems(profiles: list[dict]) -> list[str]:
     return problems
 
 
+def _nonblank_string(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
 def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict]) -> list[str]:
     by_model = {model["id"]: model for model in models}
-    families = {model.get("family") for model in models}
+    families = {model["family"] for model in models if _nonblank_string(model.get("family"))}
     seated = _seated_tiers(profiles, by_pool)
     problems: list[str] = []
     for model in models:
@@ -321,7 +325,7 @@ def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: di
                     problems.append(f"{label}: excluded_author_families is only valid for review")
                 continue
             excluded = route.get("excluded_author_families", profile.get("excluded_author_families"))
-            if not isinstance(excluded, list) or not excluded or not all(isinstance(family, str) for family in excluded):
+            if not isinstance(excluded, list) or not excluded or not all(_nonblank_string(family) for family in excluded):
                 problems.append(f"{label}: excluded_author_families must be a nonempty list of model families")
                 continue
             for family in excluded:
@@ -351,6 +355,8 @@ def structural_problems(root: pathlib.Path) -> list[str]:
         if model.get("id") in model_ids:
             problems.append(f"duplicate model {model.get('id')!r}")
         model_ids.add(model.get("id"))
+        if not _nonblank_string(model.get("family")):
+            problems.append(f"model {model['id']!r}: family must be a nonblank string")
         status = model.get("status")
         if status is not None and status not in MODEL_STATUSES:
             problems.append(f"model {model['id']!r}: unknown status {status!r}")
@@ -946,6 +952,8 @@ def _review_author(root: pathlib.Path, author: str, profile: str, backend: str) 
     reason = None
     if not model:
         reason = "unknown-author"
+    elif not _nonblank_string(model.get("family")):
+        reason = "unknown-author-family"
     elif separator and facts["tier"] is None:
         reason = "unknown-author-effort"
     else:
@@ -955,7 +963,7 @@ def _review_author(root: pathlib.Path, author: str, profile: str, backend: str) 
     if reason:
         raise RouteRefusal(
             "review-independence",
-            f"cannot establish the review tier of author {author!r}; record Arc review debt",
+            f"cannot establish the family and review tier of author {author!r}; record Arc review debt",
             profile=profile,
             backend=backend,
             author=author,

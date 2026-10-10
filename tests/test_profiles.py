@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "lib"))
 
 from routing_profiles import (
     RouteRefusal,
+    _review_author,
     pool_problems,
     resolve,
     validate_selection,
@@ -1104,6 +1105,33 @@ class ReviewAuthorTest(unittest.TestCase):
         root = pathlib.Path(temporary.name)
         shutil.copytree(ROOT / "routing", root / "routing")
         return root
+
+    def malformed_family_root(self, value):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        replacement = '' if value is None else f'family = {value}\n'
+        path.write_text(path.read_text().replace(
+            'id = "gpt-6-luna"\nfamily = "openai"\n',
+            'id = "gpt-6-luna"\n' + replacement, 1))
+        return root
+
+    def test_malformed_author_families_fail_closed(self):
+        for value in (None, '""', '"  "', '17', '[]', '{}'):
+            with self.subTest(value=value):
+                root = self.malformed_family_root(value)
+                problems = validation_problems(root)
+                self.assertTrue(any("family must be a nonblank string" in p for p in problems), problems)
+                with self.assertRaises(RouteRefusal) as caught:
+                    resolve(root, "review", "codex", author="gpt-6-luna#max")
+                self.assertEqual(caught.exception.kind, "manifest-invalid")
+
+    def test_author_reader_refuses_malformed_families_before_lineage_comparison(self):
+        for value in (None, '""', '"  "', '17', '[]', '{}'):
+            with self.subTest(value=value):
+                with self.assertRaises(RouteRefusal) as caught:
+                    _review_author(self.malformed_family_root(value), "gpt-6-luna#max", "review", "codex")
+                self.assertEqual(caught.exception.payload()["reason"], "unknown-author-family")
+                self.assertEqual(caught.exception.payload()["recommendation"], "record-debt")
 
     def test_trial_author_floor_resolves_a_stable_codex_peer(self):
         result = subprocess.run(

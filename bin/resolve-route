@@ -18,7 +18,7 @@ def main() -> int:
     parser.add_argument("--variant")
     parser.add_argument(
         "--author",
-        help="diff author model[#effort]; review routes only; uses review_tier or unseated author_floor",
+        help="diff author model[#effort]; review routes only; requires a nonblank family and review_tier or unseated author_floor",
     )
     parser.add_argument("--allow-experimental", action="store_true")
     parser.add_argument(
