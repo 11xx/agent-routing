@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -86,3 +87,27 @@ class GuideFenceTest(unittest.TestCase):
         self.assertIn(
             "never overrides an actual changes-requested verdict", guide
         )
+
+
+class RoutingInstructionTest(unittest.TestCase):
+    def instruction(self, title):
+        return next(line for line in (ROOT / "doctrine" / "model-routing.md").read_text().splitlines()
+                    if line.startswith(f"- **{title}"))
+
+    def computer_use_profile(self):
+        profiles = tomllib.loads((ROOT / "routing" / "profiles.toml").read_text())["profile"]
+        return next(profile for profile in profiles if profile["id"] == "computer-use")
+
+    def sol_display_model(self):
+        return self.computer_use_profile()["model"].replace("gpt-", "GPT-").replace("-sol", " Sol")
+
+    def test_computer_use_instruction_names_the_profile_successor(self):
+        instruction = self.instruction("Delegated workhorse")
+        expected = f'profile starts at **{self.sol_display_model()} {self.computer_use_profile()["effort"]}**'
+        self.assertIn(expected, instruction)
+        self.assertNotIn("GPT-6 Sol", instruction)
+
+    def test_quota_handoff_names_the_sol_successor(self):
+        instruction = self.instruction("Quota is bidirectional")
+        self.assertIn(f"codex ({self.sol_display_model()})", instruction)
+        self.assertNotIn("GPT-6 Sol", instruction)
