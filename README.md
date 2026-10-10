@@ -119,8 +119,8 @@ passes `--allow-experimental`, a whole profile as much as a variant.
 
 The `computer-use` profile is an explicit experimental desktop-worker route,
 separate from coding implementation. It supports Codex and Pi, defaulting to Sol
-low; `--variant medium`, `--variant high`, and `--variant xhigh` select explicit
-comparison tiers. All require `--allow-experimental`; no failure automatically
+low; `--variant medium` and `--variant high` select explicit comparison tiers
+on either backend. `--variant xhigh` is supported on Codex alone. All require `--allow-experimental`; no failure automatically
 escalates the model.
 
 Claude can run Opus 5.5 for this profile through an explicit `--variant opus`
@@ -204,10 +204,21 @@ The command does not resolve the profile or select a variant. Its JSON result
 records the base execution profile, canonical and backend model identities,
 the applied opt-ins, the `route_version` witness, and where the tuple sits
 relative to the route the profile would have chosen. A prohibited tier,
-unsupported model/backend fact, unknown pool membership, or model-role
+unsupported model/backend or effort fact, unknown pool membership, or model-role
 restriction refuses before any of that. A known cross-pool selection
 additionally requires `--allow-cross-pool`; that opt-in does not waive missing
-backend or model support.
+backend, model, or effort support.
+
+Each backend in `delegation.toml` declares `supported_efforts`, the common
+levels it can send without dropping or clamping them. `model_efforts` maps
+canonical model IDs to lists that replace that common set for a particular
+catalog mapping. An empty set supports no effort. Structural lint checks
+these declarations and every profile/backend pairing; both `resolve` and
+`validate` enforce them, regardless of experimental or cross-pool opt-ins.
+Pi's declared Sol support ends at high; its DeepSeek mapping supports max.
+A custom Pi model declaration must be verified and recorded in the capability
+data before it can authorize a higher tier. OpenCode's delegated v2 provider
+supports no effort variants. Catalog presence alone does not establish support.
 
 `baseline` is the tuple `resolve` would return for the profile and backend,
 as `<canonical model>#<effort>`, or null when no route answers that backend.

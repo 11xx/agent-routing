@@ -41,6 +41,7 @@ role = "steered generator for tests only"
   effort = "max"
   use = "fixture tier"
 ''')
+        self.declare_backend_model_efforts(root, "pi", "fixture-generator", ["max"])
         return "fixture-generator"
 
     def add_implement_variant(self, root, variant):
@@ -110,9 +111,103 @@ role = "steered generator for tests only"
                                     ("high", "high"), ("xhigh", "xhigh")):
                 with self.assertRaises(RouteRefusal):
                     resolve(ROOT, "computer-use", backend, variant_id=variant)
+                if backend == "pi" and effort == "xhigh":
+                    continue
                 route = resolve(ROOT, "computer-use", backend, variant_id=variant,
                                 allow_experimental=True)
                 self.assertEqual((route["model"], route["effort"]), ("gpt-6.1-sol", effort))
+
+    def test_pi_refuses_unmapped_sol_efforts(self):
+        for effort in ("xhigh", "max"):
+            with self.subTest(effort=effort):
+                with self.assertRaises(RouteRefusal) as caught:
+                    self.direct_selection(profile_id="computer-use", backend="pi",
+                                          model="gpt-6.1-sol", effort=effort,
+                                          allow_cross_pool=True)
+                self.assertEqual(caught.exception.kind, "unsupported-effort")
+                completed = subprocess.run(
+                    [ROOT / "bin" / "agent-routing", "validate", "--profile", "computer-use",
+                     "--backend", "pi", "--model", "gpt-6.1-sol", "--effort", effort,
+                     "--provider", "openai-codex", "--reason", "trial", "--allow-experimental", "--json"],
+                    capture_output=True, text=True)
+                self.assertEqual(completed.returncode, 1, completed.stdout)
+                self.assertEqual(completed.stdout, "")
+                self.assertEqual(json.loads(completed.stderr.splitlines()[-1])["kind"], "unsupported-effort")
+
+    def test_pi_cannot_resolve_sol_xhigh_even_with_opt_in(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "computer-use", "pi", variant_id="xhigh", allow_experimental=True)
+        self.assertEqual(caught.exception.kind, "unsupported-backend")
+
+    def declare_backend_model_efforts(self, root, backend, model, efforts):
+        path = root / "routing" / "delegation.toml"
+        text = path.read_text()
+        facts = next(row for row in tomllib.loads(text)["backend"] if row["id"] == backend)
+        overrides = facts.get("model_efforts", {})
+        overrides[model] = efforts
+        declaration = 'model_efforts = { ' + ', '.join(
+            f'{json.dumps(key)} = {json.dumps(value)}' for key, value in overrides.items()) + ' }'
+        start = text.index(f'id = "{backend}"\n', text.index('[[backend]]'))
+        end = text.find('\n[[', start)
+        end = len(text) if end < 0 else end
+        section = '\n'.join(line for line in text[start:end].split('\n')
+                            if not line.startswith('model_efforts ='))
+        section = section.replace(f'id = "{backend}"\n', f'id = "{backend}"\n{declaration}\n', 1)
+        path.write_text(text[:start] + section + text[end:])
+
+    def restrict_backend_efforts(self, root, backend, efforts):
+        path = root / "routing" / "delegation.toml"
+        text = path.read_text()
+        start = text.index(f'id = "{backend}"\n', text.index('[[backend]]'))
+        end = text.find('\n[[', start)
+        end = len(text) if end < 0 else end
+        section = text[start:end]
+        section = '\n'.join(line for line in section.split('\n')
+                            if not line.startswith(('supported_efforts =', 'model_efforts =')))
+        section = section.replace(f'id = "{backend}"\n',
+                                  f'id = "{backend}"\nsupported_efforts = {json.dumps(efforts)}\nmodel_efforts = {{}}\n', 1)
+        path.write_text(text[:start] + section + text[end:])
+
+    def test_every_backend_enforces_effort_support_in_lint_and_resolution(self):
+        for backend, profile in (("codex", "execute"), ("claude", "design"),
+                                 ("pi", "generate"), ("opencode", "generate")):
+            with self.subTest(backend=backend):
+                root = self.fixture_root()
+                self.restrict_backend_efforts(root, backend, [])
+                if backend == "opencode":
+                    path = root / "routing" / "profiles.toml"
+                    path.write_text(path.read_text().replace('backends = ["pi"]', 'backends = ["pi", "opencode"]', 1))
+                self.assertTrue(any("unsupported effort" in p and backend in p
+                                    for p in validation_problems(root)))
+                with self.assertRaises(RouteRefusal) as caught:
+                    resolve(root, profile, backend)
+                self.assertEqual(caught.exception.kind, "manifest-invalid")
+                self.assertIn("unsupported effort", caught.exception.message)
+
+    def test_backend_effort_declarations_fail_closed_when_malformed(self):
+        for declaration in ('', 'supported_efforts = "high"', 'supported_efforts = ["typo"]',
+                            'supported_efforts = ["high", "high"]',
+                            'supported_efforts = ["high"]\nmodel_efforts = []',
+                            'supported_efforts = ["high"]\nmodel_efforts = { missing = ["max"] }',
+                            'supported_efforts = ["high"]\nmodel_efforts = { "gpt-6.1-sol" = "max" }'):
+            with self.subTest(declaration=declaration):
+                root = self.fixture_root()
+                self.restrict_backend_efforts(root, "opencode", [])
+                path = root / "routing" / "delegation.toml"
+                path.write_text(path.read_text().replace(
+                    'supported_efforts = []\nmodel_efforts = {}', declaration, 1))
+                self.assertTrue(any("backend 'opencode'" in p and "effort" in p
+                                    for p in validation_problems(root)))
+
+    def test_direct_selection_checks_non_pi_backend_efforts(self):
+        for backend, model, provider in (("codex", "gpt-6.1-sol", "openai-codex"),
+                                         ("claude", "opus-5.5", "anthropic")):
+            with self.subTest(backend=backend):
+                root = self.fixture_root()
+                self.declare_backend_model_efforts(root, backend, model, ["low", "medium", "high", "xhigh"])
+                with self.assertRaises(RouteRefusal) as caught:
+                    self.direct_selection(root, backend=backend, model=model, effort="max", provider=provider)
+                self.assertEqual(caught.exception.kind, "unsupported-effort")
 
     def test_sol_max_is_explicit_only_beside_the_computer_use_tiers(self):
         for effort in ("low", "medium", "high", "xhigh", "max"):
@@ -346,6 +441,7 @@ role = "steered generator for tests only"
 
 '''
         profiles.write_text(text.replace(anchor, variant + anchor, 1))
+        self.declare_backend_model_efforts(root, "pi", "gpt-6-luna", ["max"])
         values = {"root": root, "profile_id": "review", "model": "gpt-6-luna", "effort": "max"}
         route = self.direct_selection(allow_experimental=False, **values)
         self.assertEqual(route["direction"], "downgrade")
@@ -835,7 +931,10 @@ backends = ["claude"]
         profiles = root / "routing" / "profiles.toml"
         profiles.write_text(profiles.read_text().replace('model = "gpt-6-luna"', 'model = "missing-model"', 1))
         delegation = root / "routing" / "delegation.toml"
-        delegation.write_text(delegation.read_text().replace('id = "codex"\nstatus = "verified"', 'id = "codex"\nstatus = "unprobed"', 1))
+        text = delegation.read_text()
+        prefix, backend_tables = text.split('[[backend]]', 1)
+        delegation.write_text(prefix + '[[backend]]' + backend_tables.replace(
+            'status = "verified"', 'status = "unprobed"', 1))
         problems = validation_problems(root)
         self.assertTrue(any("unknown model" in problem for problem in problems))
         self.assertTrue(any("backend 'codex' is not verified" in problem for problem in problems))
@@ -907,6 +1006,7 @@ backends = ["claude"]
 
 '''
         profiles.write_text(text.replace(anchor, variant + anchor, 1))
+        self.declare_backend_model_efforts(root, "pi", "gpt-6.1-sol", ["low", "medium", "high", "xhigh"])
         return root
 
     def test_a_pool_refusal_names_the_subscription_that_pays(self):

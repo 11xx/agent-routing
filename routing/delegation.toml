@@ -129,13 +129,20 @@ policy = "arc executors leave a start breadcrumb (arc comment: executor started,
 # probe checklist: DELEGATION.md "Executor backends (harness adapters)".
 # status = "verified" (probed, routable) | "unprobed" (do not select).
 
+# supported_efforts records the backend's common supported levels. A canonical
+# model's model_efforts list replaces that set when its catalog mapping differs.
+# Empty lists refuse every effort; opt-ins cannot waive these capabilities.
+# Pi's declared catalog supports Sol through high and maps DeepSeek's max.
+# OpenCode's delegated v2 provider declares no effort variants.
+
 [[backend]]
 id = "codex"
+supported_efforts = ["low", "medium", "high", "xhigh", "max"]
 status = "verified"
 providers = ["openai-codex"]
 entrypoint = "codex exec \"<prompt>\""
 model_flag = "-m gpt-6-{luna,astra} | gpt-6.1-sol"
-effort_flag = "-c model_reasoning_effort=\"low|medium|high|xhigh\""
+effort_flag = "-c model_reasoning_effort=\"low|medium|high|xhigh|max\""
 workdir_flag = "-C <dir>"
 capture = "-o <file>; stdout is the full transcript (noisy)"
 isolation = "OS sandbox, which agent-delegate opens to -s danger-full-access by default; -s read-only | -s workspace-write (+ sandbox_workspace_write.writable_roots) narrows a run"
@@ -145,6 +152,8 @@ default_for = "all GPT delegation"
 
 [[backend]]
 id = "pi"
+supported_efforts = ["low", "medium", "high"]
+model_efforts = { "deepseek-flash" = ["max"] }
 status = "verified"
 providers = ["openai-codex", "deepseek", "opencode-go"]
 version_probed = "0.84.3 (2026-08-29)"
@@ -161,6 +170,7 @@ default_for = "every GPT profile on pi, through its deepseek-go variant on the G
 
 [[backend]]
 id = "claude"
+supported_efforts = ["low", "medium", "high", "xhigh", "max"]
 status = "verified"
 providers = ["anthropic"]
 entrypoint = "claude -p \"<prompt>\""
@@ -175,6 +185,7 @@ default_for = "Haiku 5.5 high read-only reconnaissance and extraction; Opus 5.5 
 
 [[backend]]
 id = "opencode"
+supported_efforts = []
 status = "verified"
 providers = ["opencode-go"]
 version_probed = "1.18.10 (2026-08-01)"

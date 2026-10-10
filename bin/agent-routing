@@ -39,7 +39,8 @@ Run `agent-routing` with no verb for the routing guide.
 `resolve` never classifies a task: the caller chooses the profile. It only maps
 that recorded choice to the current provider, model, and effort. `validate`
 keeps the profile as an execution shape while validating an explicit model
-selection. `check` remains limited to the prohibition list.
+selection. Both enforce declared backend/model effort support; opt-ins cannot
+waive it. `check` remains limited to the prohibition list.
 Review author requirements use a seated tier's review_tier or an unseated
 tier's author_floor; an author_floor grants no reviewer seat.
 EOF

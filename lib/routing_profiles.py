@@ -122,6 +122,50 @@ def backends(root: pathlib.Path) -> dict[str, dict]:
     return {backend["id"]: backend for backend in delegation.get("backend", [])}
 
 
+def _effort_list(value: object) -> bool:
+    return (
+        isinstance(value, list)
+        and all(isinstance(effort, str) and effort in EFFORT_ORDER for effort in value)
+        and len(value) == len(set(value))
+    )
+
+
+def backend_effort_problems(backend_records: list[dict], models: list[dict]) -> list[str]:
+    model_ids = {model["id"] for model in models}
+    problems = []
+    for backend in backend_records:
+        label = f"backend {backend['id']!r}"
+        if not _effort_list(backend.get("supported_efforts")):
+            problems.append(f"{label}: supported_efforts must be a list of distinct known efforts")
+        overrides = backend.get("model_efforts", {})
+        if not isinstance(overrides, dict):
+            problems.append(f"{label}: model_efforts must be a table of canonical model effort lists")
+            continue
+        for model_id, efforts in overrides.items():
+            if model_id not in model_ids:
+                problems.append(f"{label}: model_efforts names unknown canonical model {model_id!r}")
+            if not _effort_list(efforts):
+                problems.append(f"{label}: model_efforts for {model_id!r} must be a list of distinct known efforts")
+    return problems
+
+
+def backend_effort_refusal(backend: dict, profile: str, model: str, effort: str) -> RouteRefusal | None:
+    """A model-specific declaration replaces the backend's common effort set."""
+    supported = backend.get("model_efforts", {}).get(model, backend.get("supported_efforts", []))
+    if effort in supported:
+        return None
+    return RouteRefusal(
+        "unsupported-effort",
+        f"{profile}: unsupported effort {effort!r} for model {model!r} on backend {backend['id']!r}; "
+        f"supported efforts: {', '.join(supported) or 'none'}",
+        profile=profile,
+        backend=backend["id"],
+        model=model,
+        effort=effort,
+        missing_fact=f"backend effort support for {model!r} at {effort!r} on {backend['id']!r}",
+    )
+
+
 def model_effort_facts(root: pathlib.Path, requested_model: str, effort: str | None = None) -> dict:
     """Return the roster facts used by both ``check`` and selection validation.
 
@@ -350,6 +394,7 @@ def structural_problems(root: pathlib.Path) -> list[str]:
     by_model = {model["id"]: model for model in models}
     by_backend = {backend["id"]: backend for backend in delegation.get("backend", [])}
     problems: list[str] = []
+    problems.extend(backend_effort_problems(delegation.get("backend", []), models))
     model_ids: set[str] = set()
     for model in models:
         if model.get("id") in model_ids:
@@ -464,6 +509,12 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                     problems.append(f"{label}: backend {backend_id!r} is not verified")
                 if provider not in backend.get("providers", []):
                     problems.append(f"{label}: provider {provider!r} is unsupported by backend {backend_id!r}")
+                if (_effort_list(backend.get("supported_efforts"))
+                        and isinstance(backend.get("model_efforts", {}), dict)
+                        and all(_effort_list(value) for value in backend.get("model_efforts", {}).values())):
+                    refusal = backend_effort_refusal(backend, label, model_id, route.get("effort"))
+                    if refusal:
+                        problems.append(refusal.message)
     problems.extend(rank_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
     problems.extend(escalation_source_problems(profiles))
     problems.extend(review_policy_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
@@ -901,6 +952,10 @@ def validate_selection(
             missing_fact=f"backend model support for {model_id!r} on {backend!r}",
         )
 
+    effort_refusal = backend_effort_refusal(backend_fact, profile_id, model_id, effort)
+    if effort_refusal:
+        raise effort_refusal
+
     classification = _classify_selection(root, profile, backend, model_id, effort, provider)
     stability = classification["stability"]
     selection_kind = classification["selection_kind"]
@@ -1129,6 +1184,11 @@ def resolve(
             stability=stability,
             override="--allow-experimental",
         )
+    effort_refusal = backend_effort_refusal(
+        backends(root)[backend], resolved_profile, selected["model"], selected["effort"]
+    )
+    if effort_refusal:
+        raise effort_refusal
     provider = selected["provider"]
     model = selected.get("backend_model", selected["model"])
     refusal = pool_refusal(pools(root), resolved_profile, provider, selected["model"])

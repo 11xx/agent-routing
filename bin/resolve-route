@@ -12,7 +12,10 @@ from routing_profiles import RouteRefusal, dumps, resolve  # noqa: E402
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="agent-routing resolve")
+    parser = argparse.ArgumentParser(
+        prog="agent-routing resolve",
+        description="Resolve a profile only at an effort supported by its backend and model.",
+    )
     parser.add_argument("profile")
     parser.add_argument("--backend", required=True)
     parser.add_argument("--variant")

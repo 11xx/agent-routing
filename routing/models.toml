@@ -584,12 +584,12 @@ notes = "Released 2026-09-29 as `gpt-6.1-sol` to Plus, Pro, Business, Enterprise
   effort = "xhigh"
   review_tier = 2
   rank = { "openai-codex" = 3 }
-  use = "the stable review and execute seat by operator direction; also an explicit computer-use comparison tier. No benchmark row calibrates its effort curve"
+  use = "the stable review and execute seat by operator direction; also an explicit Codex computer-use comparison tier. No benchmark row calibrates its effort curve"
   [[model.effort]]
   effort = "max"
   author_floor = 4
   status = "explicit-only"
-  use = "explicit selection only, and never an escalation tier; explicit-only rather than banned on operator direction (2026-09-29). Artificial Analysis puts it 0.8 index points over xhigh for 84% more per task and twice the wall-clock, and a third-party DeepSWE run scored it below low and high, so a request for it is a bounded trial read against xhigh. Through pi it reaches the model only when `models.json` declares it, and clamps to high otherwise"
+  use = "explicit selection only, and never an escalation tier; explicit-only rather than banned on operator direction (2026-09-29). Artificial Analysis puts it 0.8 index points over xhigh for 84% more per task and twice the wall-clock, and a third-party DeepSWE run scored it below low and high, so a request for it is a bounded trial read against xhigh. Codex supports this tier. Pi validation refuses it under the declared catalog capabilities; a custom `models.json` mapping requires verification and a matching backend capability declaration"
 
 [[model]]
 id = "gpt-6-sol"

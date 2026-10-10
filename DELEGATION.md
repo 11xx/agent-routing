@@ -327,13 +327,21 @@ Adapter contract (probe checklist for onboarding any new harness):
 | --- | --- | --- | --- | --- |
 | Entrypoint | `codex exec "<prompt>"` | `pi -p "<prompt>"`; `@file` args inline files (specs) | `claude -p "<prompt>"` | `opencode run "<prompt>"` |
 | Model | `-m gpt-6-{luna,astra}` or `-m gpt-6.1-sol` | GPT: `--provider openai-codex --model gpt-6-{luna,astra}` or `gpt-6.1-sol`; DeepSeek: `--provider opencode-go --model deepseek-v4.1-flash` on the Go pool, `--provider deepseek --model deepseek-flash` (V4.1) on DeepSeek's own billing; MiMo trial: `--provider opencode-go --model mimo-v2.6-flash` / `mimo-v2.6-pro` | `--model claude-opus-5-5`; explicit Haiku trial: `--model claude-haiku-5-5` | `-m opencode-go/<model>` |
-| Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high\|xhigh\|max` | `--variant high\|max` |
+| Effort | `-c model_reasoning_effort="low\|medium\|high\|xhigh\|max"` | `--thinking off\|minimal\|low\|medium\|high\|xhigh\|max` (or `:level` model suffix) | `--effort low\|medium\|high\|xhigh\|max` | `--variant high\|max` |
 | Working dir | `-C <dir>` | none — `cd` first | none — `cd` first; `--add-dir=<path>` adds explicit read roots | `--dir <dir>` |
 | Capture | `-o <file>`; stdout is the full transcript (noisy) | stdout is exactly the final message | stdout for one-shot calls; `--output-format stream-json` for supervised runs | stdout is the final message under a `> build · <model>` header; `--format json` gives a JSONL event stream with per-step token counts |
 | Isolation | OS sandbox; `agent-delegate` defaults to `danger-full-access` unless the caller supplies a sandbox. `read-only` inspects only. Under `workspace-write`, Git metadata and linked-worktree index/HEAD remain read-only, so the lead commits and snapshots; full access permits authorized executor commits and snapshots. | **none**; every run has unsandboxed user access, and `agent-delegate` states read-only as an appended system-prompt instruction, never a tool allowlist | **none**; every delegated run uses `bypassPermissions`, and read-only is an appended instruction, never plan mode or a tool allowlist | **none**; permission config, and `--auto` approves everything not explicitly denied |
 | Clean-room | curated prompt; reads repo AGENTS.md | `--no-session --no-extensions --no-skills --no-context-files` | `--safe-mode --disable-slash-commands --no-session-persistence` with a curated stdin prompt | `--pure` drops external plugins only; AGENTS.md and `~/.config/opencode/skills` still load |
 | Resume | `codex exec resume --last` | `--session <id>` / `-c` / `--fork` | `--resume <session-id>` | `-c` / `-s <id>` / `--fork` |
 | Quota | ChatGPT/Codex subscription; "You've hit your usage limit … try again at HH:MM" | Provider-dependent: `openai-codex` uses the **same** ChatGPT/Codex pool; `deepseek` uses separate API billing and quota; `opencode-go` draws the Go subscription, metered in usage dollars | Claude subscription through the first-party client | Conditional OpenCode Go subscription — a third pool metered in usage dollars ($12/5h, $30/week, $60/month), locally readable via `opencode stats`. Limit signature unprobed |
+
+Effort capability is declared per backend in `delegation.toml` as
+`supported_efforts`, with canonical `model_efforts` overrides replacing the
+common set. Routing lint, resolution, and operator-directed validation refuse
+unsupported efforts even with opt-ins. Pi's declared Sol catalog supports low,
+medium, and high; xhigh and max require a verified custom model mapping recorded
+in the capability data. DeepSeek's Pi mapping supports max. The delegated
+OpenCode v2 provider supports no effort variants.
 
 Backend selection between the two GPT routes:
 

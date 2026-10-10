@@ -12,11 +12,14 @@ from routing_profiles import RouteRefusal, dumps, validate_selection  # noqa: E4
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="agent-routing validate")
+    parser = argparse.ArgumentParser(
+        prog="agent-routing validate",
+        description="Validate a selection only at an effort supported by its backend and model.",
+    )
     parser.add_argument("--profile", required=True, help="base execution-shape profile")
     parser.add_argument("--backend", required=True)
     parser.add_argument("--model", required=True, help="canonical roster model or a known backend alias")
-    parser.add_argument("--effort", required=True)
+    parser.add_argument("--effort", required=True, help="declared backend/model effort; opt-ins cannot waive support")
     parser.add_argument("--provider", required=True)
     parser.add_argument("--reason", required=True, help="the claimed instruction being recorded")
     parser.add_argument("--allow-experimental", action="store_true")

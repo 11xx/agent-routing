@@ -336,7 +336,7 @@ backends = ["codex", "pi"]
   model = "gpt-6.1-sol"
   effort = "xhigh"
   stability = "experimental"
-  backends = ["codex", "pi"]
+  backends = ["codex"]
 
   [[profile.variant]]
   id = "opus"

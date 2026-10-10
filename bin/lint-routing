@@ -15,7 +15,7 @@ in both and differs. A row whose live build is unmeasured carries the figures of
 the build it replaces, and those are held to the same agreement wherever the
 doctrine puts them, so retiring a measurement does not release its numbers. It
 also validates route structure, so every profile and variant has to name a real
-model, effort, backend, and provider.
+model, effort, backend, and provider, with declared backend/model effort support.
 
 Everything else is outside its reach — the output-token column, every other
 number carried in prose, and the wording of both documents. A rule stated
