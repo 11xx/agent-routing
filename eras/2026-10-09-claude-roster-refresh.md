@@ -171,3 +171,20 @@ The same lead then repaired placeholder trailers across thirteen repositories' h
 | leak review, 34 slices | Haiku 5.5 high | read one ~300 KB patch slice or one repository's messages | 5-81s each, median 38s | median 10 tool calls | 205290 total | $3.73 total | no high or medium findings; low findings verified by the lead; one real subagent id found, already public |
 
 Haiku read each slice in a few large reads, about 120-150k tokens per scout, which is why a full slice finished in under a minute. Sonnet xhigh landed two danger-path arc changes on their first snapshot. In both of its recorded slips (a miscounted summary, a missed classification) the data or code itself was right, and the lead's verification caught the slip.
+
+## Accounting adoption runs, 2026-10-12
+
+Three Opus 5.5 xhigh executors were finishing the work-cost accounting series (three stacked tapes changes, plus arc and agent-delegate adopting them) when they hit the Claude account's session limit. All three stopped at about 880s with a 429 `usage_limit_reached`. Each left partial work, and Sonnet 5.5 high continued it by operator direction. The lead (Opus 5.5 xhigh) reviewed every return, with Haiku 5.5 high scouts doing the censuses. The cross-lab reviewer was out of quota, so each change integrated with recorded same-family review debt.
+
+| Run | Model | Shape | Wall | Turns | Output tokens | API-equivalent | Outcome |
+|---|---|---|---:|---:|---:|---:|---|
+| three executors | Opus 5.5 xhigh | tapes chain; arc and agent-delegate adoptions | 872-883s each | 65-81 | 50592-86492 | $4.31-6.32 each | all stopped by the session limit; partial work kept and handed on |
+| tapes chain | Sonnet 5.5 high | commit an Opus/Sol partial unchanged, rebase a stacked change, build a new per-counter coverage design | 1578s | 125 | 65106 | $2.89 | 7/7 gates on all three; the new design was approved, with minor gaps filed. It rebased onto a sibling fixer's in-flight commits correctly |
+| arc adoption | Sonnet 5.5 high | continue a half-built Opus aggregation, docs, class sweep | 486s | 57 | 32934 | $1.48 | green; approved with no findings |
+| agent-delegate adoption | Sonnet 5.5 high | continue an Opus partial, Pi consumption, cross-harness totals | 1884s | 86 | 66222 | $2.25 | green, but one blocking defect: an unmeasured run of a harness with no measured session vanished from the new totals, and a test pinned the defect as healthy |
+| D8 human output fix | Sonnet 5.5 high | one renderer across about 9 text sites, plus test-table hardening | 1020s | 62 | 37858 | $1.46 | resolved both findings; approved |
+| arc final re-pin | Sonnet 5.5 high | replace prose-count completeness with tapes' typed reasons | 798s | 64 | 46648 | $1.71 | green; approved. It named every expectation that moved toward complete and the tapes fact behind it |
+| agent-delegate fix and re-pin | Sonnet 5.5 high | blocking fix, overflow fix, typed-completeness re-pin | 1018s | 61 | 38400 | $1.43 | green; approved |
+| 11 review scouts | Haiku 5.5 high | read-only censuses: derived-figure sites, reason origins, test coverage, privacy, changed expectations | 136-424s | 14-59 | 29979-88917 | $2.67 total | one scout's claim led the lead to the one blocking agent-delegate defect, and two overlapping scouts found the D8 test-table gaps; one disputed claim (an unreadable record surfacing as read-window) was checked and judged correct by design |
+
+Sonnet high landed six continuation and fix briefs, all green, in 8-31 minutes at $1.43-2.89 each. The lead's review found one blocking defect across them, in agent-delegate. Continuing another model's uncommitted partial worked when the brief listed that model's progress notes as claims to verify. In the D8 case, the Opus notes claimed a human-output rework that the tree did not contain; the lead's read caught it, and the fix went to a Sonnet run. Haiku scouts at $0.03-0.63 each gave the lead census evidence to check each executor's class sweep against.
