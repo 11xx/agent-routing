@@ -188,3 +188,20 @@ Three Opus 5.5 xhigh executors were finishing the work-cost accounting series (t
 | 11 review scouts | Haiku 5.5 high | read-only censuses: derived-figure sites, reason origins, test coverage, privacy, changed expectations | 136-424s | 14-59 | 29979-88917 | $2.67 total | one scout's claim led the lead to the one blocking agent-delegate defect, and two overlapping scouts found the D8 test-table gaps; one disputed claim (an unreadable record surfacing as read-window) was checked and judged correct by design |
 
 Sonnet high landed six continuation and fix briefs, all green, in 8-31 minutes at $1.43-2.89 each. The lead's review found one blocking defect across them, in agent-delegate. Continuing another model's uncommitted partial worked when the brief listed that model's progress notes as claims to verify. In the D8 case, the Opus notes claimed a human-output rework that the tree did not contain; the lead's read caught it, and the fix went to a Sonnet run. Haiku scouts at $0.03-0.63 each gave the lead census evidence to check each executor's class sweep against.
+
+## Close-out runs, 2026-10-12
+
+The same series was closed out: its todos, the `ineligible-review` debt kind across arc and agent-routing, and two pre-existing defects its sweeps found. Each run was Sonnet 5.5 high, with a lead review and integration under same-family debt.
+
+| Run | Shape | Wall | Turns | Output tokens | API-equivalent | Outcome |
+|---|---|---:|---:|---:|---:|---|
+| tapes close-out, two stacked changes | coverage gaps, typed unrecognized-usage, per-reader accounting bases, per-event key amounts with a union rule | 1673s | 157 | 149184 | $5.97 | 7/7 on both. The new reason was checked against real Claude, Codex and Pi recordings with no false positives. The sweep found 3 pre-existing defects |
+| arc debt kind | danger-path: a new debt kind across about 46 match sites, assessment input, audit-only discharge | 1208s | 88 | 68443 | $2.51 | green on 2,102 CLI and 362 unit tests. A reasoned deviation: verdicts never clear the kind, because they carry no assessment |
+| agent-routing assess | pairwise assessment and an opt-in ineligible resolve, in Python | 195s | 22 | 20052 | $0.55 | 3/3; the sample assessments matched the decision exactly |
+| agent-routing identities | additive identity list | 68s | 12 | 5217 | $0.20 | 3/3 |
+| arc final pin | typed reason, audit/assessment binding | 862s | 70 | 31666 | $1.23 | green |
+| agent-delegate final pin | per-harness basis rule, typed reason replacing a raw-count rule | 1023s | 39 | 19731 | $0.76 | 4/4 |
+| tapes read robustness | typed reconcile failures, a local OpenCode bad row | 381s | 49 | 27083 | $1.05 | 7/7. It reported honestly the row shapes it did not cover, which were then filed |
+| pool research | read-only web and bundle research | 258s | 21 | 24157 | $0.46 | answers with dated sources, and inference labelled as inference |
+
+None of these runs drew a blocking finding from the lead. Across both 2026-10-12 rounds, 14 Sonnet high runs produced 1 blocking defect, in round one, and each run reported its own deviations. The danger-path arc change at high effort went green at its first snapshot, as the two xhigh danger-path runs recorded above did.
