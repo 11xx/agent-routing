@@ -15,6 +15,7 @@ from routing_profiles import (
     RouteRefusal,
     _review_author,
     assess_review,
+    model_effort_facts,
     pool_problems,
     route_version,
     resolve,
@@ -1256,7 +1257,8 @@ class ReviewAuthorTest(unittest.TestCase):
         self.assertEqual(result["route_version"], route_version(ROOT))
         self.assertEqual(result["reviewer"]["review_tier"], 2)
         self.assertEqual(result["authors"], [
-            {"model": "sonnet-5.5", "effort": "high", "family": "claude", "floor": 2}])
+            {"model": "sonnet-5.5", "effort": "high", "family": "claude", "floor": 2,
+             "identities": ["claude-sonnet-5-5", "sonnet-5-5", "sonnet-5.5"]}])
         self.assertEqual(result["floor"], 2)
         self.assertEqual(result["qualifiers"], ["same-family"])
         self.assertEqual((result["independence"], result["debt_kind"]), ("ineligible", "ineligible-review"))
@@ -1284,6 +1286,16 @@ class ReviewAuthorTest(unittest.TestCase):
         self.assertEqual(result["qualifiers"], ["same-model", "same-family"])
         result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5#xhigh", "opus-5.5#max")
         self.assertEqual((result["floor"], result["qualifiers"]), (4, ["below-floor"]))
+
+    def test_assessment_names_every_identity_routing_accepts_for_each_model(self):
+        result = self.assess("opus-5.5#xhigh", "sonnet-5.5#high", "gpt-6.1-sol#xhigh")
+        self.assertLessEqual({"opus-5.5", "opus-5-5", "claude-opus-5-5"}, set(result["reviewer"]["identities"]))
+        for row in (result["reviewer"], *result["authors"]):
+            with self.subTest(model=row["model"]):
+                self.assertEqual(row["identities"], sorted(set(row["identities"])))
+                self.assertIn(row["model"], row["identities"])
+                for identity in row["identities"]:
+                    self.assertEqual(model_effort_facts(ROOT, identity)["model_id"], row["model"], identity)
 
     def test_assessment_never_infers_a_missing_floor(self):
         root = self.fixture_root()

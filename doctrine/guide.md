@@ -49,8 +49,11 @@ ASSESS A REVIEW
   emits agent-routing-assessment/1: the route version, the reviewer with its
   review_tier (null when its tier is unseated), each author with its floor, the
   highest known floor, independence "eligible" or "ineligible", the qualifiers,
-  and debt_kind "ineligible-review" when ineligible. Without --json it prints
-  one line. A read is eligible exactly when no qualifier holds. The qualifiers
+  and debt_kind "ineligible-review" when ineligible. The reviewer and each
+  author carry identities: the sorted roster id, aliases, and routed
+  backend_model and model strings that routing resolves to that model, so a
+  caller holding a harness-reported name can match it without routing data.
+  Without --json it prints one line. A read is eligible exactly when no qualifier holds. The qualifiers
   are a closed set:
     same-model         the reviewer is an author's model, at any effort
     same-family        the reviewer shares a family with an author; always

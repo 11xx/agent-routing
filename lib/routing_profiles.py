@@ -1055,6 +1055,25 @@ ASSESSMENT_SCHEMA = "agent-routing-assessment/1"
 INELIGIBLE_REVIEW_DEBT_KIND = "ineligible-review"
 
 
+def model_identities(root: pathlib.Path, model_id: str) -> list[str]:
+    """Every model string routing accepts for the roster model ``model_id``.
+
+    The roster id, its ``aliases``, and the ``model`` and ``backend_model`` of
+    each route that denotes it. A string is listed only when
+    ``model_effort_facts`` resolves it back to the same model.
+    """
+    model = next((entry for entry in load_toml(root / "routing" / "models.toml").get("model", [])
+                  if entry["id"] == model_id), None)
+    candidates = {model_id, *(model or {}).get("aliases", [])}
+    for _, route in _profile_records(root):
+        if route.get("model") in candidates:
+            candidates.update(value for value in (route["model"], route.get("backend_model")) if value)
+    return sorted(
+        candidate for candidate in candidates
+        if model_effort_facts(root, candidate)["model_id"] == model_id
+    )
+
+
 def _assessed_coordinate(root: pathlib.Path, coordinate: str, role: str, *, effort_required: bool) -> dict:
     """Resolve a ``model[#effort]`` coordinate against the roster or refuse."""
     model_id, separator, effort = coordinate.partition("#")
@@ -1080,6 +1099,7 @@ def _assessed_coordinate(root: pathlib.Path, coordinate: str, role: str, *, effo
         "model": facts["model_id"],
         "effort": effort if separator else None,
         "family": model["family"],
+        "identities": model_identities(root, facts["model_id"]),
         "tier": facts["tier"] if separator else None,
         "floors": _floors(model, facts["tier"] if separator else None),
     }
@@ -1105,6 +1125,7 @@ def assess_review(root: pathlib.Path, reviewer: str, authors: list[str]) -> dict
             "model": author["model"],
             "effort": author["effort"],
             "family": author["family"],
+            "identities": author["identities"],
             "floor": max(author["floors"]) if known else None,
         })
     known_floors = [row["floor"] for row in author_rows if row["floor"] is not None]
@@ -1129,6 +1150,7 @@ def assess_review(root: pathlib.Path, reviewer: str, authors: list[str]) -> dict
             "model": reader["model"],
             "effort": reader["effort"],
             "family": reader["family"],
+            "identities": reader["identities"],
             "review_tier": review_tier,
         },
         "authors": author_rows,
