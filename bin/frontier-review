@@ -40,9 +40,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         prog="agent-routing frontier",
         description=(
-            "Answer the strongest eligible review seat for an author. A seat is a stable route on any "
-            "profile and backend, eligible exactly when `assess` says so; seats are ordered by review_tier, "
-            "never by a pool-local rank. Quota and pool availability are not inputs: an exhausted pool "
+            "Answer the strongest eligible review seat for an author. A seat is a stable review route on any "
+            "backend, the kind `resolve review` can sell, eligible exactly when `assess` says so; seats are "
+            "ordered by review_tier, never by a pool-local rank. Quota and pool availability are not inputs: an exhausted pool "
             "still marks the frontier. An author without an established floor answers floor-unknown."
         ),
     )

@@ -210,8 +210,10 @@ tier as a model, effort, backend and pool. A caller that stores the reads a
 change received compares them against it at read time, so no tier is ever
 stored.
 
-A seat is any stable route, on any profile and backend, whose pool serves its
-model. Eligibility is `assess`'s verbatim: the frontier adds no independence
+A seat is a stable review route on any backend whose pool serves its model:
+a route whose effective `excluded_author_families` is set, the kind
+`resolve review` can sell. A seat on another profile never raises the
+frontier. Eligibility is `assess`'s verbatim: the frontier adds no independence
 rule. Seats are ordered by `review_tier`, the cross-family scale `assess`
 compares, never by the pool-local `rank`. Quota is not an input, so an
 exhausted pool still marks the frontier and a clearance cannot flip on a pool

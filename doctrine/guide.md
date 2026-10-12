@@ -73,9 +73,11 @@ FIND THE REVIEW FRONTIER
 
   frontier answers the strongest review seat eligible for an author, so a
   caller can tell whether a recorded read is still the best routing can buy.
-  A seat is a stable route on any profile and backend whose pool serves its
-  model; it is eligible exactly when assess says so, so frontier carries no
-  independence rule of its own. Seats are ordered by review_tier, the
+  A seat is a stable review route on any backend whose pool serves its
+  model, one that carries excluded_author_families, the kind resolve review
+  can sell; a seat on another profile never raises the frontier. It is
+  eligible exactly when assess says so, so frontier carries no independence
+  rule of its own. Seats are ordered by review_tier, the
   cross-family scale assess compares, never by a pool-local rank. Quota and
   pool availability are not inputs: an exhausted pool still marks the
   frontier, and the answer moves only when the manifests do. --json emits

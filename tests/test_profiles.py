@@ -1790,6 +1790,19 @@ class ReviewFrontierTest(unittest.TestCase):
         self.assertEqual(answer["frontier"]["review_tier"], 3)
         self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
 
+    def test_a_seat_outside_the_review_profile_never_raises_the_frontier(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        text = path.read_text()
+        start = text.index('id = "gpt-6-luna"')
+        # Luna max is seated by explore and implement only, never by a review route.
+        path.write_text(text[:start] + text[start:].replace('effort = "max"\n  review_tier = 1',
+                                                            'effort = "max"\n  review_tier = 5', 1))
+        self.assertIn("review_tier = 5", path.read_text())
+        answer = frontier_review(root, "opus-5.5#xhigh")
+        self.assertEqual(answer["frontier"]["review_tier"], 3)
+        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
+
     def test_only_stable_pool_valid_routes_seat_the_frontier(self):
         root = self.fixture_root()
         path = root / "routing" / "profiles.toml"

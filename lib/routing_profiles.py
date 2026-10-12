@@ -232,7 +232,7 @@ def pool_refusal(by_pool, label, provider, model_id):
 
 
 def _seating_routes(profiles: list[dict], by_pool: dict[str, dict]):
-    """Every route that seats a tier, whatever profile it belongs to.
+    """Every ``(profile, route)`` that seats a tier, whatever profile it belongs to.
 
     Only a stable route seats a tier: an experimental or probationary route is
     a trial, not a seat a rank can order. A route whose pool does not serve its
@@ -246,7 +246,7 @@ def _seating_routes(profiles: list[dict], by_pool: dict[str, dict]):
             pool = by_pool.get(route.get("provider"))
             if pool is not None and route["model"] not in pool.get("serves", []):
                 continue
-            yield route
+            yield profile, route
 
 
 def _seated_tiers(profiles: list[dict], by_pool: dict[str, dict]) -> dict[tuple[str, str], set[str]]:
@@ -255,7 +255,7 @@ def _seated_tiers(profiles: list[dict], by_pool: dict[str, dict]) -> dict[tuple[
     A pool is named by its provider.
     """
     seated: dict[tuple[str, str], set[str]] = {}
-    for route in _seating_routes(profiles, by_pool):
+    for _, route in _seating_routes(profiles, by_pool):
         seated.setdefault((route["model"], route["effort"]), set()).add(route.get("provider"))
     return seated
 
@@ -1208,8 +1208,10 @@ FRONTIER_SCHEMA = "agent-routing-frontier/1"
 def frontier_review(root: pathlib.Path, author: str, reads: list[str] | tuple[str, ...] = ()) -> dict[str, object]:
     """The strongest eligible review seat for one author, and where reads stand against it.
 
-    A seat is a stable route on any profile and backend (``_seating_routes``);
-    it is eligible exactly when ``assess`` calls it so, and seats are ordered
+    A seat is a stable, pool-valid review route on any backend: a route whose
+    effective ``excluded_author_families`` (its own, else its profile's) is
+    set, the mark ``profiles.toml`` gives a seat ``resolve review`` can sell.
+    A seat on another profile is not a review a caller can buy. It is eligible exactly when ``assess`` calls it so, and seats are ordered
     by ``review_tier``, the cross-family scale ``assess`` compares, never by a
     pool-local rank. Quota and pool availability are not inputs: the answer
     moves only when the manifests do. An author whose floor is unestablished
@@ -1225,7 +1227,9 @@ def frontier_review(root: pathlib.Path, author: str, reads: list[str] | tuple[st
     profiles = load_toml(root / "routing" / "profiles.toml").get("profile", [])
 
     seated: dict[tuple[str, str], set[tuple[str, str]]] = {}
-    for route in _seating_routes(profiles, pools(root)):
+    for profile, route in _seating_routes(profiles, pools(root)):
+        if not route.get("excluded_author_families", profile.get("excluded_author_families")):
+            continue
         seated.setdefault((route["model"], route["effort"]), set()).update(
             (backend, route["provider"]) for backend in route.get("backends", [])
         )
