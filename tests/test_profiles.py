@@ -1604,6 +1604,33 @@ role = "retired fixture with no shipped authorship"
                 self.assertTrue(any("author famil" in problem or "excluded_author_families" in problem
                                     for problem in validation_problems(root)))
 
+    def test_lint_rejects_a_family_or_excluded_family_with_surrounding_whitespace(self):
+        cases = (
+            ("models.toml", 'family = "claude"', 'family = " claude "'),
+            ("profiles.toml", 'excluded_author_families = ["claude"]', 'excluded_author_families = ["claude "]'),
+            ("profiles.toml", 'excluded_author_families = ["openai", "gpt-5.6", "gpt-5.5"]',
+             'excluded_author_families = [" openai", "gpt-5.6", "gpt-5.5"]'),
+        )
+        for name, original, padded in cases:
+            root = self.fixture_root()
+            path = root / "routing" / name
+            self.assertIn(original, path.read_text())
+            path.write_text(path.read_text().replace(original, padded, 1))
+            with self.subTest(padded=padded):
+                self.assertTrue(any("surrounding whitespace" in problem for problem in validation_problems(root)),
+                                validation_problems(root))
+
+    def test_a_padded_family_cannot_mark_a_same_family_reviewer_eligible(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        text = path.read_text()
+        start = text.index('id = "sonnet-5.5"')
+        path.write_text(text[:start] + text[start:].replace('family = "claude"', 'family = " claude "', 1))
+        result = self.assess("opus-5.5#xhigh", "sonnet-5.5#high", root=root)
+        self.assertEqual(result["qualifiers"], ["same-family"])
+        self.assertEqual(result["authors"][0]["family"], "claude")
+        self.assertEqual(_review_author(root, "sonnet-5.5#high", "review", "claude")["family"], "claude")
+
     def test_review_policy_lint_rejects_invalid_or_missing_tiers(self):
         for replacement in ('review_tier = true', 'review_tier = 0', ''):
             root = self.fixture_root()

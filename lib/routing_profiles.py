@@ -343,9 +343,23 @@ def _nonblank_string(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+def _family_value(value: object) -> bool:
+    """A family name as the roster must spell it: nonblank and unpadded.
+
+    Every family comparison reads ``_family``, so a padded spelling that slips
+    past lint still compares equal to its trimmed form rather than escaping the
+    independence fence.
+    """
+    return _nonblank_string(value) and value == value.strip()
+
+
+def _family(model: dict) -> str:
+    return model["family"].strip()
+
+
 def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict]) -> list[str]:
     by_model = {model["id"]: model for model in models}
-    families = {model["family"] for model in models if _nonblank_string(model.get("family"))}
+    families = {_family(model) for model in models if _nonblank_string(model.get("family"))}
     seated = _seated_tiers(profiles, by_pool)
     problems: list[str] = []
     for model in models:
@@ -372,13 +386,17 @@ def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: di
             if not isinstance(excluded, list) or not excluded or not all(_nonblank_string(family) for family in excluded):
                 problems.append(f"{label}: excluded_author_families must be a nonempty list of model families")
                 continue
+            excluded = [family.strip() for family in excluded]
+            for family in route.get("excluded_author_families", profile.get("excluded_author_families")):
+                if family != family.strip():
+                    problems.append(f"{label}: excluded author family {family!r} has surrounding whitespace")
             for family in excluded:
                 if family not in families:
                     problems.append(f"{label}: unknown excluded author family {family!r}")
             model = by_model.get(route.get("model"))
             if model is None:
                 continue
-            if model.get("family") not in excluded:
+            if not _nonblank_string(model.get("family")) or _family(model) not in excluded:
                 problems.append(f"{label}: excluded_author_families must exclude the reviewer's family")
             tier = next((tier for tier in model.get("effort", []) if tier.get("effort") == route.get("effort")), {})
             if "review_tier" not in tier:
@@ -402,6 +420,8 @@ def structural_problems(root: pathlib.Path) -> list[str]:
         model_ids.add(model.get("id"))
         if not _nonblank_string(model.get("family")):
             problems.append(f"model {model['id']!r}: family must be a nonblank string")
+        elif not _family_value(model["family"]):
+            problems.append(f"model {model['id']!r}: family {model['family']!r} has surrounding whitespace")
         status = model.get("status")
         if status is not None and status not in MODEL_STATUSES:
             problems.append(f"model {model['id']!r}: unknown status {status!r}")
@@ -1046,7 +1066,7 @@ def _review_author(
         )
     return {
         "coordinate": facts["model_id"] + (f"#{effort}" if separator else ""),
-        "family": model["family"],
+        "family": _family(model),
         "tier": None if reason else max(floors),
     }
 
@@ -1098,7 +1118,7 @@ def _assessed_coordinate(root: pathlib.Path, coordinate: str, role: str, *, effo
     return {
         "model": facts["model_id"],
         "effort": effort if separator else None,
-        "family": model["family"],
+        "family": _family(model),
         "identities": model_identities(root, facts["model_id"]),
         "tier": facts["tier"] if separator else None,
         "floors": _floors(model, facts["tier"] if separator else None),
@@ -1164,7 +1184,10 @@ def assess_review(root: pathlib.Path, reviewer: str, authors: list[str]) -> dict
 def _review_constraints(root: pathlib.Path, profile: dict, selected: dict) -> dict:
     tier = model_effort_facts(root, selected["model"], selected["effort"])["tier"]
     return {
-        "excluded_author_families": selected.get("excluded_author_families", profile["excluded_author_families"]),
+        "excluded_author_families": [
+            family.strip()
+            for family in selected.get("excluded_author_families", profile["excluded_author_families"])
+        ],
         "reviewer_tier": tier["review_tier"],
     }
 

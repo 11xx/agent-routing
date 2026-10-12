@@ -142,8 +142,9 @@ agent-routing resolve review --backend claude --author 'gpt-6.1-sol#xhigh' --jso
 canonicalized; `ARC_MODEL` is not read, because the caller may differ from the
 diff author. A model without `#effort` uses its highest declared review floor.
 If any of that model's efforts lacks a floor, supply the recorded effort or
-expect a refusal. Model families must be nonblank strings; malformed families
-invalidate the manifest. Unknown author models, efforts, or review floors recommend
+expect a refusal. Model families and excluded author families must be nonblank strings without
+surrounding whitespace; malformed families invalidate the manifest, and every
+family comparison reads the trimmed value. Unknown author models, efforts, or review floors recommend
 debt rather than inferring eligibility.
 
 Each review route declares `excluded_author_families` in `profiles.toml`.
