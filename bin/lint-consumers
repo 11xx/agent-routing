@@ -48,6 +48,9 @@ def configured_consumers():
 
     for accessor in config.get("accessor", []):
         accessor_id = accessor["id"]
+        expected = accessor.get("expected_sources")
+        if not isinstance(expected, list) or not expected or not all(isinstance(name, str) for name in expected):
+            raise SystemExit(f"{accessor_id}: routing/consumers.toml declares no expected_sources floor")
         command = list(accessor["command"])
         if command and command[0] == "agent-harness":
             command[0] = os.environ.get("AGENT_HARNESS_BIN", command[0])
@@ -64,11 +67,15 @@ def configured_consumers():
             raise SystemExit(f"{accessor_id}: invalid delegation source JSON: {error}")
         if not isinstance(sources, list):
             raise SystemExit(f"{accessor_id}: delegation source output must be a JSON array")
-        # An accessor that names nothing has not found its subject, and a lint
-        # that cannot find its subject has not passed. Absence here would drop
-        # every surface the accessor owns from the count below, silently.
-        if not sources:
-            raise SystemExit(f"{accessor_id}: reported no delegation sources to check")
+        # A lint that cannot find its subject has not passed. The config owns
+        # the floor of sources the accessor must report, so a harness-side
+        # regression that drops surfaces, down to none, fails here instead of
+        # shrinking the count below.
+        missing_sources = [name for name in expected if name not in {source["id"] for source in sources}]
+        if missing_sources:
+            raise SystemExit(
+                f"{accessor_id}: missing expected delegation sources: {', '.join(missing_sources)}"
+            )
         for source in sources:
             source_id = source["id"]
             consumer_id = f"{accessor_id}/{source_id}"

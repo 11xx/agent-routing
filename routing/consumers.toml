@@ -9,6 +9,10 @@ delegate = "agent-delegate"
 [[accessor]]
 id = "instructions"
 command = ["agent-harness", "delegation-sources"]
+# The floor the config owns: lint fails when the accessor stops reporting any
+# of these, so a harness-side regression cannot shrink what is checked. Sources
+# beyond the floor are checked too.
+expected_sources = ["settings", "shared-fragments", "pi-fragments", "pi-agents", "pi-subagent"]
 
 # The delegation mechanism is a CLI rather than three skills; what remains
 # routing-sensitive is the agent definitions it ships — relay shells and the

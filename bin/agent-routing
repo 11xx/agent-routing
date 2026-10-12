@@ -22,7 +22,8 @@ Run `agent-routing` with no verb for the routing guide.
   mechanism           print the mechanism-routing prose canon (DELEGATION.md)
   doctrine            print the authored routing policy in full
   lint                check pass@1/cost cells, model coverage, and routes
-  lint-consumers      reject concrete roster pins in delegation consumers
+  lint-consumers      reject concrete roster pins in delegation consumers; fail when an
+                      accessor reports fewer sources than its declared floor
   eras                list the model-era history files
   dir                 print the routing data directory
   root                print the repository root

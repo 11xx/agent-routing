@@ -160,7 +160,9 @@ KEEP CONSUMERS HONEST
   agent-routing lint             compare the doctrine table's pass@1 and cost
                                  cells against the manifest, check model
                                  coverage, and validate route structure
-  agent-routing lint-consumers   reject concrete roster pins in consumers
+  agent-routing lint-consumers   reject concrete roster pins in consumers; fails
+                                 when an accessor reports fewer sources than
+                                 the floor routing/consumers.toml declares
 
   A roster copied into a consumer is a roster that goes stale, and one transition
   once left four embedded copies wrong at the same time. Point a consumer at a

@@ -107,7 +107,47 @@ class ConsumerLintTest(unittest.TestCase):
         self.harness.write_text("#!/usr/bin/env python3\nprint('[]')\n")
         result = self.run_lint(code)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("reported no delegation sources", result.stderr)
+        self.assertIn("missing expected delegation sources", result.stderr)
+
+    def test_accessor_reporting_fewer_sources_than_the_floor_is_a_failure(self):
+        code = self.fixture_code_root()
+        floor = self.config()["accessor"][0]["expected_sources"]
+        self.assertGreater(len(floor), 1)
+        sources = json.loads(subprocess.run([self.harness], capture_output=True, text=True).stdout)
+        kept = [source for source in sources if source["id"] != floor[-1]]
+        self.assertEqual(len(kept), len(sources) - 1)
+        self.harness.write_text(f"#!/usr/bin/env python3\nprint({json.dumps(kept)!r})\n")
+        result = self.run_lint(code)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("missing expected delegation sources", result.stderr)
+        self.assertIn(floor[-1], result.stderr)
+
+    def test_accessor_reporting_more_sources_than_the_floor_passes(self):
+        code = self.fixture_code_root()
+        floor = set(self.config()["accessor"][0]["expected_sources"])
+        sources = json.loads(subprocess.run([self.harness], capture_output=True, text=True).stdout)
+        self.assertTrue(floor < {source["id"] for source in sources})
+        self.assertEqual(self.run_lint(code).returncode, 0)
+
+    def test_an_accessor_without_a_declared_floor_is_a_failure(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = pathlib.Path(temporary.name)
+        for directory in ("bin", "lib", "routing"):
+            shutil.copytree(ROOT / directory, root / directory)
+        path = root / "routing" / "consumers.toml"
+        lines = path.read_text().splitlines(keepends=True)
+        path.write_text("".join(line for line in lines if not line.startswith("expected_sources")))
+        self.assertNotIn("expected_sources", path.read_text())
+        code = self.fixture_code_root()
+        result = subprocess.run(
+            [root / "bin" / "lint-consumers"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "AGENT_CODE_ROOT": str(code), "AGENT_HARNESS_BIN": str(self.harness)},
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("declares no expected_sources floor", result.stderr)
 
     def test_an_empty_consumer_inventory_is_a_failure(self):
         temporary = tempfile.TemporaryDirectory()
