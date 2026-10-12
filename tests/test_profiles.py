@@ -14,7 +14,9 @@ sys.path.insert(0, str(ROOT / "lib"))
 from routing_profiles import (
     RouteRefusal,
     _review_author,
+    assess_review,
     pool_problems,
+    route_version,
     resolve,
     validate_selection,
     validation_problems,
@@ -1244,6 +1246,110 @@ class ReviewAuthorTest(unittest.TestCase):
         self.assertEqual((route["model"], route["effort"]), ("claude-opus-5-5", "xhigh"))
         self.assertEqual(route["review"]["independence"], "eligible")
         self.assertEqual(route["review"]["author_tier"], 2)
+
+    def assess(self, reviewer, *authors, root=ROOT):
+        return assess_review(root, reviewer, list(authors))
+
+    def test_assessment_of_a_same_family_read_at_the_floor_is_ineligible(self):
+        result = self.assess("opus-5.5#xhigh", "sonnet-5.5#high")
+        self.assertEqual(result["schema"], "agent-routing-assessment/1")
+        self.assertEqual(result["route_version"], route_version(ROOT))
+        self.assertEqual(result["reviewer"]["review_tier"], 2)
+        self.assertEqual(result["authors"], [
+            {"model": "sonnet-5.5", "effort": "high", "family": "claude", "floor": 2}])
+        self.assertEqual(result["floor"], 2)
+        self.assertEqual(result["qualifiers"], ["same-family"])
+        self.assertEqual((result["independence"], result["debt_kind"]), ("ineligible", "ineligible-review"))
+
+    def test_assessment_of_a_cross_family_read_at_the_floor_is_eligible(self):
+        result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5#xhigh")
+        self.assertEqual((result["independence"], result["qualifiers"], result["debt_kind"]),
+                         ("eligible", [], None))
+
+    def test_assessment_names_a_same_family_read_below_the_floor(self):
+        result = self.assess("haiku-5.5#high", "opus-5.5#xhigh")
+        self.assertEqual(result["qualifiers"], ["same-family", "below-floor"])
+
+    def test_assessment_names_a_cross_family_read_below_the_floor_alone(self):
+        result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5#max")
+        self.assertEqual(result["qualifiers"], ["below-floor"])
+
+    def test_assessment_of_an_unseated_reviewer_is_not_below_floor(self):
+        result = self.assess("sonnet-5.5#high", "gpt-6.1-sol#xhigh")
+        self.assertIsNone(result["reviewer"]["review_tier"])
+        self.assertEqual(result["qualifiers"], ["reviewer-unseated"])
+
+    def test_assessment_unions_qualifiers_across_authors(self):
+        result = self.assess("opus-5.5#xhigh", "opus-5.5#xhigh", "sonnet-5.5#high")
+        self.assertEqual(result["qualifiers"], ["same-model", "same-family"])
+        result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5#xhigh", "opus-5.5#max")
+        self.assertEqual((result["floor"], result["qualifiers"]), (4, ["below-floor"]))
+
+    def test_assessment_never_infers_a_missing_floor(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        path.write_text(path.read_text().replace('  author_floor = 4\n', '', 1))
+        result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5", root=root)
+        self.assertEqual((result["floor"], result["authors"][0]["floor"]), (None, None))
+        self.assertEqual(result["qualifiers"], ["floor-unknown"])
+
+    def test_assessment_resolves_aliases_and_refuses_unknown_coordinates(self):
+        self.assertEqual(self.assess("claude-opus-5-5#xhigh", "opus-5.5#xhigh")["reviewer"]["model"], "opus-5.5")
+        for reviewer, authors in (("nonesuch#high", ["opus-5.5#xhigh"]),
+                                  ("opus-5.5#xhigh", ["nonesuch#high"]),
+                                  ("opus-5.5#nonesuch", ["opus-5.5#xhigh"]),
+                                  ("opus-5.5", ["opus-5.5#xhigh"]),
+                                  ("opus-5.5#xhigh", [])):
+            with self.subTest(reviewer=reviewer, authors=authors), self.assertRaises(RouteRefusal) as caught:
+                assess_review(ROOT, reviewer, authors)
+            self.assertEqual(caught.exception.kind, "unknown-coordinate")
+
+    def test_assess_cli_emits_json_and_a_text_line_and_refuses_an_unknown_model(self):
+        run = lambda *args: subprocess.run([ROOT / "bin" / "agent-routing", "assess", *args],
+                                           capture_output=True, text=True)
+        result = run("--reviewer", "opus-5.5#xhigh", "--author", "opus-5.5#xhigh",
+                     "--author", "sonnet-5.5#high", "--json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["qualifiers"], ["same-model", "same-family"])
+        result = run("--reviewer", "haiku-5.5#high", "--author", "opus-5.5#xhigh")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(result.stdout.splitlines()), 1)
+        self.assertIn("same-family,below-floor", result.stdout)
+        result = run("--reviewer", "nonesuch#high", "--author", "opus-5.5#xhigh", "--json")
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(json.loads(result.stderr.splitlines()[-1])["kind"], "unknown-coordinate")
+        self.assertEqual(result.stdout, "")
+
+    def test_accept_ineligible_returns_the_strongest_seat_with_a_prefilled_debt_kind(self):
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "review", "claude", author="sonnet-5.5#high")
+        self.assertEqual(caught.exception.payload()["recommendation"], "record-debt")
+        route = resolve(ROOT, "review", "claude", author="sonnet-5.5#high", accept_ineligible=True)
+        self.assertEqual((route["model"], route["effort"]), ("claude-opus-5-5", "xhigh"))
+        review = route["review"]
+        self.assertEqual(review["independence"], "ineligible")
+        self.assertEqual(review["qualifiers"], ["same-family"])
+        self.assertEqual((review["recommendation"], review["debt_kind"]), ("record-debt", "ineligible-review"))
+
+    def test_accept_ineligible_leaves_an_eligible_route_unchanged(self):
+        plain = resolve(ROOT, "review", "codex", author="opus-5.5#xhigh")
+        self.assertEqual(resolve(ROOT, "review", "codex", author="opus-5.5#xhigh", accept_ineligible=True), plain)
+        self.assertEqual(plain["review"]["independence"], "eligible")
+
+    def test_accept_ineligible_ranks_seats_by_review_tier(self):
+        route = resolve(ROOT, "review", "codex", author="opus-5.5#max", accept_ineligible=True)
+        self.assertEqual(route["review"]["reviewer_tier"], 3)
+        self.assertEqual(route["review"]["qualifiers"], ["below-floor"])
+
+    def test_accept_ineligible_covers_an_unknown_floor_and_needs_an_author(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        path.write_text(path.read_text().replace('  author_floor = 4\n', '', 1))
+        route = resolve(root, "review", "codex", author="opus-5.5", accept_ineligible=True)
+        self.assertEqual(route["review"]["qualifiers"], ["floor-unknown"])
+        for kwargs in ({"author": None}, {"author": "nonesuch#high"}):
+            with self.subTest(**kwargs), self.assertRaises(RouteRefusal):
+                resolve(ROOT, "review", "codex", accept_ineligible=True, **kwargs)
 
     def test_shipped_superseded_authors_have_conservative_floors_at_every_effort(self):
         models = {model["id"]: model for model in

@@ -33,6 +33,37 @@ RESOLVE A ROUTE
   Eligibility is not a verdict. ARC_MODEL is never used as the author, since
   the caller may not have written the diff. --author is only valid for review.
 
+  When no eligible route exists, --accept-ineligible (which needs --author)
+  returns the strongest stable seat instead of refusing, ties broken by the
+  profile's order of preference. Its `review` block carries independence:
+  "ineligible", the assessment qualifiers, recommendation: "record-debt" and
+  debt_kind: "ineligible-review". It never appears as independent. Where an
+  eligible route exists the answer is the same with or without the flag.
+
+ASSESS A REVIEW
+  agent-routing assess --reviewer <model>#<effort>
+    --author <model>[#<effort>] [--author ...] [--json]
+
+  assess judges any reviewer against the authors of the diff it read: a seated
+  route, an operator-directed selection, or a model no profile seats. --json
+  emits agent-routing-assessment/1: the route version, the reviewer with its
+  review_tier (null when its tier is unseated), each author with its floor, the
+  highest known floor, independence "eligible" or "ineligible", the qualifiers,
+  and debt_kind "ineligible-review" when ineligible. Without --json it prints
+  one line. A read is eligible exactly when no qualifier holds. The qualifiers
+  are a closed set:
+    same-model         the reviewer is an author's model, at any effort
+    same-family        the reviewer shares a family with an author; always
+                       present with same-model
+    below-floor        the reviewer's review_tier is under the highest author
+                       floor
+    floor-unknown      an author's floor is unestablished
+    reviewer-unseated  the reviewer's tier has no review_tier
+  Floors follow the resolve rules: review_tier, else author_floor; an author
+  without #effort uses the highest declared floor; a missing floor is never
+  inferred. Models resolve through the roster's ids and aliases, and an unknown
+  model or effort is refused, never guessed.
+
 VALIDATE AN OPERATOR-DIRECTED SELECTION
   agent-routing validate --profile <profile> --backend <backend>
     --model <model> --effort <effort> --provider <provider>

@@ -29,8 +29,10 @@ Run `agent-routing` with no verb for the routing guide.
   all                 print all three manifests
   check <model> [eff] exit non-zero if that model/effort is prohibited
   resolve <profile> --backend <backend> [--variant <name>] [--author <model>[#effort]]
-          [--allow-experimental] --json
+          [--allow-experimental] [--accept-ineligible] --json
                       resolve a caller-selected task profile
+  assess --reviewer <model>#<effort> --author <model>[#<effort>] [--author ...] [--json]
+                      assess any reviewer against the authors of a diff
   validate --profile <profile> --backend <backend> --model <model>
            --effort <effort> --provider <provider> --reason <text>
            [--allow-experimental] [--allow-cross-pool] --json
@@ -44,6 +46,9 @@ waive it. `check` remains limited to the prohibition list.
 Review author requirements use a seated tier's review_tier or an unseated
 tier's author_floor; an author_floor grants no reviewer seat. Superseded
 authors with shipped diffs retain floors at least as high as their successors.
+`assess` applies the same floors to any reviewer, seated or not, and names why
+a read is ineligible; `resolve --accept-ineligible` returns the strongest seat
+with that assessment when no eligible one exists.
 EOF
 }
 
@@ -67,6 +72,7 @@ case "${1:-}" in
   root)       echo "$root" ;;
   all)        cat "$routing_dir/models.toml"; echo; cat "$routing_dir/profiles.toml"; echo; cat "$routing_dir/delegation.toml" ;;
   check)      shift; check "$@" ;;
+  assess)     shift; exec "$root/bin/assess-review" "$@" ;;
   resolve)    shift; exec "$root/bin/resolve-route" "$@" ;;
   validate)   shift; exec "$root/bin/validate-selection" "$@" ;;
   *)          usage >&2; exit 2 ;;

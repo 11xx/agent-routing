@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Assess a reviewer against the authors of the diff it read."""
+
+import argparse
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from routing_profiles import RouteRefusal, assess_review, dumps  # noqa: E402
+
+
+def coordinate(row: dict) -> str:
+    return row["model"] + (f"#{row['effort']}" if row["effort"] else "")
+
+
+def line(assessment: dict) -> str:
+    authors = ", ".join(f"{coordinate(row)} (floor {row['floor']})" for row in assessment["authors"])
+    reviewer = assessment["reviewer"]
+    qualifiers = ",".join(assessment["qualifiers"]) or "none"
+    return (
+        f"{assessment['independence']}: reviewer {coordinate(reviewer)} (tier {reviewer["review_tier"] or "unseated"}) "
+        f"against {authors}; qualifiers {qualifiers}"
+    )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        prog="agent-routing assess",
+        description="Assess whether a reviewer is independent of, and strong enough for, the authors of a diff.",
+    )
+    parser.add_argument("--reviewer", required=True, metavar="MODEL#EFFORT")
+    parser.add_argument(
+        "--author",
+        action="append",
+        required=True,
+        metavar="MODEL[#EFFORT]",
+        help="a diff author; repeat for each; omitting #effort uses the highest declared floor",
+    )
+    parser.add_argument("--json", action="store_true", help="emit the agent-routing-assessment/1 contract")
+    args = parser.parse_args()
+    try:
+        assessment = assess_review(ROOT, args.reviewer, args.author)
+    except RouteRefusal as refusal:
+        print(f"agent-routing: cannot assess reviewer {args.reviewer!r}: {refusal}", file=sys.stderr)
+        print(dumps(refusal.payload()), file=sys.stderr)
+        return 1
+    print(dumps(assessment) if args.json else line(assessment))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

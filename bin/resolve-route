@@ -23,6 +23,11 @@ def main() -> int:
         "--author",
         help="diff author model[#effort]; review routes only; requires a nonblank family and review_tier or unseated author_floor",
     )
+    parser.add_argument(
+        "--accept-ineligible",
+        action="store_true",
+        help="with --author, return the strongest seat when none is eligible, marked ineligible with its qualifiers and debt kind",
+    )
     parser.add_argument("--allow-experimental", action="store_true")
     parser.add_argument(
         "--allow-cross-pool",
@@ -40,6 +45,7 @@ def main() -> int:
             allow_experimental=args.allow_experimental,
             allow_cross_pool=args.allow_cross_pool,
             author=args.author,
+            accept_ineligible=args.accept_ineligible,
         )
     except RouteRefusal as refusal:
         # Stdout carries the route contract and nothing else, so a caller can

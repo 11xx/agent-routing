@@ -1000,11 +1000,30 @@ def validate_selection(
     return selection
 
 
-def _review_author(root: pathlib.Path, author: str, profile: str, backend: str) -> dict:
+def _floors(model: dict, effort_tier: dict | None) -> list[int | None]:
+    """One floor per effort an author coordinate may stand for.
+
+    A tier carries its floor as ``review_tier`` when seated or ``author_floor``
+    when not. A coordinate without an effort stands for every declared tier;
+    a tier with neither field contributes ``None`` and is never inferred.
+    """
+    tiers = [effort_tier] if effort_tier is not None else model.get("effort", [])
+    return [tier.get("review_tier", tier.get("author_floor")) for tier in tiers]
+
+
+def _review_author(
+    root: pathlib.Path,
+    author: str,
+    profile: str,
+    backend: str,
+    *,
+    allow_unknown_floor: bool = False,
+) -> dict:
     model_id, separator, effort = author.partition("#")
     facts = model_effort_facts(root, model_id, effort if separator else None)
     model = facts["model"]
     reason = None
+    floors: list[int | None] = []
     if not model:
         reason = "unknown-author"
     elif not _nonblank_string(model.get("family")):
@@ -1012,10 +1031,10 @@ def _review_author(root: pathlib.Path, author: str, profile: str, backend: str) 
     elif separator and facts["tier"] is None:
         reason = "unknown-author-effort"
     else:
-        tiers = [facts["tier"]] if separator else model.get("effort", [])
-        if not tiers or any("review_tier" not in tier and "author_floor" not in tier for tier in tiers):
+        floors = _floors(model, facts["tier"] if separator else None)
+        if not floors or None in floors:
             reason = "unknown-author-tier"
-    if reason:
+    if reason and not (allow_unknown_floor and reason == "unknown-author-tier"):
         raise RouteRefusal(
             "review-independence",
             f"cannot establish the family and review tier of author {author!r}; record Arc review debt",
@@ -1028,7 +1047,95 @@ def _review_author(root: pathlib.Path, author: str, profile: str, backend: str) 
     return {
         "coordinate": facts["model_id"] + (f"#{effort}" if separator else ""),
         "family": model["family"],
-        "tier": max(tier.get("review_tier", tier.get("author_floor")) for tier in tiers),
+        "tier": None if reason else max(floors),
+    }
+
+
+ASSESSMENT_SCHEMA = "agent-routing-assessment/1"
+INELIGIBLE_REVIEW_DEBT_KIND = "ineligible-review"
+
+
+def _assessed_coordinate(root: pathlib.Path, coordinate: str, role: str, *, effort_required: bool) -> dict:
+    """Resolve a ``model[#effort]`` coordinate against the roster or refuse."""
+    model_id, separator, effort = coordinate.partition("#")
+    facts = model_effort_facts(root, model_id, effort if separator else None)
+    model = facts["model"]
+    problem = None
+    if not model:
+        problem = f"unknown {role} model {model_id!r}"
+    elif not _nonblank_string(model.get("family")):
+        problem = f"{role} model {facts['model_id']!r} has no family"
+    elif effort_required and not separator:
+        problem = f"{role} {coordinate!r} needs an effort: <model>#<effort>"
+    elif separator and facts["tier"] is None:
+        problem = f"{role} model {facts['model_id']!r} has no effort {effort!r}"
+    if problem:
+        raise RouteRefusal(
+            "unknown-coordinate",
+            problem,
+            role=role,
+            coordinate=coordinate,
+        )
+    return {
+        "model": facts["model_id"],
+        "effort": effort if separator else None,
+        "family": model["family"],
+        "tier": facts["tier"] if separator else None,
+        "floors": _floors(model, facts["tier"] if separator else None),
+    }
+
+
+def assess_review(root: pathlib.Path, reviewer: str, authors: list[str]) -> dict[str, object]:
+    """Assess one reviewer against the authors of the diff it read.
+
+    Pure policy over the roster: any reviewer can be assessed, seated by a
+    profile or not. The qualifiers are a closed set and the read is eligible
+    exactly when none holds.
+    """
+    if not authors:
+        raise RouteRefusal("unknown-coordinate", "no author given", role="author")
+    reader = _assessed_coordinate(root, reviewer, "reviewer", effort_required=True)
+    written = [_assessed_coordinate(root, author, "author", effort_required=False) for author in authors]
+
+    review_tier = (reader["tier"] or {}).get("review_tier")
+    author_rows = []
+    for author in written:
+        known = bool(author["floors"]) and None not in author["floors"]
+        author_rows.append({
+            "model": author["model"],
+            "effort": author["effort"],
+            "family": author["family"],
+            "floor": max(author["floors"]) if known else None,
+        })
+    known_floors = [row["floor"] for row in author_rows if row["floor"] is not None]
+    floor = max(known_floors) if known_floors else None
+
+    qualifiers = []
+    if any(author["model"] == reader["model"] for author in written):
+        qualifiers.append("same-model")
+    if any(author["family"] == reader["family"] for author in written):
+        qualifiers.append("same-family")
+    if review_tier is not None and floor is not None and review_tier < floor:
+        qualifiers.append("below-floor")
+    if len(known_floors) < len(author_rows):
+        qualifiers.append("floor-unknown")
+    if review_tier is None:
+        qualifiers.append("reviewer-unseated")
+
+    return {
+        "schema": ASSESSMENT_SCHEMA,
+        "route_version": route_version(root),
+        "reviewer": {
+            "model": reader["model"],
+            "effort": reader["effort"],
+            "family": reader["family"],
+            "review_tier": review_tier,
+        },
+        "authors": author_rows,
+        "floor": floor,
+        "independence": "ineligible" if qualifiers else "eligible",
+        "qualifiers": qualifiers,
+        "debt_kind": INELIGIBLE_REVIEW_DEBT_KIND if qualifiers else None,
     }
 
 
@@ -1049,6 +1156,7 @@ def resolve(
     allow_experimental: bool = False,
     allow_cross_pool: bool = False,
     author: str | None = None,
+    accept_ineligible: bool = False,
 ) -> dict[str, object]:
     # Structural validity is a property of the manifest and gates every
     # resolution. A pool violation is a property of one route, so it is judged
@@ -1077,6 +1185,13 @@ def resolve(
         raise RouteRefusal(
             "invalid-author",
             "--author is only valid when resolving review",
+            profile=profile_id,
+            backend=backend,
+        )
+    if accept_ineligible and author is None:
+        raise RouteRefusal(
+            "invalid-author",
+            "--accept-ineligible needs the diff --author to assess against",
             profile=profile_id,
             backend=backend,
         )
@@ -1136,23 +1251,38 @@ def resolve(
         constraints = _review_constraints(root, profile, selected)
         review = {"author": None, "independence": "unverified", **constraints}
         if author is not None:
-            author_facts = _review_author(root, author, resolved_profile, backend)
+            author_facts = _review_author(
+                root, author, resolved_profile, backend, allow_unknown_floor=accept_ineligible
+            )
             candidates = [selected] if variant_id else [selected, *(
                 route for route in [profile, *profile.get("variant", [])] if route is not selected
             )]
             eligible = None
+            seats = []
             for candidate in candidates:
                 if backend not in candidate.get("backends", []) or candidate["stability"] != "stable":
                     continue
                 constraints = _review_constraints(root, profile, candidate)
+                if pool_refusal(pools(root), profile_id, candidate["provider"], candidate["model"]) and not allow_cross_pool:
+                    continue
+                seats.append(candidate)
                 if author_facts["family"] in constraints["excluded_author_families"]:
                     continue
-                if constraints["reviewer_tier"] < author_facts["tier"]:
-                    continue
-                if pool_refusal(pools(root), profile_id, candidate["provider"], candidate["model"]) and not allow_cross_pool:
+                if author_facts["tier"] is None or constraints["reviewer_tier"] < author_facts["tier"]:
                     continue
                 eligible = candidate
                 break
+            assessment = None
+            if eligible is None and accept_ineligible and seats:
+                # The strongest seat by review tier; max keeps the first of
+                # equals, which is the profile's own order of preference.
+                eligible = max(seats, key=lambda seat: _review_constraints(root, profile, seat)["reviewer_tier"])
+                constraints = _review_constraints(root, profile, eligible)
+                assessment = assess_review(
+                    root,
+                    f"{eligible['model']}#{eligible['effort']}",
+                    [author_facts["coordinate"]],
+                )
             if eligible is None:
                 raise RouteRefusal(
                     "review-independence",
@@ -1174,6 +1304,13 @@ def resolve(
                 "independence": "eligible",
                 **constraints,
             }
+            if assessment is not None:
+                review.update(
+                    independence=assessment["independence"],
+                    qualifiers=assessment["qualifiers"],
+                    recommendation="record-debt",
+                    debt_kind=assessment["debt_kind"],
+                )
     stability = selected["stability"]
     if stability != "stable" and not allow_experimental:
         raise RouteRefusal(
