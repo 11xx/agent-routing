@@ -15,6 +15,7 @@ from routing_profiles import (
     RouteRefusal,
     _review_author,
     assess_review,
+    frontier_review,
     model_effort_facts,
     pool_problems,
     route_version,
@@ -1663,6 +1664,180 @@ role = "retired fixture with no shipped authorship"
                     self.assertEqual(result.stderr, "")
                     review = json.loads(result.stdout)["review"]
                     self.assertEqual(review["independence"], "eligible" if arguments else "unverified")
+
+
+class ReviewFrontierTest(unittest.TestCase):
+    def fixture_root(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = pathlib.Path(temporary.name)
+        shutil.copytree(ROOT / "routing", root / "routing")
+        return root
+
+    def seats(self, answer):
+        return sorted((seat["model"], seat["effort"], seat["backend"], seat["pool"])
+                      for seat in answer["frontier"]["seats"])
+
+    def test_a_current_claude_author_has_the_strongest_cross_family_seat_as_its_frontier(self):
+        answer = frontier_review(ROOT, "opus-5.5#xhigh")
+        self.assertEqual(answer["schema"], "agent-routing-frontier/1")
+        self.assertEqual(answer["route_version"], route_version(ROOT))
+        self.assertEqual(answer["status"], "frontier")
+        self.assertEqual(answer["author"]["model"], "opus-5.5")
+        self.assertEqual(answer["author"]["floor"], 2)
+        self.assertEqual(answer["frontier"]["review_tier"], 3)
+        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
+        self.assertEqual(answer["reads"], [])
+
+    def test_every_seat_at_the_frontier_tier_is_listed_per_backend_and_pool(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        # Seat a second tier-3 reviewer on the same scale.
+        path.write_text(path.read_text().replace('review_tier = 2\n  rank = { "openai-codex" = 3 }',
+                                                 'review_tier = 3\n  rank = { "openai-codex" = 3 }', 1))
+        answer = frontier_review(root, "opus-5.5#xhigh")
+        self.assertEqual(answer["frontier"]["review_tier"], 3)
+        self.assertEqual(self.seats(answer), [
+            ("gpt-6-astra", "xhigh", "codex", "openai-codex"),
+            ("gpt-6.1-sol", "xhigh", "codex", "openai-codex"),
+        ])
+
+    def test_a_superseded_author_with_a_recorded_floor_has_a_frontier(self):
+        answer = frontier_review(ROOT, "gpt-6-sol#xhigh")
+        self.assertEqual((answer["status"], answer["author"]["floor"]), ("frontier", 2))
+        self.assertEqual(answer["frontier"]["review_tier"], 2)
+        self.assertEqual({seat["model"] for seat in answer["frontier"]["seats"]}, {"opus-5.5"})
+        self.assertEqual({seat["pool"] for seat in answer["frontier"]["seats"]}, {"anthropic"})
+
+    def test_an_author_without_a_floor_has_floor_unknown_and_no_frontier(self):
+        answer = frontier_review(ROOT, "opus-5#xhigh")
+        self.assertEqual((answer["status"], answer["frontier"]), ("floor-unknown", None))
+        self.assertIsNone(answer["author"]["floor"])
+
+    def test_an_author_without_effort_and_an_unknown_floor_is_floor_unknown(self):
+        self.assertEqual(frontier_review(ROOT, "fable-5.1")["status"], "floor-unknown")
+
+    def test_a_floor_no_seat_reaches_has_no_eligible_seat(self):
+        answer = frontier_review(ROOT, "opus-5.5#max")
+        self.assertEqual((answer["status"], answer["frontier"]), ("no-eligible-seat", None))
+        self.assertEqual(answer["author"]["floor"], 4)
+
+    def test_a_same_family_seat_is_never_on_the_frontier(self):
+        answer = frontier_review(ROOT, "gpt-6.1-sol#xhigh")
+        self.assertEqual({seat["pool"] for seat in answer["frontier"]["seats"]}, {"anthropic"})
+
+    def test_frontier_agrees_with_assess_for_every_seat(self):
+        for author in ("opus-5.5#xhigh", "gpt-6-sol#xhigh", "haiku-5.5#high", "sonnet-5.5#high"):
+            answer = frontier_review(ROOT, author)
+            for seat in answer["frontier"]["seats"]:
+                with self.subTest(author=author, seat=seat["model"]):
+                    assessed = assess_review(ROOT, f"{seat['model']}#{seat['effort']}", [author])
+                    self.assertEqual(assessed["independence"], "eligible")
+                    self.assertEqual(assessed["reviewer"]["review_tier"], answer["frontier"]["review_tier"])
+
+    def test_a_read_below_the_frontier_is_marked_below_and_one_at_it_is_marked_at(self):
+        answer = frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6.1-sol#xhigh", "gpt-6-astra#xhigh"])
+        below, at = answer["reads"]
+        self.assertEqual((below["standing"], at["standing"]), ("below", "at"))
+        for read in answer["reads"]:
+            self.assertEqual(read["assessment"]["schema"], "agent-routing-assessment/1")
+            self.assertEqual(read["assessment"]["route_version"], answer["route_version"])
+            self.assertEqual(read["assessment"]["independence"], "eligible")
+        self.assertEqual(below["assessment"]["reviewer"]["model"], "gpt-6.1-sol")
+
+    def test_standing_compares_tiers_and_leaves_eligibility_to_the_assessment(self):
+        read, = frontier_review(ROOT, "gpt-6.1-sol#xhigh", ["gpt-6-astra#xhigh"])["reads"]
+        self.assertEqual(read["standing"], "above")
+        self.assertEqual(read["assessment"]["independence"], "ineligible")
+
+    def test_a_read_that_is_unseated_has_no_standing(self):
+        read, = frontier_review(ROOT, "opus-5.5#xhigh", ["sonnet-5.5#high"])["reads"]
+        self.assertEqual(read["standing"], "unranked")
+        self.assertEqual(read["assessment"]["qualifiers"], ["same-family", "reviewer-unseated"])
+
+    def test_reads_are_marked_unranked_when_there_is_no_frontier(self):
+        read, = frontier_review(ROOT, "opus-5#xhigh", ["gpt-6-astra#xhigh"])["reads"]
+        self.assertEqual(read["standing"], "unranked")
+        self.assertEqual(read["assessment"]["qualifiers"], ["floor-unknown"])
+
+    def test_an_unknown_author_or_read_is_refused(self):
+        for author, reads in (("nonesuch#high", []), ("opus-5.5#xhigh", ["nonesuch#high"]),
+                              ("opus-5.5#xhigh", ["gpt-6-astra"]), ("opus-5.5#nonesuch", [])):
+            with self.subTest(author=author, reads=reads), self.assertRaises(RouteRefusal) as caught:
+                frontier_review(ROOT, author, reads)
+            self.assertEqual(caught.exception.kind, "unknown-coordinate")
+
+    def test_an_exhausted_pool_still_marks_the_frontier(self):
+        root = self.fixture_root()
+        path = root / "routing" / "delegation.toml"
+        text = path.read_text()
+        marker = 'provider = "openai-codex"\n'
+        self.assertIn(marker, text)
+        path.write_text(text.replace(marker, marker + 'exhausted = true\n', 1))
+        exhausted = frontier_review(root, "opus-5.5#xhigh")
+        plain = frontier_review(ROOT, "opus-5.5#xhigh")
+        self.assertEqual(exhausted["frontier"], plain["frontier"])
+
+    def test_the_frontier_orders_by_review_tier_and_never_by_pool_rank(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        text = path.read_text()
+        start = text.index('id = "gpt-6.1-sol"')
+        # A pool rank above every other seat on its pool must not lift a tier-2 seat.
+        path.write_text(text[:start] + text[start:].replace('rank = { "openai-codex" = 3 }',
+                                                            'rank = { "openai-codex" = 99 }', 1))
+        answer = frontier_review(root, "opus-5.5#xhigh")
+        self.assertEqual(answer["frontier"]["review_tier"], 3)
+        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
+
+    def test_only_stable_pool_valid_routes_seat_the_frontier(self):
+        root = self.fixture_root()
+        path = root / "routing" / "profiles.toml"
+        text = path.read_text()
+        for marker in ('  id = "high-stakes"', '  id = "astra-xhigh"'):
+            start = text.index(marker)
+            text = text[:start] + text[start:].replace('stability = "stable"', 'stability = "experimental"', 1)
+        path.write_text(text)
+        answer = frontier_review(root, "opus-5.5#xhigh")
+        self.assertEqual(answer["frontier"]["review_tier"], 2)
+
+    def run_cli(self, *args):
+        return subprocess.run([ROOT / "bin" / "agent-routing", "frontier", *args], capture_output=True, text=True)
+
+    def test_cli_emits_the_frontier_json_with_reads(self):
+        result = self.run_cli("--author", "opus-5.5#xhigh", "--reads", "gpt-6.1-sol#xhigh", "gpt-6-astra#xhigh",
+                              "--json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["schema"], "agent-routing-frontier/1")
+        self.assertEqual([read["standing"] for read in answer["reads"]], ["below", "at"])
+        self.assertEqual(answer, frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6.1-sol#xhigh", "gpt-6-astra#xhigh"]))
+
+    def test_cli_prints_a_readable_answer_without_json(self):
+        result = self.run_cli("--author", "opus-5.5#xhigh", "--reads", "gpt-6.1-sol#xhigh")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("frontier tier 3", result.stdout)
+        self.assertIn("gpt-6-astra#xhigh", result.stdout)
+        self.assertIn("below", result.stdout)
+        unknown = self.run_cli("--author", "opus-5#xhigh")
+        self.assertEqual(unknown.returncode, 0, unknown.stderr)
+        self.assertIn("floor-unknown", unknown.stdout)
+
+    def test_the_guide_and_help_list_the_verb_and_state_the_ordering_and_quota_rule(self):
+        guide = subprocess.run([ROOT / "bin" / "agent-routing"], capture_output=True, text=True).stdout
+        self.assertIn("agent-routing frontier --author", guide)
+        self.assertIn("agent-routing-frontier/1", guide)
+        verb_help = self.run_cli("--help").stdout
+        self.assertIn("review_tier", verb_help)
+        self.assertIn("not inputs", verb_help)
+        usage = subprocess.run([ROOT / "bin" / "agent-routing", "help"], capture_output=True, text=True).stdout
+        self.assertIn("frontier --author", usage)
+
+    def test_cli_refuses_an_unknown_coordinate_with_a_payload(self):
+        result = self.run_cli("--author", "nonesuch#high", "--json")
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(json.loads(result.stderr.splitlines()[-1])["kind"], "unknown-coordinate")
 
 
 class RankLintTest(unittest.TestCase):

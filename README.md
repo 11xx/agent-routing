@@ -197,6 +197,32 @@ Record Arc review debt or wait for eligible capacity according to repository
 policy; debt never overrides a changes-requested verdict. Non-review routes
 keep their concrete output contract.
 
+## Review frontier
+
+```sh
+agent-routing frontier --author 'opus-5.5#xhigh' --reads 'gpt-6.1-sol#xhigh' --json
+```
+
+`frontier` answers the strongest review seat eligible for an author, as
+`agent-routing-frontier/1`: the `route_version`, the author with its floor, a
+`status`, and `frontier`, the highest `review_tier` with every seat at that
+tier as a model, effort, backend and pool. A caller that stores the reads a
+change received compares them against it at read time, so no tier is ever
+stored.
+
+A seat is any stable route, on any profile and backend, whose pool serves its
+model. Eligibility is `assess`'s verbatim: the frontier adds no independence
+rule. Seats are ordered by `review_tier`, the cross-family scale `assess`
+compares, never by the pool-local `rank`. Quota is not an input, so an
+exhausted pool still marks the frontier and a clearance cannot flip on a pool
+running dry. An author whose floor is unestablished answers `floor-unknown`
+with no frontier; one whose floor no seat reaches answers `no-eligible-seat`.
+
+Each `--reads` coordinate returns its `assess` result under the same route
+version and a `standing` of `below`, `at` or `above` the frontier's tier, or
+`unranked` when the read's tier is unseated or no frontier exists. Standing
+compares tiers only; the read's own independence is its assessment's.
+
 ## Operator-directed selection
 
 An explicit one-off model choice keeps the execution shape separate from model

@@ -231,16 +231,14 @@ def pool_refusal(by_pool, label, provider, model_id):
     )
 
 
-def _seated_tiers(profiles: list[dict], by_pool: dict[str, dict]) -> dict[tuple[str, str], set[str]]:
-    """Each ``(model, effort)`` a stable route seats, with the pools that seat it.
+def _seating_routes(profiles: list[dict], by_pool: dict[str, dict]):
+    """Every route that seats a tier, whatever profile it belongs to.
 
-    A pool is named by its provider. Only a stable route seats a tier: an
-    experimental or probationary route is a trial, not a seat a rank can
-    order. A route whose pool does not serve its model is a pool violation,
-    which ``pool_problems`` reports and a caller may override, so it seats
-    nothing there.
+    Only a stable route seats a tier: an experimental or probationary route is
+    a trial, not a seat a rank can order. A route whose pool does not serve its
+    model is a pool violation, which ``pool_problems`` reports and a caller may
+    override, so it seats nothing there.
     """
-    seated: dict[tuple[str, str], set[str]] = {}
     for profile in profiles:
         for route in [profile, *profile.get("variant", [])]:
             if route.get("stability") != "stable" or not route.get("model") or not route.get("effort"):
@@ -248,7 +246,17 @@ def _seated_tiers(profiles: list[dict], by_pool: dict[str, dict]) -> dict[tuple[
             pool = by_pool.get(route.get("provider"))
             if pool is not None and route["model"] not in pool.get("serves", []):
                 continue
-            seated.setdefault((route["model"], route["effort"]), set()).add(route.get("provider"))
+            yield route
+
+
+def _seated_tiers(profiles: list[dict], by_pool: dict[str, dict]) -> dict[tuple[str, str], set[str]]:
+    """Each ``(model, effort)`` a stable route seats, with the pools that seat it.
+
+    A pool is named by its provider.
+    """
+    seated: dict[tuple[str, str], set[str]] = {}
+    for route in _seating_routes(profiles, by_pool):
+        seated.setdefault((route["model"], route["effort"]), set()).add(route.get("provider"))
     return seated
 
 
@@ -1125,31 +1133,30 @@ def _assessed_coordinate(root: pathlib.Path, coordinate: str, role: str, *, effo
     }
 
 
-def assess_review(root: pathlib.Path, reviewer: str, authors: list[str]) -> dict[str, object]:
-    """Assess one reviewer against the authors of the diff it read.
-
-    Pure policy over the roster: any reviewer can be assessed, seated by a
-    profile or not. The qualifiers are a closed set and the read is eligible
-    exactly when none holds.
-    """
-    if not authors:
-        raise RouteRefusal("unknown-coordinate", "no author given", role="author")
-    reader = _assessed_coordinate(root, reviewer, "reviewer", effort_required=True)
-    written = [_assessed_coordinate(root, author, "author", effort_required=False) for author in authors]
-
-    review_tier = (reader["tier"] or {}).get("review_tier")
-    author_rows = []
+def _author_rows(written: list[dict]) -> tuple[list[dict], int | None, bool]:
+    """Each author with its floor, the highest known floor, and whether every floor is known."""
+    rows = []
     for author in written:
         known = bool(author["floors"]) and None not in author["floors"]
-        author_rows.append({
+        rows.append({
             "model": author["model"],
             "effort": author["effort"],
             "family": author["family"],
             "identities": author["identities"],
             "floor": max(author["floors"]) if known else None,
         })
-    known_floors = [row["floor"] for row in author_rows if row["floor"] is not None]
-    floor = max(known_floors) if known_floors else None
+    known_floors = [row["floor"] for row in rows if row["floor"] is not None]
+    return rows, max(known_floors) if known_floors else None, len(known_floors) == len(rows)
+
+
+def _assessment(reader: dict, written: list[dict], version: str) -> dict[str, object]:
+    """The assessment of a resolved reviewer against resolved authors.
+
+    The one place eligibility is decided: ``assess_review`` and ``frontier_review``
+    both read it, so no second independence rule can disagree with it.
+    """
+    review_tier = (reader["tier"] or {}).get("review_tier")
+    author_rows, floor, floors_known = _author_rows(written)
 
     qualifiers = []
     if any(author["model"] == reader["model"] for author in written):
@@ -1158,14 +1165,14 @@ def assess_review(root: pathlib.Path, reviewer: str, authors: list[str]) -> dict
         qualifiers.append("same-family")
     if review_tier is not None and floor is not None and review_tier < floor:
         qualifiers.append("below-floor")
-    if len(known_floors) < len(author_rows):
+    if not floors_known:
         qualifiers.append("floor-unknown")
     if review_tier is None:
         qualifiers.append("reviewer-unseated")
 
     return {
         "schema": ASSESSMENT_SCHEMA,
-        "route_version": route_version(root),
+        "route_version": version,
         "reviewer": {
             "model": reader["model"],
             "effort": reader["effort"],
@@ -1178,6 +1185,89 @@ def assess_review(root: pathlib.Path, reviewer: str, authors: list[str]) -> dict
         "independence": "ineligible" if qualifiers else "eligible",
         "qualifiers": qualifiers,
         "debt_kind": INELIGIBLE_REVIEW_DEBT_KIND if qualifiers else None,
+    }
+
+
+def assess_review(root: pathlib.Path, reviewer: str, authors: list[str]) -> dict[str, object]:
+    """Assess one reviewer against the authors of the diff it read.
+
+    Pure policy over the roster: any reviewer can be assessed, seated by a
+    profile or not. The qualifiers are a closed set and the read is eligible
+    exactly when none holds.
+    """
+    if not authors:
+        raise RouteRefusal("unknown-coordinate", "no author given", role="author")
+    reader = _assessed_coordinate(root, reviewer, "reviewer", effort_required=True)
+    written = [_assessed_coordinate(root, author, "author", effort_required=False) for author in authors]
+    return _assessment(reader, written, route_version(root))
+
+
+FRONTIER_SCHEMA = "agent-routing-frontier/1"
+
+
+def frontier_review(root: pathlib.Path, author: str, reads: list[str] | tuple[str, ...] = ()) -> dict[str, object]:
+    """The strongest eligible review seat for one author, and where reads stand against it.
+
+    A seat is a stable route on any profile and backend (``_seating_routes``);
+    it is eligible exactly when ``assess`` calls it so, and seats are ordered
+    by ``review_tier``, the cross-family scale ``assess`` compares, never by a
+    pool-local rank. Quota and pool availability are not inputs: the answer
+    moves only when the manifests do. An author whose floor is unestablished
+    has no frontier, since every seat would be ``floor-unknown``.
+
+    Each read is assessed under the same route version; its ``standing`` is
+    ``below``, ``at`` or ``above`` the frontier's tier, or ``unranked`` when the
+    read has no tier or there is no frontier.
+    """
+    version = route_version(root)
+    written = _assessed_coordinate(root, author, "author", effort_required=False)
+    rows, floor, floors_known = _author_rows([written])
+    profiles = load_toml(root / "routing" / "profiles.toml").get("profile", [])
+
+    seated: dict[tuple[str, str], set[tuple[str, str]]] = {}
+    for route in _seating_routes(profiles, pools(root)):
+        seated.setdefault((route["model"], route["effort"]), set()).update(
+            (backend, route["provider"]) for backend in route.get("backends", [])
+        )
+    eligible = []
+    for (model, effort), places in seated.items():
+        reader = _assessed_coordinate(root, f"{model}#{effort}", "reviewer", effort_required=True)
+        assessment = _assessment(reader, [written], version)
+        if assessment["independence"] == "eligible":
+            eligible.append((assessment["reviewer"]["review_tier"], model, effort, places))
+
+    status, frontier = "floor-unknown", None
+    if floors_known:
+        status = "no-eligible-seat"
+        if eligible:
+            tier = max(entry[0] for entry in eligible)
+            status, frontier = "frontier", {
+                "review_tier": tier,
+                "seats": sorted(
+                    ({"model": model, "effort": effort, "backend": backend, "pool": pool}
+                     for entry_tier, model, effort, places in eligible if entry_tier == tier
+                     for backend, pool in places),
+                    key=lambda seat: (seat["model"], seat["effort"], seat["backend"], seat["pool"]),
+                ),
+            }
+
+    answered = []
+    for read in reads:
+        assessment = assess_review(root, read, [author])
+        tier = assessment["reviewer"]["review_tier"]
+        if tier is None or frontier is None:
+            standing = "unranked"
+        else:
+            standing = "below" if tier < frontier["review_tier"] else "at" if tier == frontier["review_tier"] else "above"
+        answered.append({"standing": standing, "assessment": assessment})
+
+    return {
+        "schema": FRONTIER_SCHEMA,
+        "route_version": version,
+        "author": {**rows[0], "floor": floor},
+        "status": status,
+        "frontier": frontier,
+        "reads": answered,
     }
 
 

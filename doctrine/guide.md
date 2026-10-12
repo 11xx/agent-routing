@@ -67,6 +67,33 @@ ASSESS A REVIEW
   inferred. Models resolve through the roster's ids and aliases, and an unknown
   model or effort is refused, never guessed.
 
+FIND THE REVIEW FRONTIER
+  agent-routing frontier --author <model>[#<effort>]
+    [--reads <model>#<effort>...] [--json]
+
+  frontier answers the strongest review seat eligible for an author, so a
+  caller can tell whether a recorded read is still the best routing can buy.
+  A seat is a stable route on any profile and backend whose pool serves its
+  model; it is eligible exactly when assess says so, so frontier carries no
+  independence rule of its own. Seats are ordered by review_tier, the
+  cross-family scale assess compares, never by a pool-local rank. Quota and
+  pool availability are not inputs: an exhausted pool still marks the
+  frontier, and the answer moves only when the manifests do. --json emits
+  agent-routing-frontier/1: the route version, the author with its floor, a
+  status, the frontier, and the reads.
+    status "frontier"          frontier carries the highest eligible
+                               review_tier and every seat at that tier, each
+                               a model, effort, backend and pool
+    status "floor-unknown"     an author floor is unestablished, so there is
+                               no frontier; a floor is never guessed
+    status "no-eligible-seat"  the floor is known and no seat reaches it
+  Each --reads coordinate carries its assessment under the answered route
+  version, and a standing against the frontier's tier: "below", "at" or
+  "above", or "unranked" when the read's tier is unseated or there is no
+  frontier. Standing compares tiers only; the read's own independence is in
+  its assessment. Without --json it prints one line for the author and one per
+  read.
+
 VALIDATE AN OPERATOR-DIRECTED SELECTION
   agent-routing validate --profile <profile> --backend <backend>
     --model <model> --effort <effort> --provider <provider>

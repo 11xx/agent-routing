@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""Answer the strongest eligible review seat for an author, and where reads stand."""
+
+import argparse
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from routing_profiles import RouteRefusal, dumps, frontier_review  # noqa: E402
+
+
+def coordinate(row: dict) -> str:
+    return row["model"] + (f"#{row['effort']}" if row["effort"] else "")
+
+
+def lines(answer: dict) -> list[str]:
+    author = answer["author"]
+    head = f"author {coordinate(author)} (floor {author['floor'] or 'unknown'}): {answer['status']}"
+    frontier = answer["frontier"]
+    if frontier:
+        seats = ", ".join(
+            f"{seat['model']}#{seat['effort']} via {seat['backend']}/{seat['pool']}" for seat in frontier["seats"]
+        )
+        head = f"{head}; frontier tier {frontier['review_tier']}: {seats}"
+    out = [head]
+    for read in answer["reads"]:
+        assessment = read["assessment"]
+        reviewer = assessment["reviewer"]
+        qualifiers = ",".join(assessment["qualifiers"]) or "none"
+        out.append(
+            f"read {coordinate(reviewer)} (tier {reviewer['review_tier'] or 'unseated'}): {read['standing']}; "
+            f"{assessment['independence']}, qualifiers {qualifiers}"
+        )
+    return out
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        prog="agent-routing frontier",
+        description=(
+            "Answer the strongest eligible review seat for an author. A seat is a stable route on any "
+            "profile and backend, eligible exactly when `assess` says so; seats are ordered by review_tier, "
+            "never by a pool-local rank. Quota and pool availability are not inputs: an exhausted pool "
+            "still marks the frontier. An author without an established floor answers floor-unknown."
+        ),
+    )
+    parser.add_argument("--author", required=True, metavar="MODEL[#EFFORT]")
+    parser.add_argument(
+        "--reads",
+        nargs="+",
+        action="extend",
+        default=[],
+        metavar="MODEL#EFFORT",
+        help="recorded reads to assess under the current route version and place against the frontier",
+    )
+    parser.add_argument("--json", action="store_true", help="emit the agent-routing-frontier/1 contract")
+    args = parser.parse_args()
+    try:
+        answer = frontier_review(ROOT, args.author, args.reads)
+    except RouteRefusal as refusal:
+        print(f"agent-routing: cannot answer the frontier for {args.author!r}: {refusal}", file=sys.stderr)
+        print(dumps(refusal.payload()), file=sys.stderr)
+        return 1
+    if args.json:
+        print(dumps(answer))
+    else:
+        print("\n".join(lines(answer)))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

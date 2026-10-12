@@ -34,6 +34,10 @@ Run `agent-routing` with no verb for the routing guide.
                       resolve a caller-selected task profile
   assess --reviewer <model>#<effort> --author <model>[#<effort>] [--author ...] [--json]
                       assess any reviewer against the authors of a diff
+  frontier --author <model>[#<effort>] [--reads <model>#<effort>...] [--json]
+                      the strongest eligible review seat for an author, by
+                      review_tier and regardless of quota, and where each read
+                      stands against it
   validate --profile <profile> --backend <backend> --model <model>
            --effort <effort> --provider <provider> --reason <text>
            [--allow-experimental] [--allow-cross-pool] --json
@@ -49,7 +53,9 @@ tier's author_floor; an author_floor grants no reviewer seat. Superseded
 authors with shipped diffs retain floors at least as high as their successors.
 `assess` applies the same floors to any reviewer, seated or not, and names why
 a read is ineligible; `resolve --accept-ineligible` returns the strongest seat
-with that assessment when no eligible one exists.
+with that assessment when no eligible one exists. `frontier` keeps the seats
+`assess` calls eligible for an author and answers the highest review_tier
+among them; pool availability never moves it.
 EOF
 }
 
@@ -74,6 +80,7 @@ case "${1:-}" in
   all)        cat "$routing_dir/models.toml"; echo; cat "$routing_dir/profiles.toml"; echo; cat "$routing_dir/delegation.toml" ;;
   check)      shift; check "$@" ;;
   assess)     shift; exec "$root/bin/assess-review" "$@" ;;
+  frontier)   shift; exec "$root/bin/frontier-review" "$@" ;;
   resolve)    shift; exec "$root/bin/resolve-route" "$@" ;;
   validate)   shift; exec "$root/bin/validate-selection" "$@" ;;
   *)          usage >&2; exit 2 ;;
