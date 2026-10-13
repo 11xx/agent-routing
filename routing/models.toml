@@ -104,6 +104,7 @@ weaknesses = ["medium is the routing ceiling: high buys only 4 points for +85% c
 
 [[model]]
 id = "fable-5.1"
+aliases = ["claude-fable-5-1"]
 family = "claude"
 status = "experimental"
 role = "available head-model candidate on the Claude subscription, unmeasured here. Reachable interactively in Claude Code and through the first-party backend on Pro and Max; no automatic profile routes to it"

@@ -41,7 +41,7 @@ Run `agent-routing` with no verb for the routing guide.
                       stands against it
   validate --profile <profile> --backend <backend> --model <model>
            --effort <effort> --provider <provider> --reason <text>
-           [--allow-experimental] [--allow-cross-pool] --json
+           [--allow-experimental | --operator-named] [--allow-cross-pool] --json
                       validate an operator-directed tuple without resolving it
 
 `resolve` never classifies a task: the caller chooses the profile. It only maps

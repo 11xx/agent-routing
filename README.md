@@ -20,6 +20,12 @@ agent-routing lint                    # pass@1/cost cells, coverage, routes
 agent-routing lint-consumers          # reject roster pins in active consumers
 ```
 
+For a tuple the operator named exactly, `validate --operator-named` permits
+explicit-only and experimental selection while preserving bans and backend and
+pool support. Refusals list stable seated efforts for the requested tuple's
+profile and supported routes for its backend. `agent-routing seats --json`
+shows the bindings before a selection; `check` tests prohibition alone.
+
 ## Why it is its own repository
 
 Routing policy is opinionated, personal, and churns on model-era boundaries.

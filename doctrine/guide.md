@@ -101,6 +101,16 @@ VALIDATE AN OPERATOR-DIRECTED SELECTION
     --model <model> --effort <effort> --provider <provider>
     --reason <text> [--allow-experimental] [--allow-cross-pool] --json
 
+  When the operator names the exact tuple, --operator-named permits both
+  explicit-only and experimental selection. It records that assertion and
+  preserves prohibitions, role fences, backend effort support and pool checks.
+  Unseated selection refusals list the stable seated efforts for the requested
+  model, profile, backend and provider. `agent-routing seats --json` lists the
+  bindings before selection; `check` answers only prohibition, not seating.
+  Backend model spellings are roster aliases. An unsupported profile refusal
+  lists the backend's supported routes; Claude's `explore` and `extract` are
+  read-only shapes.
+
   validate keeps the named profile as the execution shape and checks an
   explicit model tuple without resolving that profile or selecting a variant.
   The result carries the canonical and backend model identities, the

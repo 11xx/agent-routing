@@ -586,13 +586,15 @@ def _profile_for_selection(root: pathlib.Path, profile_id: str, backend: str) ->
         {backend_id for route in [profile, *profile.get("variant", [])] for backend_id in route.get("backends", [])}
     )
     if backend not in profile_backends:
+        backend_routes = _profile_backend_routes(root, backend)
         raise RouteRefusal(
             "unsupported-backend",
-            f"profile {profile_id!r} does not support backend {backend!r}",
+            f"profile {profile_id!r} does not support backend {backend!r}; "
+            f"supported routes: {', '.join(backend_routes) or 'none'}",
             profile=profile_id,
             backend=backend,
             profile_backends=profile_backends,
-            backend_routes=_profile_backend_routes(root, backend),
+            backend_routes=backend_routes,
         )
     return profile
 
@@ -849,6 +851,7 @@ def validate_selection(
     *,
     allow_experimental: bool = False,
     allow_cross_pool: bool = False,
+    operator_named: bool = False,
 ) -> dict[str, object]:
     """Validate an operator-directed tuple without resolving its profile.
 
@@ -858,6 +861,7 @@ def validate_selection(
     would have chosen (see ``_classify_selection``), and only a selection that
     classification leaves experimental needs ``allow_experimental``.
     """
+    allow_experimental = allow_experimental or operator_named
     fields = {
         "profile": profile_id,
         "backend": backend,
@@ -921,7 +925,10 @@ def validate_selection(
     if model_fact is None:
         raise RouteRefusal(
             "unknown-model",
-            f"unknown model {model_id!r}; models.toml has no model fact for it",
+            f"unknown model {model_id!r}; models.toml has no model fact for it; "
+            "accepted routing ids: " + ", ".join(
+                entry["id"] for entry in load_toml(root / "routing" / "models.toml")["model"]
+            ),
             profile=profile_id,
             backend=backend,
             provider=provider,
@@ -988,10 +995,19 @@ def validate_selection(
     stability = classification["stability"]
     selection_kind = classification["selection_kind"]
     if stability != "stable" and not allow_experimental:
+        seated_efforts = [
+            tier_effort for tier_effort in EFFORT_ORDER
+            if tier_effort in known_efforts
+            and not prohibited_efforts(model_fact, tier_effort)
+            and backend_effort_refusal(backend_fact, profile_id, model_id, tier_effort) is None
+            and _classify_selection(root, profile, backend, model_id, tier_effort, provider)["stability"] == "stable"
+        ]
         raise RouteRefusal(
             "stability",
             f"operator-directed selection of {model_id!r} at {effort!r} is not a seated escalation of "
-            f"{profile_id!r} on {backend!r}; pass --allow-experimental to opt in",
+            f"{profile_id!r} on {backend!r}; seated efforts for {model_id!r} on "
+            f"{profile_id!r}/{backend!r}/{provider!r}: {', '.join(seated_efforts) or 'none'}; "
+            "pass --allow-experimental to opt in, or --operator-named when the operator named this exact tuple",
             profile=profile_id,
             backend=backend,
             provider=provider,
@@ -1001,6 +1017,7 @@ def validate_selection(
             selection_kind=selection_kind,
             direction=classification["direction"],
             override="--allow-experimental",
+            seated_efforts=seated_efforts,
         )
 
     version = route_version(root)
@@ -1022,6 +1039,7 @@ def validate_selection(
         "baseline": classification["baseline"],
         "allow_experimental": allow_experimental,
         "allow_cross_pool": allow_cross_pool,
+        "operator_named": operator_named,
     }
     if pool_refusal_result:
         selection["cross_pool"] = pool_refusal_result.fields["plan"]
@@ -1379,7 +1397,8 @@ def resolve(
         )
         raise RouteRefusal(
             "unsupported-backend",
-            f"profile {resolved_profile!r} does not support backend {backend!r}",
+            f"profile {resolved_profile!r} does not support backend {backend!r}; "
+            f"supported routes: {', '.join(backend_routes) or 'none'}",
             profile=resolved_profile,
             backend=backend,
             profile_backends=profile_backends,

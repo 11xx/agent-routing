@@ -24,6 +24,10 @@ def main() -> int:
     parser.add_argument("--reason", required=True, help="the claimed instruction being recorded")
     parser.add_argument("--allow-experimental", action="store_true")
     parser.add_argument(
+        "--operator-named", action="store_true",
+        help="the operator named this exact tuple; permit explicit-only and experimental selection without waiving bans or pool support",
+    )
+    parser.add_argument(
         "--allow-cross-pool",
         action="store_true",
         help="spend a pool's allowance on a model another subscription already pays for",
@@ -41,6 +45,7 @@ def main() -> int:
             args.reason,
             allow_experimental=args.allow_experimental,
             allow_cross_pool=args.allow_cross_pool,
+            operator_named=args.operator_named,
         )
     except RouteRefusal as refusal:
         print(
