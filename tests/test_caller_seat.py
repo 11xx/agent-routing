@@ -41,11 +41,14 @@ class CallerSeatTest(unittest.TestCase):
         self.assertEqual(advisory["rank_comparison"], "unranked")
         self.assertEqual(advisory["reasons"], ["scarcer-pool"])
 
-    def test_move_from_claude_to_codex_is_ordinary_but_ranks_stay_unranked(self):
-        advisory = resolve(ROOT, "review", "codex", caller="claude-opus-5-5#xhigh")["confirmation"]
-        self.assertFalse(advisory["offer_to_user"])
-        self.assertEqual(advisory["pool_comparison"], "less-scarce")
-        self.assertEqual(advisory["rank_comparison"], "unranked")
+    def test_less_scarce_pool_does_not_establish_cross_pool_tier_cost(self):
+        for caller in ("claude-opus-5-5#xhigh", "claude-haiku-5-5#high"):
+            with self.subTest(caller=caller):
+                advisory = resolve(ROOT, "review", "codex", caller=caller)["confirmation"]
+                self.assertIsNone(advisory["offer_to_user"])
+                self.assertEqual(advisory["pool_comparison"], "less-scarce")
+                self.assertEqual(advisory["rank_comparison"], "unranked")
+                self.assertEqual(advisory["reasons"], [])
 
     def test_unseated_effort_or_unordered_pool_does_not_invent_a_comparison(self):
         advisory = self.validate("gpt-6-astra#low")

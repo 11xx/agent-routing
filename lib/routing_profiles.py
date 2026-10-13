@@ -935,7 +935,7 @@ def caller_confirmation(root: pathlib.Path, route: dict, canonical_model: str,
         reasons.append("above-caller-seat")
     if pool_comparison == "scarcer":
         reasons.append("scarcer-pool")
-    offer = True if reasons else False if comparison != "unranked" or pool_comparison == "less-scarce" else None
+    offer = True if reasons else False if comparison != "unranked" else None
     return {
         "schema": "agent-routing-confirmation/1",
         "advisory": True,

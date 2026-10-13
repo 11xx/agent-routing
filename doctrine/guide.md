@@ -167,7 +167,9 @@ COMPARE WITH THE CALLER'S OBSERVED SEAT
   The optional `confirmation` block is agent-routing-confirmation/1 and
   advisory: `offer_to_user` is true for a higher rank in the same pool or a
   declared scarcer pool, false for a known ordinary move, and null when the
-  policy cannot compare. Cross-pool ranks remain unranked. The block names
+  policy cannot compare. A less scarce pool establishes no cross-pool tier
+  cost comparison, so that move remains unknown. Cross-pool ranks remain
+  unranked. The block names
   the caller, selection, pool and tier's stated benefit. A standing user
   authorization replaces the offer; the block is not a dispatch gate.
 
