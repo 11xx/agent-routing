@@ -5,9 +5,14 @@ import shutil
 import subprocess
 import tempfile
 import tomllib
+import sys
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+
+sys.path.insert(0, str(ROOT / "lib"))
+from claude_agents import claude_agent_bundle
 
 
 class ConsumerLintTest(unittest.TestCase):
@@ -52,7 +57,8 @@ class ConsumerLintTest(unittest.TestCase):
             str(self.proxy): "model: sonnet\neffort: low\n",
             str(delegate_root / "agents/pi.md"): "model: sonnet\neffort: low\n",
             str(delegate_root / "agents/opencode.md"): "model: sonnet\neffort: low\n",
-            str(delegate_root / "agents/implement-opus.md"): "model: opus\neffort: xhigh\n",
+            str(delegate_root / "agents/implement-opus.md"): claude_agent_bundle(
+                ROOT, profile_id="implement", variant_id="opus")["files"]["agents/implement-opus.md"],
         }
         directories = [
             f"{instructions}/fragments",
@@ -81,11 +87,11 @@ class ConsumerLintTest(unittest.TestCase):
         code = self.fixture_code_root()
         canonical = code / "agent-routing"
         canonical.mkdir()
-        for directory in ("bin", "lib", "routing"):
+        for directory in ("bin", "lib", "routing", "templates"):
             shutil.copytree(ROOT / directory, canonical / directory,
                             ignore=shutil.ignore_patterns("__pycache__"))
         subprocess.run(["git", "init", "-q", str(canonical)], check=True)
-        subprocess.run(["git", "-C", str(canonical), "add", "bin", "lib", "routing"], check=True)
+        subprocess.run(["git", "-C", str(canonical), "add", "bin", "lib", "routing", "templates"], check=True)
         subprocess.run(["git", "-C", str(canonical), "-c", "commit.gpgsign=false",
                         "commit", "-qm", "fixture"], check=True)
         worktree = code / "isolated" / "routing-worktree"
@@ -111,6 +117,14 @@ class ConsumerLintTest(unittest.TestCase):
         result = self.run_lint(code)
         self.assertEqual(result.returncode, 1)
         self.assertIn("pins model frontmatter", result.stdout)
+
+    def test_generated_definition_body_drift_is_rejected(self):
+        code = self.fixture_code_root()
+        path = self.proxy.parent / "implement-opus.md"
+        path.write_text(path.read_text() + "Do unrelated work.\n")
+        result = self.run_lint(code)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("generated agent differs", result.stdout)
 
     def test_static_pi_default_is_rejected(self):
         code = self.fixture_code_root()
@@ -160,7 +174,7 @@ class ConsumerLintTest(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         root = pathlib.Path(temporary.name)
-        for directory in ("bin", "lib", "routing"):
+        for directory in ("bin", "lib", "routing", "templates"):
             shutil.copytree(ROOT / directory, root / directory)
         path = root / "routing" / "consumers.toml"
         lines = path.read_text().splitlines(keepends=True)

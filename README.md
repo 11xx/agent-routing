@@ -108,6 +108,27 @@ nonzero, naming the missing ids, when the accessor reports fewer, and when an
 accessor declares no floor, so a harness-side regression cannot shrink what is
 checked. Sources beyond the floor are checked as well.
 
+## Static Claude agent definitions
+
+`agent-routing emit claude-agents` returns `agent-routing-claude-agents/1`:
+a route-version witness, rendered `agents/*.md`, and the `[[pin]]` table derived
+from the same resolved routes. Model aliases stay version-agnostic; efforts
+come from the roster. Stable Claude routes are emitted by default. Experimental
+routes require `--allow-experimental`, and prohibited tiers cannot be emitted.
+
+```sh
+agent-routing emit claude-agents --output-dir ./claude-agent-bundle
+agent-routing emit claude-agents --output-dir ./claude-agent-bundle --check
+agent-routing emit claude-agents --profile implement --variant opus
+```
+
+An explicit output directory receives `agents/` and `consumers-pins.toml`.
+The consumer keeps its proxy definitions and adopts the generated agents and
+pin entries it needs. A pin marked `generated = true` is checked against the
+whole rendered definition, including its instructions; hand edits fail lint.
+The emitter stages source artifacts. Harness deployment and session loading
+belong to the consumer; runtime settings are not routing outputs.
+
 ## Named route profiles
 
 Callers classify work by task shape and pass that choice to the resolver. The

@@ -68,6 +68,7 @@ case "${1:-}" in
   "")         cat "$root/doctrine/guide.md" ;;
   guide)      cat "$root/doctrine/guide.md" ;;
   help|-h|--help) usage ;;
+  emit)       shift; exec "$root/bin/emit-claude-agents" "$@" ;;
   models)     cat "$routing_dir/models.toml" ;;
   seats)      shift; exec "$root/bin/show-seats" "$@" ;;
   profiles)   cat "$routing_dir/profiles.toml" ;;

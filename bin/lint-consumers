@@ -143,10 +143,12 @@ def resolved_route(pin):
         pin["profile"],
         "--backend",
         pin["backend"],
-        "--variant",
-        pin["variant"],
         "--json",
     ]
+    if pin.get("variant") is not None:
+        command.extend(["--variant", pin["variant"]])
+    if pin.get("allow_experimental"):
+        command.append("--allow-experimental")
     result = subprocess.run(command, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise SystemExit(f"cannot resolve pin {pin['path']}: {result.stderr.strip() or result.stdout.strip()}")
@@ -178,6 +180,15 @@ def main():
     problems = []
     for path, pin in route_pins.items():
         route = resolved_route(pin)
+        if pin.get("generated"):
+            sys.path.insert(0, str(ROOT / "lib"))
+            from claude_agents import claude_agent_bundle
+            bundle = claude_agent_bundle(ROOT, profile_id=pin["profile"],
+                                         variant_id=pin.get("variant"),
+                                         allow_experimental=pin.get("allow_experimental", False))
+            expected = bundle["files"].get(f"agents/{pin['path']}")
+            if expected is None or path.read_text() != expected:
+                problems.append(f"{path}: generated agent differs from the resolved route template")
         if route["effort"] != pin["effort"]:
             problems.append(
                 f"{path}: pinned effort {pin['effort']} but {pin['profile']}:{pin['variant']} resolves to {route['effort']}"

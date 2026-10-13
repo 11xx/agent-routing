@@ -65,3 +65,4 @@ effort = "xhigh"
 profile = "implement"
 variant = "opus"
 backend = "claude"
+generated = true
