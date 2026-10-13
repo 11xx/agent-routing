@@ -1560,7 +1560,7 @@ role = "retired fixture with no shipped authorship"
     def test_unknown_author_facts_recommend_debt(self):
         for author, reason in (("missing#xhigh", "unknown-author"),
                                ("opus-5.5#ultra", "unknown-author-effort"),
-                               ("fable-5.1#high", "unknown-author-tier"),
+                               ("mimo-v2.6-flash#high", "unknown-author-tier"),
                                ("", "unknown-author")):
             with self.subTest(author=author), self.assertRaises(RouteRefusal) as caught:
                 resolve(ROOT, "review", "codex", author=author)
@@ -1950,3 +1950,32 @@ class RankLintTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class FableAuthorFloorTest(unittest.TestCase):
+    def test_each_fable_effort_has_its_own_author_requirement(self):
+        for effort, floor in {"low": 1, "medium": 1, "high": 2, "xhigh": 2, "max": 4}.items():
+            with self.subTest(effort=effort):
+                author = f"fable-5.1#{effort}"
+                assessment = assess_review(ROOT, "gpt-6.1-sol#xhigh", [author])
+                self.assertEqual(assessment["floor"], floor)
+                self.assertEqual(assessment["qualifiers"], ["below-floor"] if floor == 4 else [])
+                if floor == 4:
+                    with self.assertRaises(RouteRefusal) as caught:
+                        resolve(ROOT, "review", "codex", author=author)
+                    self.assertEqual(caught.exception.payload()["reason"], "no-eligible-route")
+                else:
+                    self.assertEqual(resolve(ROOT, "review", "codex", author=author)["review"]["author_tier"], floor)
+                self.assertIn("reviewer-unseated", assess_review(ROOT, author, ["gpt-6-luna#max"])["qualifiers"])
+                with self.assertRaises(RouteRefusal):
+                    resolve(ROOT, "review", "claude", author=author)
+
+    def test_bare_fable_uses_its_highest_floor(self):
+        self.assertEqual(assess_review(ROOT, "gpt-6.1-sol#xhigh", ["fable-5.1"])["floor"], 4)
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "review", "codex", author="fable-5.1")
+        self.assertEqual(caught.exception.payload()["author_tier"], 4)
+
+    def test_mimo_and_muse_floors_remain_unknown(self):
+        for model in ("mimo-v2.6-flash", "mimo-v2.6-pro", "muse-spark-1.2", "muse-spark-1.3"):
+            with self.subTest(model=model):
+                self.assertIn("floor-unknown", assess_review(ROOT, "gpt-6.1-sol#xhigh", [model])["qualifiers"])

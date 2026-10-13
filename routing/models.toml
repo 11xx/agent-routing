@@ -113,22 +113,27 @@ api_price_per_million = { input = 10.0, cached_input = 0.25, output = 50.0 }
 notes = "Released 2026-09-01 as `claude-fable-5-1` with five effort levels (low, medium, high, xhigh, max; Claude Code defaults to high). Reachable on the subscription through Claude Code and the first-party `claude` backend, and by credit billing on the API, OpenRouter, and commandcode — the subscription route is the only one this roster will ever route to. A person selecting it interactively is a choice the harness records; no automatic profile reaches it until a Datacurve row, an observed quota ratio, and a field arc establish a seat."
   [[model.effort]]
   effort = "low"
+  author_floor = 1
   status = "explicit-only"
   use = "explicit selection only; available on the user's Claude subscription when the harness accepts the effort, but unmeasured"
   [[model.effort]]
   effort = "medium"
+  author_floor = 1
   status = "explicit-only"
   use = "explicit selection only; available on the user's Claude subscription when the harness accepts the effort, but unmeasured"
   [[model.effort]]
   effort = "high"
+  author_floor = 2
   status = "explicit-only"
   use = "explicit selection only; Claude Code's default effort, but unmeasured"
   [[model.effort]]
   effort = "xhigh"
+  author_floor = 2
   status = "explicit-only"
   use = "explicit selection only; available when the harness accepts the effort, but unmeasured"
   [[model.effort]]
   effort = "max"
+  author_floor = 4
   status = "explicit-only"
   use = "explicit selection only; available when the harness accepts the effort, but unmeasured"
 
