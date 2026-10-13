@@ -205,3 +205,27 @@ The same series was closed out: its todos, the `ineligible-review` debt kind acr
 | pool research | read-only web and bundle research | 258s | 21 | 24157 | $0.46 | answers with dated sources, and inference labelled as inference |
 
 None of these runs drew a blocking finding from the lead. Across both 2026-10-12 rounds, 14 Sonnet high runs produced 1 blocking defect, in round one, and each run reported its own deviations. The danger-path arc change at high effort went green at its first snapshot, as the two xhigh danger-path runs recorded above did.
+
+## The obligations-spend-assurance series, 2026-10-12
+
+A second full series ran on Sonnet 5.5 high implementers, with Haiku 5.5 high scouts and an Opus 5.5 xhigh lead that reviewed every change. No cross-family reviewer was available, so each change integrated under `ineligible-review` debt (same family). The account hit its session limit twice. Interrupted lanes were continued by fresh Sonnet runs in the same worktrees, with the earlier run's work marked as claims to verify.
+
+| Lane shape | Runs | Session cost | Lead findings sent back | Outcome |
+|---|---:|---:|---|---|
+| agent-routing `frontier`, padded families, consumer lint floor (Python) | 2 | $1.22 | count only review seats | integrated |
+| arc danger-path debt work: standing, dry-run plan, `Implemented-by` in independence | 6 | $0.34–1.87 each | an unreadable range must not clear `ineligible-review`; `--expect-basis` must flag a debt the plan never saw | integrated |
+| arc forge blockers: custody handles, staged export, novel-only import, frontier views, held commits, recorded-context admission | 7 | $0.15–1.93 each | classify five unclassified sources | integrated; arc pushed |
+| arc features: participant cost, cost by commit with git notes, dated review assurance | 4 | $2.26–2.93 each | blame cache keyed per change, not per HEAD | integrated |
+| arc Sol blocking findings in three lanes (journal, store/history, identity/output) | 3 | $0.83–3.45 each | none; one fmt-only commit folded into its parents | integrated |
+| tapes child/tail identity, summary overlap B, OpenCode rows | 4 | $0.30–1.59 each | report when the copy check only sampled ids | integrated |
+| agent-delegate run end at exit, pin bump, peer identity, pending-never-absence | 6 | $0.53–4.18 each | a Codex resume must degrade, not fail; timing tests must not depend on machine speed | integrated |
+| arc-model re-pin (Haskell, clean room) | 1 | $5.43 | none | integrated; 0 disagreements across 1,669 differential cases |
+| scouts: backlog survey, 131-finding triage, second pass, confirmation | 49 | $2.09 total | — | 69 dispositions recorded on two concurring reads |
+
+**Totals:** 27 Sonnet sessions $45.95 and 49 Haiku sessions $2.09, all at list price. The lead's own session is excluded: the harness wrote no per-request prices for it.
+
+**What the trial showed:**
+- **Findings.** Sonnet high delivered every lane green. The lead's reads raised 10 findings, each fixed in one follow-up round. Five were in the "absent is not zero" class (an unread, sampled or unanswered fact read as complete), which the briefs named and the executors still missed at one site each.
+- **Self-reporting.** Executors reported their own untested edges honestly, and three filed real design gaps instead of patching around them.
+- **Lead-side cost.** Rebase conflicts between parallel arc lanes cost two lead interventions. Lint-only intermediate commits needed folding twice.
+- **Report capture.** Twice a run's final message was a monitor notice rather than the report. Read the report from the run log when the final message is not it.
