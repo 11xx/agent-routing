@@ -9,7 +9,22 @@ import sys
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-CODE = pathlib.Path(os.environ.get("AGENT_CODE_ROOT", ROOT.parent))
+
+
+def consumer_code_root():
+    override = os.environ.get("AGENT_CODE_ROOT")
+    if override is not None:
+        return pathlib.Path(override)
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        capture_output=True, text=True,
+    )
+    if result.returncode == 0:
+        return pathlib.Path(result.stdout.strip()).parent.parent
+    return ROOT.parent
+
+
+CODE = consumer_code_root()
 
 
 def load(path):

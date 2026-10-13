@@ -16,7 +16,7 @@ class ConsumerLintTest(unittest.TestCase):
             return tomllib.load(handle)
 
     def fixture_code_root(self):
-        temporary = tempfile.TemporaryDirectory()
+        temporary = tempfile.TemporaryDirectory(dir=pathlib.Path.home() / ".worktrees")
         self.addCleanup(temporary.cleanup)
         code = pathlib.Path(temporary.name)
         skills = self.config()["repository"]["skills"]
@@ -76,6 +76,33 @@ class ConsumerLintTest(unittest.TestCase):
             "AGENT_HARNESS_BIN": str(self.harness),
         }
         return subprocess.run([ROOT / "bin" / "lint-consumers"], capture_output=True, text=True, env=environment)
+
+    def test_linked_worktree_discovers_siblings_without_an_override(self):
+        code = self.fixture_code_root()
+        canonical = code / "agent-routing"
+        canonical.mkdir()
+        for directory in ("bin", "lib", "routing"):
+            shutil.copytree(ROOT / directory, canonical / directory,
+                            ignore=shutil.ignore_patterns("__pycache__"))
+        subprocess.run(["git", "init", "-q", str(canonical)], check=True)
+        subprocess.run(["git", "-C", str(canonical), "add", "bin", "lib", "routing"], check=True)
+        subprocess.run(["git", "-C", str(canonical), "-c", "commit.gpgsign=false",
+                        "commit", "-qm", "fixture"], check=True)
+        worktree = code / "isolated" / "routing-worktree"
+        subprocess.run(["git", "-C", str(canonical), "worktree", "add", "--quiet",
+                        "--detach", str(worktree)], check=True)
+        environment = {**os.environ, "AGENT_HARNESS_BIN": str(self.harness)}
+        environment.pop("AGENT_CODE_ROOT", None)
+        for root in (canonical, worktree):
+            with self.subTest(root=root):
+                result = subprocess.run([root / "bin/lint-consumers"], cwd=code,
+                                        capture_output=True, text=True, env=environment)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.proxy.unlink()
+        result = subprocess.run([worktree / "bin/lint-consumers"],
+                                capture_output=True, text=True, env=environment)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("missing delegation proxy", result.stdout)
 
     def test_clean_proxy_exception_is_exact(self):
         code = self.fixture_code_root()

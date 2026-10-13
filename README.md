@@ -92,6 +92,10 @@ The proxy-shell agent aliases are the one deliberate exception: their
 version-agnostic Claude alias is required by Claude's static agent frontmatter,
 and the central delegation manifest records that shell-only policy.
 
+Consumer siblings are found beside the canonical checkout through Git’s common
+directory, including when the lint runs from a linked worktree.
+`AGENT_CODE_ROOT` overrides that location for an isolated consumer tree.
+
 The `[[accessor]]` entry in `routing/consumers.toml` owns a floor,
 `expected_sources`: the source ids its accessor must report. The lint exits
 nonzero, naming the missing ids, when the accessor reports fewer, and when an
