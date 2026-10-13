@@ -124,7 +124,9 @@ agent-routing emit claude-agents --profile implement --variant opus
 
 An explicit output directory receives `agents/` and `consumers-pins.toml`.
 The consumer keeps its proxy definitions and adopts the generated agents and
-pin entries it needs. A pin marked `generated = true` is checked against the
+pin entries it needs. A consumer marked `generated = "claude-agents"` enrolls
+every emitted definition present in its directory; explicit pin entries also
+require their files to exist. A pin marked `generated = true` is checked against the
 whole rendered definition, including its instructions; hand edits fail lint.
 The emitter stages source artifacts. Harness deployment and session loading
 belong to the consumer; runtime settings are not routing outputs.
@@ -147,6 +149,12 @@ Review responses also carry author eligibility constraints:
 agent-routing resolve extract --backend pi --json
 agent-routing resolve generate --backend pi --allow-experimental --json
 ```
+
+`implement --backend claude --variant opus-low --allow-experimental` selects
+an explicit Opus 5.5 low capacity trial. Choose it by operator direction or
+when Claude-window headroom binds; its capacity benefit is unmeasured, so the
+standing implementation route remains xhigh. Its native definition is emitted
+with the same explicit experimental opt-in.
 
 On the Claude backend `explore` and `extract` default to Haiku 5.5 at high, the
 cheap subscription seat for read-only reconnaissance and fixed-shape

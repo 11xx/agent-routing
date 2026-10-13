@@ -20,6 +20,7 @@ expected_sources = ["settings", "shared-fragments", "pi-fragments", "pi-agents",
 # profile and never a concrete model.
 [[consumer]]
 id = "delegate-agents"
+generated = "claude-agents"
 repository = "delegate"
 path = "agents"
 checks = ["roster-literals", "agent-frontmatter"]

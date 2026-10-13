@@ -62,7 +62,7 @@ notes = "Released 2026-09-22 as `claude-opus-5-5`: 1M context, 128k maximum outp
   [[model.effort]]
   effort = "low"
   author_floor = 1
-  use = "available but not routed; unmeasured here. Claude implementation defaults to xhigh; add a low route only for an explicit measured capacity need"
+  use = "an explicit experimental implementation capacity trial; unmeasured here. Claude implementation defaults to xhigh; low requires operator direction or a binding Claude-window constraint, with named probes and lead inspection"
 
 [[model]]
 id = "opus-5"

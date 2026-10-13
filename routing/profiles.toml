@@ -147,6 +147,17 @@ backends = ["codex"]
   backends = ["claude"]
   default_for_backend = true
 
+  # An explicit capacity trial when the operator requests low effort or the
+  # Claude window is the binding constraint. It does not displace the default.
+  [[profile.variant]]
+  id = "opus-low"
+  provider = "anthropic"
+  model = "opus-5.5"
+  backend_model = "claude-opus-5-5"
+  effort = "low"
+  stability = "experimental"
+  backends = ["claude"]
+
 [[profile]]
 id = "generate"
 purpose = "high-volume or heavily steered candidate generation whose output is raw material rather than a deliverable: drafts to mine, options to sweep, defect candidates to adjudicate. Everything it returns is unverified until a lead or reviewer-tier model checks it against source, and nothing resolved here is the last model to touch shipped work"

@@ -118,6 +118,18 @@ class ConsumerLintTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("pins model frontmatter", result.stdout)
 
+    def test_generated_native_trial_is_registered_by_the_roster(self):
+        code = self.fixture_code_root()
+        bundle = claude_agent_bundle(ROOT, profile_id="implement", variant_id="opus-low", allow_experimental=True)
+        path = self.proxy.parent / "implement-opus-low.md"
+        path.write_text(bundle["files"]["agents/implement-opus-low.md"])
+        self.assertEqual(self.run_lint(code).returncode, 0)
+        path.write_text(path.read_text().replace("effort: low", "effort: max"))
+        result = self.run_lint(code)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("generated agent differs", result.stdout)
+        self.assertIn("centrally recorded effort", result.stdout)
+
     def test_generated_definition_body_drift_is_rejected(self):
         code = self.fixture_code_root()
         path = self.proxy.parent / "implement-opus.md"

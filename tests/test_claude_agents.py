@@ -30,6 +30,19 @@ class ClaudeAgentsTest(unittest.TestCase):
             self.assertNotIn(route["model"], content)
             self.assertTrue(pin["generated"])
 
+    def test_opus_low_is_an_explicit_trial_with_a_generated_definition(self):
+        default = resolve(ROOT, "implement", "claude")
+        self.assertEqual(default["effort"], "xhigh")
+        with self.assertRaises(RouteRefusal):
+            resolve(ROOT, "implement", "claude", variant_id="opus-low")
+        route = resolve(ROOT, "implement", "claude", variant_id="opus-low", allow_experimental=True)
+        self.assertEqual((route["model"], route["effort"], route["stability"]),
+                         ("claude-opus-5-5", "low", "experimental"))
+        bundle = claude_agent_bundle(ROOT, profile_id="implement", variant_id="opus-low", allow_experimental=True)
+        self.assertIn("model: opus\neffort: low\n", bundle["files"]["agents/implement-opus-low.md"])
+        self.assertTrue(bundle["pins"][0]["allow_experimental"])
+        self.assertNotIn("agents/implement-opus-low.md", claude_agent_bundle(ROOT)["files"])
+
     def test_trial_agents_require_explicit_opt_in(self):
         self.assertNotIn("agents/computer-use-opus.md", claude_agent_bundle(ROOT)["files"])
         bundle = claude_agent_bundle(ROOT, profile_id="computer-use", variant_id="opus",

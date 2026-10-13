@@ -51,6 +51,8 @@ def configured_consumers():
         consumer_id = consumer["id"]
         if consumer_id in by_id:
             raise SystemExit(f"duplicate delegation consumer: {consumer_id}")
+        if consumer.get("generated") not in (None, "claude-agents"):
+            raise SystemExit(f"{consumer_id}: unknown generated consumer {consumer['generated']!r}")
         repository = consumer["repository"]
         if repository not in repositories:
             raise SystemExit(f"unknown delegation repository {repository!r} for {consumer_id}")
@@ -176,6 +178,18 @@ def main():
         for path in missing_proxies:
             print(f"missing delegation proxy: {path}")
         return 2
+
+    generated_consumers = [consumer for consumer in consumers if consumer.get("generated") == "claude-agents"]
+    if generated_consumers:
+        sys.path.insert(0, str(ROOT / "lib"))
+        from claude_agents import claude_agent_bundle
+        bundle = claude_agent_bundle(ROOT, allow_experimental=True)
+        for consumer in generated_consumers:
+            for pin in bundle["pins"]:
+                path = consumer["root"] / pin["path"]
+                if path.is_file() and path not in route_pins:
+                    proxy_pins[path] = (pin["model"], pin["effort"])
+                    route_pins[path] = pin
 
     problems = []
     for path, pin in route_pins.items():
