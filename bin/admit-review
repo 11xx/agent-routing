@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""Choose independent review coverage from an explicit usage snapshot."""
+
+import argparse
+import json
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from quota_routing import admit_review
+from routing_profiles import RouteRefusal, dumps
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="agent-routing admit-review")
+    parser.add_argument("--author", required=True)
+    parser.add_argument("--usage-file", type=pathlib.Path, required=True)
+    parser.add_argument("--base", required=True)
+    parser.add_argument("--head", required=True)
+    parser.add_argument("--json", action="store_true", required=True)
+    args = parser.parse_args()
+    usage_error = None
+    try:
+        usage = json.loads(args.usage_file.read_text())
+        if not isinstance(usage, dict):
+            raise ValueError("usage snapshot must be an object")
+    except (OSError, ValueError) as error:
+        usage, usage_error = {}, str(error)
+    try:
+        answer = admit_review(ROOT, args.author, usage, args.base, args.head)
+    except RouteRefusal as error:
+        print(dumps(error.payload()), file=sys.stderr)
+        return 1
+    except (KeyError, TypeError, ValueError, OSError) as error:
+        print(dumps(RouteRefusal("manifest-invalid", str(error)).payload()), file=sys.stderr)
+        return 1
+    if usage_error is not None:
+        answer["usage_error"] = usage_error
+    print(dumps(answer))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

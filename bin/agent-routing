@@ -31,8 +31,10 @@ Run `agent-routing` with no verb for the routing guide.
   all                 print all three manifests
   check <model> [eff] exit non-zero if that model/effort is prohibited
   resolve <profile> --backend <backend> [--variant <name>] [--author <model>[#effort]]
-          [--allow-experimental] [--accept-ineligible] --json
+          [--allow-experimental] [--accept-ineligible] [--usage-file <file>] --json
                       resolve a caller-selected task profile
+  admit-review --author <model>[#effort] --usage-file <file> --base <base> --head <head> --json
+                      select quota-admitted independent review or typed review debt
   assess --reviewer <model>#<effort> --author <model>[#<effort>] [--author ...] [--json]
                       assess any reviewer against the authors of a diff
   frontier --author <model>[#<effort>] [--reads <model>#<effort>...] [--json]
@@ -65,6 +67,7 @@ check() {
 }
 
 case "${1:-}" in
+  admit-review) shift; exec "$root/bin/admit-review" "$@" ;;
   "")         cat "$root/doctrine/guide.md" ;;
   guide)      cat "$root/doctrine/guide.md" ;;
   help|-h|--help) usage ;;

@@ -416,6 +416,21 @@ Backend selection between the two GPT routes:
 - Claude is the first-party backend for `design` and taste-axis review. It is
   not a substitute for Pi's native provider route; its subscription entitlement
   belongs to the Claude client.
+- Before dispatch, `resolve --usage-file` checks caller-supplied normalized
+  windows and follows only the profile's declared fallback. Record its
+  `rerouted_from` identity and `pool-exhausted` reason with the run, including
+  a changed backend; never retry the exhausted route. At a batch boundary,
+  resolve admission before starting the executor sessions. A pinned tuple
+  has no implicit fallback.
+- `admit-review --author <coordinate> --usage-file <snapshot> --base <revision>
+  --head <revision> --json` returns a quota-admitted independent route or typed
+  `review-debt`. A route must execute with its explicit model and effort,
+  read-only access and session persistence disabled over the named range.
+  The Claude adapter's read-only mode is an instruction rather than a tool
+  allowlist. A debt result dispatches nothing and requires an Arc
+  `independent-review` obligation; it supplies no approval. Preserve an actual
+  reviewer's verdict verbatim and bind it to the reviewed head before Arc
+  integration. No quota result is review evidence.
 - **Sonnet 5.5 is a trial, not a seat.** It is unmeasured and no profile
   resolves to it. Reach it as `claude -p --model claude-sonnet-5-5 --effort
   <tier>` through a validated operator-directed selection:

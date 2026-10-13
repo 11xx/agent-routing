@@ -235,6 +235,7 @@ why = "a dollar-metered small plan whose value is cheap-tier capacity off both s
 
 [[pool]]
 provider = "openai-codex"
+usage_key = "codex"
 plan = "the Codex subscription"
 serves = ["gpt-5.6-sol", "gpt-5.6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"]
 pays_for = "itself: Sol runs here and nowhere else"
@@ -244,6 +245,7 @@ why = "Sol belongs to the subscription that already covers it. pi and opencode r
 provider = "anthropic"
 # Claude capacity is scarcer than the standing Codex window; other pairs are unranked.
 scarcer_than = ["openai-codex"]
+usage_key = "claude"
 plan = "the Claude subscription"
 serves = ["opus-5.5", "fable-5.1", "sonnet-5.5", "haiku-5.5"]
 pays_for = "itself: never reach a Claude model through metered credits when the subscription covers it"

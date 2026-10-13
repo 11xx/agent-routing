@@ -27,6 +27,7 @@ PROFILE_KEYS = frozenset(
         "variant",
         "escalation_sources",
         "excluded_author_families",
+        "fallback",
     }
 )
 VARIANT_KEYS = frozenset(
@@ -414,12 +415,41 @@ def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: di
 
 def structural_problems(root: pathlib.Path) -> list[str]:
     profiles_path = root / "routing" / "profiles.toml"
-    profiles = load_toml(profiles_path).get("profile", [])
+    profile_manifest = load_toml(profiles_path)
+    profiles = profile_manifest.get("profile", [])
     models = load_toml(root / "routing" / "models.toml").get("model", [])
     delegation = load_toml(root / "routing" / "delegation.toml")
     by_model = {model["id"]: model for model in models}
     by_backend = {backend["id"]: backend for backend in delegation.get("backend", [])}
     problems: list[str] = []
+    admission = profile_manifest.get("admission")
+    if admission is not None:
+        if not isinstance(admission, dict) or set(admission) != {"max_age_seconds", "review"}:
+            problems.append("admission: expected max_age_seconds and review policy")
+        else:
+            age = admission["max_age_seconds"]
+            if type(age) is not int or age <= 0:
+                problems.append("admission: max_age_seconds must be a positive integer")
+            review = admission["review"]
+            keys = {"codex_author_families", "codex_review_backend", "other_review_backend", "claude_minimum_remaining"}
+            if not isinstance(review, dict) or set(review) != keys:
+                problems.append("admission.review: invalid policy keys")
+            else:
+                threshold = review["claude_minimum_remaining"]
+                if type(threshold) is not int or not 0 <= threshold < 100:
+                    problems.append("admission.review: threshold must be a percentage below 100")
+                families = review["codex_author_families"]
+                known_families = {_family(model) for model in models if _nonblank_string(model.get("family"))}
+                if (not isinstance(families, list) or not families
+                        or any(not isinstance(family, str) or family not in known_families for family in families)):
+                    problems.append("admission.review: author families must be known roster families")
+                for key in ("codex_review_backend", "other_review_backend"):
+                    if not isinstance(review[key], str) or review[key] not in by_backend:
+                        problems.append(f"admission.review: unknown backend in {key}")
+    usage_keys = [pool.get("usage_key") for pool in delegation.get("pool", []) if "usage_key" in pool]
+    if (any(not isinstance(key, str) or key not in {"codex", "claude"} for key in usage_keys)
+            or len(usage_keys) != len(set(key for key in usage_keys if isinstance(key, str)))):
+        problems.append("pools: usage_key must name a distinct normalized account")
     problems.extend(backend_effort_problems(delegation.get("backend", []), models))
     by_pool = {pool["provider"]: pool for pool in delegation.get("pool", [])}
     for provider, pool in by_pool.items():
@@ -556,6 +586,23 @@ def structural_problems(root: pathlib.Path) -> list[str]:
     problems.extend(rank_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
     problems.extend(escalation_source_problems(profiles))
     problems.extend(review_policy_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
+    for profile in profiles:
+        rules = profile.get("fallback", [])
+        if not isinstance(rules, list):
+            problems.append(f"{profile['id']}: fallback must be a list")
+            continue
+        for rule in rules:
+            if not isinstance(rule, dict) or set(rule) - {"from_provider", "backend", "variant"}:
+                problems.append(f"{profile['id']}: invalid fallback route keys")
+                continue
+            if (not isinstance(rule.get("from_provider"), str)
+                    or rule["from_provider"] not in {pool.get("provider") for pool in delegation.get("pool", [])}):
+                problems.append(f"{profile['id']}: unknown fallback source pool")
+            target = next((route for route in [profile, *profile.get("variant", [])]
+                           if rule.get("variant") == (None if route is profile else route["id"])
+                           and rule.get("backend") in route.get("backends", [])), None)
+            if target is None or target.get("stability") != "stable":
+                problems.append(f"{profile['id']}: fallback must name a stable route on its backend")
     return problems
 
 
@@ -1386,6 +1433,8 @@ def resolve(
     accept_ineligible: bool = False,
     caller: str | None = None,
     caller_provider: str | None = None,
+    usage: dict | None = None,
+    now: int | None = None,
 ) -> dict[str, object]:
     # Structural validity is a property of the manifest and gates every
     # resolution. A pool violation is a property of one route, so it is judged
@@ -1581,6 +1630,13 @@ def resolve(
     confirmation = caller_confirmation(root, route, selected["model"], caller, caller_provider)
     if confirmation is not None:
         route["confirmation"] = confirmation
+    if usage is not None:
+        from quota_routing import admit_route
+
+        route = admit_route(root, profile, route, usage, now=now,
+                            pinned=variant_id is not None, author=author,
+                            accept_ineligible=accept_ineligible, caller=caller,
+                            caller_provider=caller_provider)
     return route
 
 

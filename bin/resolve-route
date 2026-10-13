@@ -2,6 +2,7 @@
 """Resolve one caller-selected task profile into a concrete backend route."""
 
 import argparse
+import json
 import pathlib
 import sys
 
@@ -19,6 +20,8 @@ def main() -> int:
     parser.add_argument("profile")
     parser.add_argument("--backend", required=True)
     parser.add_argument("--variant")
+    parser.add_argument("--usage-file", type=pathlib.Path,
+                        help="normalized account-window JSON from agent-status usage; only configured fallbacks may change the backend")
     parser.add_argument(
         "--author",
         help="diff author model[#effort]; review routes only; requires a nonblank family and review_tier or unseated author_floor",
@@ -38,6 +41,15 @@ def main() -> int:
     )
     parser.add_argument("--json", action="store_true", required=True, help="emit the stable JSON route contract")
     args = parser.parse_args()
+    usage = None
+    if args.usage_file is not None:
+        try:
+            usage = json.loads(args.usage_file.read_text())
+            if not isinstance(usage, dict):
+                raise ValueError("usage snapshot must be an object")
+        except (OSError, ValueError) as error:
+            print(dumps(RouteRefusal("invalid-usage", str(error)).payload()), file=sys.stderr)
+            return 1
     try:
         route = resolve(
             ROOT,
@@ -50,6 +62,7 @@ def main() -> int:
             caller_provider=args.caller_provider,
             author=args.author,
             accept_ineligible=args.accept_ineligible,
+            usage=usage,
         )
     except RouteRefusal as refusal:
         # Stdout carries the route contract and nothing else, so a caller can

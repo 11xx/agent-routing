@@ -184,6 +184,28 @@ The route does not restrict CU capabilities or claim a measured cost/quality win
 
 ### Author-aware independent review
 
+For admission using an observed quota snapshot:
+
+```sh
+agent-routing resolve execute --backend codex --usage-file usage.json --json
+agent-routing admit-review --author 'gpt-6.1-sol#xhigh' \
+  --usage-file usage.json --base <base-revision> --head <head-revision> --json
+```
+
+The supplied file holds normalized account-window JSON from `agent-status usage`.
+Routing accesses no account. `execute` follows its declared ordered fallback
+when the starting pool is exhausted, recording `rerouted_from` and
+`pool-exhausted`. Pinned variants, unknown quota and profiles without an
+authorized fallback refuse. Without the file, resolution stays manifest-only.
+
+Review admission selects the current first-party Claude review seat for Codex
+authors only when more than 50 percent remains in its five-hour window. At or
+below 50 percent, unknown availability or no independent seat, its typed
+`review-debt` result carries no route and requires an Arc `independent-review`
+debt. Claude authors keep the independent Codex reviewer. The result binds the
+requested range and read-only, non-persistent execution; the adapter owns
+dispatch, execution fences and recording actual review evidence.
+
 Supply the diff author's model and effort when resolving independent review:
 
 ```sh

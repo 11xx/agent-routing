@@ -40,6 +40,41 @@ RESOLVE A ROUTE
   debt_kind: "ineligible-review". It never appears as independent. Where an
   eligible route exists the answer is the same with or without the flag.
 
+QUOTA ADMISSION BEFORE DISPATCH
+  agent-routing resolve execute --backend codex --usage-file usage.json --json
+  agent-routing admit-review --author <model>[#effort] --usage-file usage.json
+    --base <revision> --head <revision> --json
+
+  The caller supplies normalized account-window JSON from `agent-status usage`.
+  Routing reads that file alone and never probes an account. Pool `usage_key`
+  bindings in delegation.toml identify the account; profiles.toml owns snapshot
+  freshness, the review threshold and each ordered fallback list. Fresh, valid
+  five-hour and any reported seven-day windows must have room. Unavailable,
+  stale, expired or inconsistent observations do not establish availability.
+
+  Without --usage-file, resolve remains a manifest-only query. With it, an
+  exhausted execute pool follows the standing Codex-to-Opus or Claude-to-Sol
+  route and records the original route as `rerouted_from` with reason
+  `pool-exhausted`. Both pools exhausted, an unmeasured alternative, a profile
+  without a fallback, or a pinned --variant yields one bounded refusal. Only
+  fallback routes declared for that profile are authorized; no retry occurs.
+  Check admission at the fan-out boundary before creating executor sessions.
+  A snapshot describes observed headroom; it does not reserve capacity.
+
+  admit-review emits agent-routing-review-admission/1. Codex-family authors
+  select the current independent first-party Claude review seat only above
+  50 percent remaining in the five-hour window. At 50 percent or below,
+  unmeasured quota, or no eligible reviewer it returns status `review-debt`,
+  route null, recommendation `record-debt`, and debt_kind `independent-review`.
+  Claude-authored work keeps the independent Codex reviewer, subject to that
+  pool's measured availability. A route outcome names the model, effort,
+  read-only execution, non-persistence and the supplied base-to-head range.
+  Pass resolved revisions. The adapter enforces those execution requirements;
+  routing neither dispatches a reviewer nor records a verdict. On review-debt,
+  record `arc debt <change> --kind independent-review --reason <reason>`.
+  Eligibility and headroom are admission facts, never an approval. Quota does
+  not change `frontier`, which describes the strongest rostered coverage.
+
 ASSESS A REVIEW
   agent-routing assess --reviewer <model>#<effort>
     --author <model>[#<effort>] [--author ...] [--json]
