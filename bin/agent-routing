@@ -17,6 +17,7 @@ Run `agent-routing` with no verb for the routing guide.
 
   guide               print the routing guide (also the bare invocation)
   models              print the model/effort matrix (models.toml)
+  seats [--json]      project profile/variant bindings and the declared head default
   profiles            print the named delegation profiles (profiles.toml)
   delegation          print the delegation mechanism matrix (delegation.toml)
   mechanism           print the mechanism-routing prose canon (DELEGATION.md)
@@ -68,6 +69,7 @@ case "${1:-}" in
   guide)      cat "$root/doctrine/guide.md" ;;
   help|-h|--help) usage ;;
   models)     cat "$routing_dir/models.toml" ;;
+  seats)      shift; exec "$root/bin/show-seats" "$@" ;;
   profiles)   cat "$routing_dir/profiles.toml" ;;
   delegation) cat "$routing_dir/delegation.toml" ;;
   mechanism)  cat "$root/DELEGATION.md" ;;

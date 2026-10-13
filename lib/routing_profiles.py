@@ -1492,3 +1492,41 @@ def resolve(
 
 def dumps(route: dict[str, object]) -> str:
     return json.dumps(route, sort_keys=True, separators=(",", ":"))
+
+
+def seats_view(root: pathlib.Path) -> dict[str, object]:
+    """A read-only view of declared bindings, including explicitly labeled trials."""
+    problems = validation_problems(root)
+    if problems:
+        raise RouteRefusal("invalid-manifest", "; ".join(problems))
+    version = route_version(root)
+    seats = []
+    for profile, route in _profile_records(root):
+        for backend in route.get("backends", []):
+            seats.append({
+                "profile": profile["id"],
+                "variant": None if route is profile else route["id"],
+                "backend": backend,
+                "provider": route["provider"],
+                "model": route.get("backend_model", route["model"]),
+                "roster_model": route["model"],
+                "effort": route["effort"],
+                "stability": route["stability"],
+                "default": _baseline_route(profile, backend) is route,
+                "route_version": version,
+                "evidence_ref": None,
+            })
+    try:
+        head = resolve(root, "plan", "claude")
+        refusal = None
+    except RouteRefusal as error:
+        head = None
+        refusal = error.payload()
+    return {
+        "schema": "agent-routing-seats/1",
+        "route_version": version,
+        "seats": seats,
+        "head_default": head,
+        "head_default_refusal": refusal,
+        "actual_head": {"status": "unobserved"},
+    }

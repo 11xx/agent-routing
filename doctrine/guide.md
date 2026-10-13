@@ -201,3 +201,9 @@ WHERE THINGS ARE
   agent-routing root    the repository holding this data
   agent-routing dir     the manifest directory
   agent-routing all     every manifest, concatenated
+
+`agent-routing seats --json` projects every declared profile and variant by
+backend, provider, model, effort, stability and default status. Trials retain
+their stability label. The head-default query is the `plan` route on Claude; a missing binding is
+reported with its refusal. The actual head is unobserved, independent of `ARC_MODEL`. A missing evidence
+reference is null. Bars and author/reviewer eligibility remain model-row facts.

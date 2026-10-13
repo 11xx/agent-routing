@@ -7,6 +7,7 @@ with one accessor, for every harness and tool on this machine.
 agent-routing                         # the routing guide: start here
 agent-routing models                  # the model/effort matrix
 agent-routing profiles                # named task-shape routes
+agent-routing seats --json            # derived bindings and the declared head default
 agent-routing resolve implement --backend codex --json
 agent-routing validate --profile plan --backend codex --model gpt-6-astra \
   --effort medium --provider openai-codex --reason "operator directed" \
@@ -196,6 +197,16 @@ stderr line is an `agent-routing-refusal/1` payload with
 Record Arc review debt or wait for eligible capacity according to repository
 policy; debt never overrides a changes-requested verdict. Non-review routes
 keep their concrete output contract.
+
+## Seat bindings
+
+`seats` projects the profile and variant bindings, including labeled trials,
+with their backend, provider, model, effort, stability and route version.
+The head-default query is the `plan` profile on Claude. An absent binding
+reports a null default and its resolver refusal. The actual head is unobserved. Ambient model variables do not establish a session.
+Evidence references are null where the manifests declare none. There is no
+separate seats manifest; model bars and review eligibility keep their existing
+sources.
 
 ## Review frontier
 
