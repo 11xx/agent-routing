@@ -1715,7 +1715,7 @@ class ReviewFrontierTest(unittest.TestCase):
         self.assertIsNone(answer["author"]["floor"])
 
     def test_an_author_without_effort_and_an_unknown_floor_is_floor_unknown(self):
-        self.assertEqual(frontier_review(ROOT, "fable-5.1")["status"], "floor-unknown")
+        self.assertEqual(frontier_review(ROOT, "mimo-v2.6-flash")["status"], "floor-unknown")
 
     def test_a_floor_no_seat_reaches_has_no_eligible_seat(self):
         answer = frontier_review(ROOT, "opus-5.5#max")
