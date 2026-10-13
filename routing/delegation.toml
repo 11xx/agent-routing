@@ -242,6 +242,8 @@ why = "Sol belongs to the subscription that already covers it. pi and opencode r
 
 [[pool]]
 provider = "anthropic"
+# Claude capacity is scarcer than the standing Codex window; other pairs are unranked.
+scarcer_than = ["openai-codex"]
 plan = "the Claude subscription"
 serves = ["opus-5.5", "fable-5.1", "sonnet-5.5", "haiku-5.5"]
 pays_for = "itself: never reach a Claude model through metered credits when the subscription covers it"

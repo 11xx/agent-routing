@@ -114,6 +114,12 @@ Callers classify work by task shape and pass that choice to the resolver. The
 resolver is a pure local table read: it does not inspect the task, access the
 network, cache results on disk, or choose a profile. A successful response carries
 the concrete route and a hash of the three routing manifests for durable logs.
+`resolve` and `validate` accept the observed `--caller <model>#<effort>`.
+`--caller-provider` selects its pool when membership is ambiguous. Their
+optional `confirmation` advisory compares same-pool ranks and declared pool
+scarcity; an unranked comparison stays explicit. Standing user authorization
+replaces an escalation offer. Routing never turns this advisory into a gate.
+
 Review responses also carry author eligibility constraints:
 
 ```sh

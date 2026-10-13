@@ -28,6 +28,8 @@ def main() -> int:
         action="store_true",
         help="with --author, return the strongest seat when none is eligible, marked ineligible with its qualifiers and debt kind",
     )
+    parser.add_argument("--caller", help="observed caller model#effort; adds an advisory confirmation block")
+    parser.add_argument("--caller-provider", help="observed caller pool; required when its model belongs to multiple pools")
     parser.add_argument("--allow-experimental", action="store_true")
     parser.add_argument(
         "--allow-cross-pool",
@@ -44,6 +46,8 @@ def main() -> int:
             variant_id=args.variant,
             allow_experimental=args.allow_experimental,
             allow_cross_pool=args.allow_cross_pool,
+            caller=args.caller,
+            caller_provider=args.caller_provider,
             author=args.author,
             accept_ineligible=args.accept_ineligible,
         )

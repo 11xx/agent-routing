@@ -124,6 +124,18 @@ VALIDATE AN OPERATOR-DIRECTED SELECTION
   pool membership and missing backend/model support are refusals, not
   opt-ins.
 
+COMPARE WITH THE CALLER'S OBSERVED SEAT
+  resolve and validate accept --caller <model>#<effort> and an optional
+  --caller-provider <provider>. Name the provider when a model belongs to
+  several pools. The caller is an observation, never inferred from ARC_MODEL.
+
+  The optional `confirmation` block is agent-routing-confirmation/1 and
+  advisory: `offer_to_user` is true for a higher rank in the same pool or a
+  declared scarcer pool, false for a known ordinary move, and null when the
+  policy cannot compare. Cross-pool ranks remain unranked. The block names
+  the caller, selection, pool and tier's stated benefit. A standing user
+  authorization replaces the offer; the block is not a dispatch gate.
+
 CHOOSE A PROFILE BY THE SHAPE OF THE WORK
   extract      one fixed-input, fixed-output classification, extraction,
                aggregation, or bounded summary

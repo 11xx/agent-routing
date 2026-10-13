@@ -421,6 +421,16 @@ def structural_problems(root: pathlib.Path) -> list[str]:
     by_backend = {backend["id"]: backend for backend in delegation.get("backend", [])}
     problems: list[str] = []
     problems.extend(backend_effort_problems(delegation.get("backend", []), models))
+    by_pool = {pool["provider"]: pool for pool in delegation.get("pool", [])}
+    for provider, pool in by_pool.items():
+        scarcer_than = pool.get("scarcer_than", [])
+        if not isinstance(scarcer_than, list) or not all(
+            isinstance(other, str) and other in by_pool and other != provider
+            for other in scarcer_than
+        ):
+            problems.append(f"pool {provider!r}: scarcer_than must name other declared providers")
+        elif any(provider in by_pool[other].get("scarcer_than", []) for other in scarcer_than):
+            problems.append(f"pool {provider!r}: contradictory scarcity ordering")
     model_ids: set[str] = set()
     for model in models:
         if model.get("id") in model_ids:
@@ -840,6 +850,61 @@ def _classify_selection(
     }
 
 
+def caller_confirmation(root: pathlib.Path, route: dict, canonical_model: str,
+                        caller: str | None, caller_provider: str | None = None) -> dict | None:
+    """Compare an observed caller seat with known pool-local ranks and scarcity."""
+    if caller is None:
+        if caller_provider is not None:
+            raise RouteRefusal("invalid-caller", "--caller-provider requires --caller")
+        return None
+    coordinate = _assessed_coordinate(root, caller, "caller", effort_required=True)
+    by_pool = pools(root)
+    providers = [provider for provider, pool in by_pool.items()
+                 if coordinate["model"] in pool.get("serves", [])]
+    if caller_provider is None:
+        if len(providers) != 1:
+            raise RouteRefusal("invalid-caller", "name the observed caller pool with --caller-provider",
+                               caller=caller, providers=providers)
+        caller_provider = providers[0]
+    if caller_provider not in providers:
+        raise RouteRefusal("invalid-caller", "caller provider does not serve the observed model",
+                           caller=caller, provider=caller_provider, providers=providers)
+    provider = route["provider"]
+    caller_rank = coordinate["tier"].get("rank", {}).get(caller_provider)
+    selected = model_effort_facts(root, canonical_model, route["effort"])["tier"]
+    selected_rank = selected.get("rank", {}).get(provider)
+    comparison = "unranked"
+    if provider == caller_provider and caller_rank is not None and selected_rank is not None:
+        comparison = "above" if selected_rank > caller_rank else "below" if selected_rank < caller_rank else "same"
+    pool_comparison = "unranked"
+    if provider == caller_provider:
+        pool_comparison = "same"
+    elif caller_provider in by_pool.get(provider, {}).get("scarcer_than", []):
+        pool_comparison = "scarcer"
+    elif provider in by_pool[caller_provider].get("scarcer_than", []):
+        pool_comparison = "less-scarce"
+    reasons = []
+    if comparison == "above":
+        reasons.append("above-caller-seat")
+    if pool_comparison == "scarcer":
+        reasons.append("scarcer-pool")
+    offer = True if reasons else False if comparison != "unranked" or pool_comparison == "less-scarce" else None
+    return {
+        "schema": "agent-routing-confirmation/1",
+        "advisory": True,
+        "offer_to_user": offer,
+        "reasons": reasons,
+        "rank_comparison": comparison,
+        "pool_comparison": pool_comparison,
+        "caller": {"model": coordinate["model"], "effort": coordinate["effort"],
+                   "provider": caller_provider, "rank": caller_rank},
+        "selection": {"model": route["model"], "effort": route["effort"],
+                      "provider": provider, "rank": selected_rank,
+                      "pool": by_pool.get(provider, {}).get("plan")},
+        "benefit": selected.get("use"),
+    }
+
+
 def validate_selection(
     root: pathlib.Path,
     profile_id: str,
@@ -852,6 +917,8 @@ def validate_selection(
     allow_experimental: bool = False,
     allow_cross_pool: bool = False,
     operator_named: bool = False,
+    caller: str | None = None,
+    caller_provider: str | None = None,
 ) -> dict[str, object]:
     """Validate an operator-directed tuple without resolving its profile.
 
@@ -1043,6 +1110,9 @@ def validate_selection(
     }
     if pool_refusal_result:
         selection["cross_pool"] = pool_refusal_result.fields["plan"]
+    confirmation = caller_confirmation(root, selection, model_id, caller, caller_provider)
+    if confirmation is not None:
+        selection["confirmation"] = confirmation
     return selection
 
 
@@ -1314,6 +1384,8 @@ def resolve(
     allow_cross_pool: bool = False,
     author: str | None = None,
     accept_ineligible: bool = False,
+    caller: str | None = None,
+    caller_provider: str | None = None,
 ) -> dict[str, object]:
     # Structural validity is a property of the manifest and gates every
     # resolution. A pool violation is a property of one route, so it is judged
@@ -1506,6 +1578,9 @@ def resolve(
         route["role_exception"] = selected["role_exception"]
     if review is not None:
         route["review"] = review
+    confirmation = caller_confirmation(root, route, selected["model"], caller, caller_provider)
+    if confirmation is not None:
+        route["confirmation"] = confirmation
     return route
 
 
