@@ -174,14 +174,14 @@ supported_efforts = ["low", "medium", "high", "xhigh", "max"]
 status = "verified"
 providers = ["anthropic"]
 entrypoint = "claude -p \"<prompt>\""
-model_flag = "--model claude-opus-5-5; claude-fable-5-1 and claude-sonnet-5-5 are operator-directed candidates on this login; claude-haiku-5-5 is the stable `explore` and `extract` seat at high on this backend; no automatic profile names the others"
-effort_flag = "--effort low|medium|high|xhigh|max; standing Opus routes resolve xhigh"
+model_flag = "--model claude-opus-5-5 | claude-haiku-5-5 | claude-fable-5-1 | claude-sonnet-5-5. `agent-routing seats` names the profile each one holds on this backend; a model it does not list is reached only by operator direction"
+effort_flag = "--effort low|medium|high|xhigh|max; a route runs at the effort its seat binds"
 workdir_flag = "none; cd first"
 capture = "--output-format stream-json --verbose; retain the final result as the report"
 isolation = "no OS sandbox: every delegated run uses bypassPermissions in an explicit repository; read-only is an appended instruction, never plan mode or a tool allowlist"
 resume = "--resume <session-id>; fork adds --fork-session"
 quota_pool = "claude-subscription"
-default_for = "Haiku 5.5 high read-only reconnaissance and extraction; Opus 5.5 xhigh implementation, execution, review, taste, UX, copy, API ergonomics, and landing quality through the first-party Claude client"
+default_for = "the delegated seats `agent-routing seats` binds to this backend: read-only reconnaissance and extraction, implementation, execution, review, taste, UX, copy, API ergonomics, and landing quality through the first-party Claude client. A lead session on a Claude model holds no delegated seat; what it reviews follows the doctrine's reviewer line"
 
 [[backend]]
 id = "opencode"
