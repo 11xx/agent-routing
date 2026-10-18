@@ -89,8 +89,8 @@ policy = "resolve the extract profile for fixed-shape calls and the stable imple
 [[rule]]
 id = "deepseek-invocation"
 harness = "pi"
-policy = "V4.1 Flash is pi's default for every GPT profile, reached on the Go pool as `--provider opencode-go --model deepseek-v4.1-flash` through each profile's deepseek-go variant, and the steered generator on the same pool through the `generate` profile. Brief it fully — exact targets, a scope ceiling, named acceptance probes — and check every identifier it emits against source, because the predecessor build fabricated confidently rather than visibly."
-why = "five field arcs on the build in service measured implementation work without a fabricated identifier in anything a lead probed, and the operator directed pi's defaults onto it; the identifier check is what the predecessor's record still buys"
+policy = "V4.1 Flash 1017 is pi's default for every GPT profile, reached on the Go pool as `--provider opencode-go --model deepseek-v4.1-flash` through each profile's deepseek-go variant, and the steered generator on the same pool through the `generate` profile. Brief it fully — exact targets, a scope ceiling, named acceptance probes — and check every identifier it emits against source, because the predecessor build fabricated confidently rather than visibly."
+why = "the operator retains the max defaults on Flash 1017; five field arcs belong to September V4.1 Flash and do not measure 1017. All new observations record the checkpoint, provider, harness and effort; inherited identifier checks remain in force"
 
 
 [[rule]]
@@ -132,7 +132,7 @@ policy = "arc executors leave a start breadcrumb (arc comment: executor started,
 # supported_efforts records the backend's common supported levels. A canonical
 # model's model_efforts list replaces that set when its catalog mapping differs.
 # Empty lists refuse every effort; opt-ins cannot waive these capabilities.
-# Pi's declared catalog supports Sol through high and maps DeepSeek's max.
+# Pi's declared catalog supports Sol through high and maps DeepSeek low, high and max.
 # OpenCode's delegated v2 provider declares no effort variants.
 
 [[backend]]
@@ -153,7 +153,7 @@ default_for = "all GPT delegation"
 [[backend]]
 id = "pi"
 supported_efforts = ["low", "medium", "high"]
-model_efforts = { "deepseek-flash" = ["max"] }
+model_efforts = { "deepseek-flash" = ["low", "high", "max"] }
 status = "verified"
 providers = ["openai-codex", "deepseek", "opencode-go"]
 version_probed = "0.84.3 (2026-08-29)"

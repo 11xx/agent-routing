@@ -340,7 +340,7 @@ Effort capability is declared per backend in `delegation.toml` as
 common set. Routing lint, resolution, and operator-directed validation refuse
 unsupported efforts even with opt-ins. Pi's declared Sol catalog supports low,
 medium, and high; xhigh and max require a verified custom model mapping recorded
-in the capability data. DeepSeek's Pi mapping supports max. The delegated
+in the capability data. DeepSeek's Pi mapping supports low, high and max. The delegated
 OpenCode v2 provider supports no effort variants.
 
 Backend selection between the two GPT routes:
@@ -358,15 +358,16 @@ Backend selection between the two GPT routes:
   probationary MiMo rows on the Go subscription, and `deepseek` reaches V4.1
   Flash on independent API billing that no profile uses. Any harness that can run a shell can
   drive it. A non-Claude, non-Codex lead delegating to GPT goes through Pi.
-- **DeepSeek V4.1 Flash is pi's default route.** It is reached on the Go pool
-  as `--provider opencode-go --model deepseek-v4.1-flash`, through each GPT
-  profile's `deepseek-go` variant and through `generate`. The vendor's 54.4
-  DeepSWE result and the independent testing that measured confident
-  fabrication describe the 0731 predecessor; the build in service carries
-  five field arcs of its own, including ten implementation slices across four
-  repositories on 2026-10-02, and the operator seated it on that record.
-  Brief it fully and check every identifier it emits against source. V4 Pro
-  is deprecated in favour of it.
+- **DeepSeek V4.1 Flash 1017 is pi's default route, at max.** It is reached
+  on the Go pool as `--provider opencode-go --model deepseek-v4.1-flash`,
+  through each GPT profile's `deepseek-go` variant and through `generate`.
+  Low and high are explicit alternatives. Five field arcs belong to September
+  V4.1 Flash; the vendor's 54.4 DeepSWE result and fabrication observations
+  belong to V4 Flash 0731. Neither measures 1017. Record each new observation's
+  checkpoint, provider, harness and effort, and qualify provider-reported
+  identity separately from the expected checkpoint behind a rolling alias.
+  Brief it fully and check every identifier against source. V4 Pro is
+  deprecated in favour of it.
 - **MiMo V2.6 Flash and Pro are probation, and the preference between them
   is open.** Both rows are unmeasured — no score, no field arc, no
   approval anyone has confirmed — and no profile resolves to either. Reach

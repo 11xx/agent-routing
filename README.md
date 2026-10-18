@@ -337,7 +337,7 @@ canonical model IDs to lists that replace that common set for a particular
 catalog mapping. An empty set supports no effort. Structural lint checks
 these declarations and every profile/backend pairing; both `resolve` and
 `validate` enforce them, regardless of experimental or cross-pool opt-ins.
-Pi's declared Sol support ends at high; its DeepSeek mapping supports max.
+Pi's declared Sol support ends at high; its DeepSeek mapping supports low, high and max.
 A custom Pi model declaration must be verified and recorded in the capability
 data before it can authorize a higher tier. OpenCode's delegated v2 provider
 supports no effort variants. Catalog presence alone does not establish support.
@@ -377,6 +377,11 @@ harness that ignores this data is not stopped by it; the data only makes the
 decision legible and the prohibitions unambiguous.
 
 ## Adding or revising a model
+
+Rolling provider IDs keep a checkpoint-specific `build` on the roster. Field
+tests and observations name that build, provider, harness and effort, and
+qualify the provider-reported identity separately. Earlier checkpoints retain
+their evidence in `eras/`; their results do not measure the current build.
 
 1. Edit `routing/models.toml`. Record `pass_at_1` from a real measurement and
    leave a field out rather than guessing it — an absent number is honest, an
