@@ -247,7 +247,9 @@ READ THE POLICY IN FULL
 KEEP CONSUMERS HONEST
   agent-routing lint             compare the doctrine table's pass@1 and cost
                                  cells against the manifest, check model
-                                 coverage, and validate route structure
+                                 coverage, and validate route structure and
+                                 API prices: known category keys, and a read
+                                 date or a stated reason for its absence
   agent-routing lint-consumers   reject concrete roster pins in consumers; fails
                                  when an accessor reports fewer sources than
                                  the floor routing/consumers.toml declares
@@ -255,6 +257,22 @@ KEEP CONSUMERS HONEST
   A roster copied into a consumer is a roster that goes stale, and one transition
   once left four embedded copies wrong at the same time. Point a consumer at a
   verb instead of quoting a model.
+
+EXPORT LIST PRICES FOR TAPES
+  agent-routing prices [--format tapes] [--output <file>]
+
+  Print each roster row's api_price_per_million, or write it as a
+  tapes-price-table/1 file for tapes to price sessions with. tapes never reads
+  this repository: install the written file where tapes looks for a table,
+  ~/.config/tapes/prices.toml, or point TAPES_PRICES or --prices at it. Each
+  model is exported under its roster id with the ids harnesses record as
+  aliases (the row's aliases and the backend_model routes bind to it), dated
+  by its api_price_read, and priced only in the categories the row prices:
+  input and cache-miss input as uncached_input, cached and cache-hit input as
+  cache_read, cache_write as cache_write_5m, cache_write_1h, and output. A row
+  whose prices carry api_price_undated instead of a date is left out and named
+  in the file's header. Prices are API list prices; a pool that bills below
+  list does not change them.
 
 EMIT STATIC CLAUDE AGENTS
   agent-routing emit claude-agents [--profile <shape>] [--variant <variant>]

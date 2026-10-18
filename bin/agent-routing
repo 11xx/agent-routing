@@ -23,6 +23,9 @@ Run `agent-routing` with no verb for the routing guide.
   mechanism           print the mechanism-routing prose canon (DELEGATION.md)
   doctrine            print the authored routing policy in full
   lint                check pass@1/cost cells, model coverage, and routes
+  prices [--format tapes] [--output <file>]
+                      print the roster's API list prices, or write them as a
+                      tapes-price-table/1 file for tapes to read
   lint-consumers      reject concrete roster pins in delegation consumers; fail when an
                       accessor reports fewer sources than its declared floor
   eras                list the model-era history files
@@ -79,6 +82,7 @@ case "${1:-}" in
   mechanism)  cat "$root/DELEGATION.md" ;;
   doctrine)   cat "$root/doctrine/model-routing.md" ;;
   lint)       exec "$root/bin/lint-routing" ;;
+  prices)     shift; exec "$root/bin/price-export" "$@" ;;
   lint-consumers) exec "$root/bin/lint-consumers" ;;
   eras)       ls -1 "$root/eras" ;;
   dir)        echo "$routing_dir" ;;

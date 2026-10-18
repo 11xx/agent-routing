@@ -15,7 +15,9 @@ in both and differs. A row whose live build is unmeasured carries the figures of
 the build it replaces, and those are held to the same agreement wherever the
 doctrine puts them, so retiring a measurement does not release its numbers. It
 also validates route structure, so every profile and variant has to name a real
-model, effort, backend, and provider, with declared backend/model effort support.
+model, effort, backend, and provider, with declared backend/model effort support,
+and API prices, so every `api_price_per_million` uses known category keys and
+carries an `api_price_read` date or an `api_price_undated` reason.
 
 Everything else is outside its reach — the output-token column, every other
 number carried in prose, and the wording of both documents. A rule stated
@@ -29,6 +31,7 @@ import sys
 import tomllib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "lib"))
+from price_export import price_problems  # noqa: E402
 from routing_profiles import validation_problems  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -130,6 +133,7 @@ def main():
             problems.append(f"manifest has {model_id!r}; the doctrine table never lists it")
 
     problems.extend(validation_problems(ROOT))
+    problems.extend(price_problems(models))
 
     for problem in problems:
         print(problem)

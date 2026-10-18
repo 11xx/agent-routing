@@ -18,6 +18,8 @@ agent-routing check opus-5 xhigh      # exits 1: prohibited
 agent-routing doctrine                # authored prose used by every harness
 agent-routing lint                    # pass@1/cost cells, coverage, routes
 agent-routing lint-consumers          # reject roster pins in active consumers
+agent-routing prices --format tapes --output ~/.config/tapes/prices.toml
+                                      # API list prices as a tapes price table
 ```
 
 For a tuple the operator named exactly, `validate --operator-named` permits
@@ -38,6 +40,10 @@ Separating it lets `arc` and `tapes` own no routing opinion at all. Neither
 picks models: `arc` records whatever `--model` string it is handed, and `tapes`
 reports whatever a transcript contains. They are not consumers of this data and
 should not become ones.
+`agent-routing prices --format tapes` keeps that true in the other direction:
+it writes the roster's API list prices in tapes' own `tapes-price-table/1`
+format, which the operator installs where tapes looks for a price table.
+agent-routing produces the file; tapes reads only the file.
 
 ## What is authoritative
 

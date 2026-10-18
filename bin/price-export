@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+"""Print the roster's API list prices, or export them as a tapes price table."""
+import argparse
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+from price_export import price_export, readable_table, tapes_table  # noqa: E402
+
+parser = argparse.ArgumentParser(prog="agent-routing prices")
+parser.add_argument("--format", choices=["tapes"],
+                    help="write a tapes-price-table/1 TOML table instead of a readable one")
+parser.add_argument("--output", type=pathlib.Path, help="write to this file instead of stdout")
+args = parser.parse_args()
+try:
+    export = price_export(ROOT)
+except ValueError as error:
+    print(f"agent-routing prices: {error}", file=sys.stderr)
+    raise SystemExit(1)
+text = tapes_table(export) if args.format == "tapes" else readable_table(export)
+if args.output:
+    args.output.write_text(text)
+else:
+    sys.stdout.write(text)
