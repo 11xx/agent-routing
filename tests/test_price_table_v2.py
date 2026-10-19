@@ -294,23 +294,6 @@ class RosterTermsTest(unittest.TestCase):
         self.assertEqual(rows["gpt-6-luna"][0]["long_context"]["above_prompt_tokens"], 272000)
 
 
-    def test_deepseek_rows_price_off_peak_hours_at_half(self):
-        """Claim: both DeepSeek rows export the vendor's off-peak hours (all
-        but 01:00-04:00 and 06:00-10:00 UTC) as windows at half the peak
-        price, and no window covers a weekday peak hour. Rejects an off-peak
-        DeepSeek request priced at peak, and a peak request priced at the
-        off-peak rate."""
-        _, rows = self.roster()
-        for model_id in ("deepseek-flash", "deepseek-v4-pro"):
-            with self.subTest(model=model_id):
-                row, = rows[model_id]
-                self.assertEqual([(window["from"], window["until"]) for window in row["time_of_day"]],
-                                 [("04:00", "06:00"), ("10:00", "01:00")])
-                for window in row["time_of_day"]:
-                    self.assertEqual(window["per_million"],
-                                     {category: price / 2 for category, price in row["per_million"].items()})
-
-
     def test_gemini_flash_doubles_on_its_published_date(self):
         """Claim: Gemini 3.8 Flash exports its introductory price until
         2027-01-01 and the doubled price from then. Rejects a 2027 request

@@ -283,11 +283,12 @@ EXPORT LIST PRICES FOR TAPES
   Claude Code or Codex subscription pays no surcharge. A row's
   time_of_day_prices become UTC time-of-day windows that price every category
   the row prices at its multiplier, on the days of the week a window's days
-  names (mon..sun) or every day, as DeepSeek's off-peak hours are priced at
-  half. Public holidays are not expressed. A row's api_price_changes export
-  one model per price under the same ids, each in effect from its date until
-  the next, as Gemini 3.8 Flash doubles on 2027-01-01. Prices are API list
-  prices; a pool that bills below list does not change them.
+  names (mon..sun) or every day, as DeepSeek's off-peak hours, its weekday
+  peak hours on weekends included, are priced at half. Public holidays are
+  not expressed. A row's api_price_changes export one model per price under
+  the same ids, each in effect from its date until the next, as Gemini 3.8
+  Flash doubles on 2027-01-01. Prices are API list prices; a pool that bills
+  below list does not change them.
 
 EMIT STATIC CLAUDE AGENTS
   agent-routing emit claude-agents [--profile <shape>] [--variant <variant>]

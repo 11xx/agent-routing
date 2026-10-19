@@ -1,6 +1,8 @@
 """A time-of-day window may name the UTC days of the week it opens on, and
-the export carries them as tapes-price-table/2 `days`."""
+the export carries them as tapes-price-table/2 `days`, so DeepSeek's weekday
+peak hours price off-peak on weekends."""
 
+import datetime
 import pathlib
 import sys
 import tomllib
@@ -9,7 +11,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 sys.path.insert(0, str(ROOT / "tests"))
-from price_export import price_export, price_problems, readable_table  # noqa: E402
+from price_export import price_export, price_problems, readable_table, tapes_table  # noqa: E402
 from test_price_export import FixtureRoster  # noqa: E402
 from test_price_table_v2 import assert_tapes_shape, written_table  # noqa: E402
 
@@ -21,6 +23,25 @@ api_price_per_million = { input = 1.0, output = 4.0 }
 api_price_read = "2026-10-06"
 time_of_day_prices = [{ from = "22:00", until = "02:00", multiplier = 0.5, days = ["fri"] }, { from = "01:00", until = "03:00", multiplier = 0.25, days = ["fri", "sun"] }, { from = "12:00", until = "13:00", multiplier = 0.75 }]
 '''
+
+DAY_NAMES = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def window_holds(window: dict, at: datetime.datetime) -> bool:
+    """Whether a tapes time-of-day window holds a request made at `at`, as
+    tapes' guide states it: `from` inclusive, `until` exclusive, a window
+    past midnight belonging to the day it opens on, and a window naming no
+    days opening every day."""
+    start = datetime.time.fromisoformat(window["from"])
+    end = datetime.time.fromisoformat(window["until"])
+    time = at.time()
+    if start < end:
+        opened = at.weekday() if start <= time < end else None
+    elif start <= time:
+        opened = at.weekday()
+    else:
+        opened = (at.weekday() - 1) % 7 if time < end else None
+    return opened is not None and DAY_NAMES[opened] in window.get("days", DAY_NAMES)
 
 
 class WeekdayExportTest(unittest.TestCase):
@@ -83,6 +104,33 @@ class WeekdayLintTest(unittest.TestCase):
             with self.subTest(days=days):
                 problems = self.problems(f'[{{ from = "01:00", until = "04:00", multiplier = 0.5, days = {days} }}]')
                 self.assertTrue(any(expected in problem for problem in problems), problems)
+
+
+class DeepSeekWeekTest(unittest.TestCase):
+    def test_deepseek_rows_are_off_peak_all_weekend_and_off_peak_hours_on_weekdays(self):
+        """Claim: both DeepSeek rows, as exported, price every minute of a
+        UTC week at half the peak rate except 01:00-04:00 and 06:00-10:00
+        Monday to Friday, which no window holds, and no minute is held by two
+        windows. Rejects a weekend request in a weekday peak hour priced at
+        peak, and a weekday peak request priced off-peak."""
+        table = tomllib.loads(tapes_table(price_export(ROOT)))
+        assert_tapes_shape(self, table)
+        models = {model["id"]: model for model in table["models"]}
+        monday = datetime.datetime(2026, 10, 19, tzinfo=datetime.timezone.utc)
+        for model_id in ("deepseek-flash", "deepseek-v4-pro"):
+            with self.subTest(model=model_id):
+                model = models[model_id]
+                half = {category: price / 2 for category, price in model["per_million"].items()}
+                for window in model["time_of_day"]:
+                    self.assertEqual(window["per_million"], half)
+                wrong = []
+                for minute in range(7 * 24 * 60):
+                    at = monday + datetime.timedelta(minutes=minute)
+                    peak = at.weekday() < 5 and (1 <= at.hour < 4 or 6 <= at.hour < 10)
+                    held = sum(window_holds(window, at) for window in model["time_of_day"])
+                    if held != (0 if peak else 1):
+                        wrong.append(f"{at:%a %H:%M} held by {held}")
+                self.assertEqual(wrong[:5], [], f"{len(wrong)} minutes priced wrong")
 
 
 if __name__ == "__main__":
