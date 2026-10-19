@@ -37,7 +37,10 @@
 # Claude or Codex subscription pays none. `time_of_day_prices` lists UTC
 # windows, `from` inclusive and `until` exclusive (past midnight when `until`
 # is not after `from`), in which every price the row lists is scaled by the
-# window's `multiplier`.
+# window's `multiplier`. `api_price_changes` lists prices the vendor has
+# published for a later date, each with the same keys as
+# `api_price_per_million` and in effect from its `from` date, midnight UTC,
+# until the next.
 # `agent-routing prices --format tapes` exports every priced row as a tapes
 # price table, a surcharge as the row's long-context term.
 
@@ -531,6 +534,7 @@ character = "the score is real and the shape is many cheap steps: 166 per task a
 weaknesses = ["no field record on this matrix: no arc, no review, no approval confirmed by anyone", "the effort lever above high is unmeasured here; the vendor's own comparisons publish the high configuration only", "introductory pricing: $0.75 input and $3.75 output per million through 2026-12-31, doubling on 2027-01-01, so the per-task figure roughly doubles then"]
 api_price_per_million = { input = 0.75, cached_input = 0.075, output = 3.75 }
 api_price_read = "2026-10-19"
+api_price_changes = [{ from = "2027-01-01", per_million = { input = 1.50, cached_input = 0.15, output = 7.50 } }]
 notes = "Released 2026-09-02, the third Flash release in six weeks (3.6 at 47%, 3.7 at 65%, 3.8 at 74% on the same board), the steepest direction of travel on the roster. A separate Cyber variant exists behind an access programme and is not this row. Activation order: one pi probe through openrouter for reachability and the effort lever, then a review arc against the bar Luna max cleared, then a seat decision. The seat it would contest is review, where cost per pass is what is bought. Pricing read from the Gemini API pricing page (ai.google.dev/gemini-api/docs/pricing) on 2026-10-19, Standard paid tier: $0.75 input, $0.075 context-cache read and $3.75 output per million through 2026-12-31, and $1.50, $0.15 and $7.50 from 2027-01-01. Cache storage costs $0.50 per million tokens per hour, which no per-token category carries. No long-context tier is listed."
   [[model.effort]]
   effort = "high"

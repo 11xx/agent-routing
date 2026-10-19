@@ -7,7 +7,9 @@ only the categories the row prices. A row's `long_context_surcharge` becomes
 the model's long-context term: past the threshold the whole request pays the
 multiplied rates, under API per-token billing only, since a subscription plan
 pays no surcharge. Its `time_of_day_prices` become UTC time-of-day windows
-priced at the row's rates times each window's multiplier.
+priced at the row's rates times each window's multiplier. Its
+`api_price_changes` split it into one model per price, each in effect from
+its date until the next, carrying the row's terms at its own rates.
 """
 
 import datetime
@@ -115,24 +117,47 @@ def _time_of_day_problems(label: str, windows: object) -> list[str]:
     return problems
 
 
+def _price_change_problems(label: str, model: dict, changes: object) -> list[str]:
+    if not isinstance(changes, list) or not all(isinstance(change, dict) for change in changes):
+        return [f"{label}: api_price_changes must be a list of tables"]
+    problems = []
+    previous = _read_date(model.get("api_price_read"))
+    for change in changes:
+        start = _read_date(change.get("from"))
+        if start is None:
+            problems.append(f"{label}: api_price_changes from must be a YYYY-MM-DD date")
+        elif previous is not None and start <= previous:
+            problems.append(f"{label}: api_price_changes from {start} must come after the read date and the "
+                            "change before it")
+        previous = start or previous
+        prices = change.get("per_million")
+        if not isinstance(prices, dict) or set(prices) != set(model["api_price_per_million"]):
+            problems.append(f"{label}: api_price_changes per_million must price the keys api_price_per_million prices")
+        elif not all(_finite_at_least(value, 0) for value in prices.values()):
+            problems.append(f"{label}: api_price_changes per_million prices must be finite numbers of at least zero")
+    return problems
+
+
 def price_problems(models: list[dict]) -> list[str]:
     """Problems with the roster's API prices: unknown or doubled category
     keys, prices that are not finite non-negative numbers, a price without
-    its read date, and a long-context surcharge or time-of-day window the
-    export cannot describe."""
+    its read date, and a long-context surcharge, time-of-day window or dated
+    price change the export cannot describe."""
     problems: list[str] = []
     for model in models:
         label = model.get("id", "<missing>")
         prices = model.get("api_price_per_million")
         surcharge = model.get("long_context_surcharge")
         windows = model.get("time_of_day_prices")
+        changes = model.get("api_price_changes")
         if "api_price_undated" in model:
             problems.append(f"{label}: api_price_undated is not accepted; date the price with api_price_read "
                             "or remove it")
         if prices is None:
-            if "api_price_read" in model or surcharge is not None or windows is not None:
-                problems.append(f"{label}: api_price_read, long_context_surcharge or time_of_day_prices without "
-                                "api_price_per_million")
+            if any(key in model for key in ("api_price_read", "long_context_surcharge", "time_of_day_prices",
+                                            "api_price_changes")):
+                problems.append(f"{label}: api_price_read, long_context_surcharge, time_of_day_prices or "
+                                "api_price_changes without api_price_per_million")
             continue
         if not isinstance(prices, dict):
             problems.append(f"{label}: api_price_per_million must be a table")
@@ -156,6 +181,8 @@ def price_problems(models: list[dict]) -> list[str]:
             problems.extend(_surcharge_problems(label, surcharge))
         if windows is not None:
             problems.extend(_time_of_day_problems(label, windows))
+        if changes is not None:
+            problems.extend(_price_change_problems(label, model, changes))
     return problems
 
 
@@ -195,25 +222,31 @@ def price_export(root: pathlib.Path) -> dict:
         if prices is None:
             continue
         surcharge = model.get("long_context_surcharge")
-        per_million = {CATEGORY_KEYS[key]: float(value) for key, value in prices.items()}
-        per_million = {category: per_million[category] for category in CATEGORIES if category in per_million}
-        source = f"agent-routing routing/models.toml {model['id']} api_price_per_million, route version {version}"
         names = [name for name in model_identities(root, model["id"]) if name != model["id"]]
         for name in [model["id"], *names]:
             if name in owners:
                 raise ValueError(f"{model['id']}: {name!r} is already an id of {owners[name]}")
             owners[name] = model["id"]
-        exported.append({
-            "id": model["id"],
-            "aliases": names,
-            "effective": model["api_price_read"],
-            "source": source,
-            "per_million": per_million,
-            "unpriced": [category for category in CATEGORIES if category not in per_million],
-            "long_context": long_context_term(surcharge, per_million) if surcharge is not None else None,
-            "time_of_day": time_of_day_terms(model.get("time_of_day_prices", []), per_million),
-            "status": model.get("status"),
-        })
+        changes = model.get("api_price_changes", [])
+        periods = [(None, "api_price_per_million", prices),
+                   *((change["from"], f"api_price_changes from {change['from']}", change["per_million"])
+                     for change in changes)]
+        for index, (start, origin, period_prices) in enumerate(periods):
+            per_million = {CATEGORY_KEYS[key]: float(value) for key, value in period_prices.items()}
+            per_million = {category: per_million[category] for category in CATEGORIES if category in per_million}
+            exported.append({
+                "id": model["id"],
+                "aliases": names,
+                "effective": model["api_price_read"],
+                "effective_from": start,
+                "effective_until": periods[index + 1][0] if index + 1 < len(periods) else None,
+                "source": f"agent-routing routing/models.toml {model['id']} {origin}, route version {version}",
+                "per_million": per_million,
+                "unpriced": [category for category in CATEGORIES if category not in per_million],
+                "long_context": long_context_term(surcharge, per_million) if surcharge is not None else None,
+                "time_of_day": time_of_day_terms(model.get("time_of_day_prices", []), per_million),
+                "status": model.get("status"),
+            })
     return {"schema": SCHEMA, "currency": CURRENCY, "route_version": version, "models": exported}
 
 
@@ -252,8 +285,9 @@ def tapes_table(export: dict) -> str:
         ]
         if row["aliases"]:
             lines.append(f"aliases = {_strings(row['aliases'])}")
+        lines.append(f"effective = {row['effective']}")
+        lines += [f"{key} = {row[key]}" for key in ("effective_from", "effective_until") if row[key]]
         lines += [
-            f"effective = {row['effective']}",
             f"source = {_string(row['source'])}",
             f"per_million = {_inline(row['per_million'])}",
         ]
@@ -281,6 +315,8 @@ def tapes_table(export: dict) -> str:
 def term_summary(row: dict) -> str:
     """A row's terms priced by the request, for a reader."""
     terms = []
+    if row["effective_from"] or row["effective_until"]:
+        terms.append(f"in effect {row['effective_from'] or ''}..{row['effective_until'] or ''}")
     term = row["long_context"]
     if term:
         threshold = (f"from {term['from_prompt_tokens']:,}" if "from_prompt_tokens" in term

@@ -21,7 +21,9 @@ carries an `api_price_read` date, and every `long_context_surcharge` has a
 positive threshold, says whether a prompt of exactly the threshold pays it,
 and has input, cache and output multipliers of at least one, and every
 `time_of_day_prices` window has HH:MM UTC bounds, a multiplier of at least
-zero, and no overlap with another.
+zero, and no overlap with another, and every `api_price_changes` entry is
+dated after the read date and the change before it and prices the same keys
+as the row.
 
 Everything else is outside its reach — the output-token column, every other
 number carried in prose, and the wording of both documents. A rule stated

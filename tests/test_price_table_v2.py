@@ -1,7 +1,9 @@
 """The roster's prices export as a tapes-price-table/2 file carrying every
 term the roster records: a long-context surcharge as a long-context term for
-API per-token billing only, and time-of-day prices as UTC windows."""
+API per-token billing only, time-of-day prices as UTC windows, and a dated
+price change as one row per price with its validity window."""
 
+import datetime
 import pathlib
 import subprocess
 import sys
@@ -53,6 +55,18 @@ family = "fixture"
 api_price_per_million = { cache_hit_input = 0.006, cache_miss_input = 0.30, output = 1.2 }
 api_price_read = "2026-10-04"
 time_of_day_prices = [{ from = "04:00", until = "06:00", multiplier = 0.5 }, { from = "10:00", until = "01:00", multiplier = 0.25 }]
+'''
+
+
+DATED_MODELS = '''
+[[model]]
+id = "dated-5"
+family = "fixture"
+aliases = ["vendor-dated-5"]
+api_price_per_million = { input = 0.75, cached_input = 0.075, output = 3.75 }
+api_price_read = "2026-10-05"
+long_context_surcharge = { threshold_input_tokens = 200000, threshold_inclusive = false, input_multiplier = 2.0, cache_multiplier = 2.0, output_multiplier = 1.5 }
+api_price_changes = [{ from = "2027-01-01", per_million = { input = 1.5, cached_input = 0.15, output = 7.5 } }, { from = "2027-07-01", per_million = { input = 3.0, cached_input = 0.3, output = 15.0 } }]
 '''
 
 
@@ -194,6 +208,54 @@ class TimeOfDayTest(unittest.TestCase):
         self.assertTrue(price_problems(unpriced["model"]))
 
 
+class PriceChangeTest(unittest.TestCase):
+    def test_a_dated_change_exports_one_row_per_price(self):
+        """Claim: a row with api_price_changes exports one model per price
+        under the same id and aliases, the first in effect until the first
+        change, each change from its date until the next, the last open,
+        and each carrying the row's terms at its own rates. Rejects the
+        current price applied past the vendor's change date, and a later
+        price applied before it."""
+        table = written_table(DATED_MODELS)
+        assert_tapes_shape(self, table)
+        rows = table["models"]
+        self.assertEqual([row["id"] for row in rows], ["dated-5"] * 3)
+        self.assertEqual([row["aliases"] for row in rows], [["vendor-dated-5"]] * 3)
+        self.assertEqual([(row.get("effective_from"), row.get("effective_until")) for row in rows], [
+            (None, datetime.date(2027, 1, 1)),
+            (datetime.date(2027, 1, 1), datetime.date(2027, 7, 1)),
+            (datetime.date(2027, 7, 1), None),
+        ])
+        self.assertEqual([row["per_million"]["uncached_input"] for row in rows], [0.75, 1.5, 3.0])
+        self.assertEqual(rows[1]["per_million"], {"uncached_input": 1.5, "cache_read": 0.15, "output": 7.5})
+        self.assertEqual([row["long_context"]["multipliers"]["output"] for row in rows], [1.5] * 3)
+        self.assertIn("api_price_changes from 2027-01-01", rows[1]["source"])
+
+    def test_lint_refuses_a_change_the_export_cannot_place(self):
+        """Claim: a change needs a date after the read date and after the
+        change before it, and prices for exactly the keys the row prices.
+        Rejects validity windows tapes would refuse as meeting, and a change
+        that silently drops a category."""
+        cases = {
+            '[{ from = "2026-08-01", per_million = { input = 2.0 } }]': "must come after the read date",
+            '[{ from = "2027-02-01", per_million = { input = 2.0 } }, { from = "2027-01-01", per_million = { input = 3.0 } }]':
+                "must come after the read date and the change before it",
+            '[{ from = "2027-1-1", per_million = { input = 2.0 } }]': "must be a YYYY-MM-DD date",
+            '[{ from = "2027-01-01", per_million = { output = 2.0 } }]': "must price the keys",
+            '[{ from = "2027-01-01", per_million = { input = -2.0 } }]': "finite numbers of at least zero",
+            '{ from = "2027-01-01", per_million = { input = 2.0 } }': "must be a list of tables",
+        }
+        for body, expected in cases.items():
+            with self.subTest(expected=expected):
+                models = tomllib.loads('[[model]]\nid = "x"\napi_price_per_million = { input = 1.0 }\n'
+                                       f'api_price_read = "2026-09-01"\napi_price_changes = {body}\n')["model"]
+                problems = price_problems(models)
+                self.assertTrue(any(expected in problem for problem in problems), problems)
+        unpriced = tomllib.loads('[[model]]\nid = "x"\n'
+                                 'api_price_changes = [{ from = "2027-01-01", per_million = { input = 2.0 } }]\n')
+        self.assertTrue(price_problems(unpriced["model"]))
+
+
 class RosterTermsTest(unittest.TestCase):
     def roster(self) -> tuple[dict, dict]:
         models = {model["id"]: model for model in tomllib.loads(
@@ -246,6 +308,18 @@ class RosterTermsTest(unittest.TestCase):
                 for window in row["time_of_day"]:
                     self.assertEqual(window["per_million"],
                                      {category: price / 2 for category, price in row["per_million"].items()})
+
+
+    def test_gemini_flash_doubles_on_its_published_date(self):
+        """Claim: Gemini 3.8 Flash exports its introductory price until
+        2027-01-01 and the doubled price from then. Rejects a 2027 request
+        priced at the introductory rate."""
+        _, rows = self.roster()
+        first, second = rows["gemini-3.8-flash"]
+        self.assertEqual(first["effective_until"], datetime.date(2027, 1, 1))
+        self.assertNotIn("effective_from", first)
+        self.assertEqual(second["effective_from"], datetime.date(2027, 1, 1))
+        self.assertEqual(second["per_million"], {category: 2 * price for category, price in first["per_million"].items()})
 
 
 if __name__ == "__main__":

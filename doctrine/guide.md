@@ -251,8 +251,9 @@ KEEP CONSUMERS HONEST
                                  API prices: known category keys, a read
                                  date on every price, and a long-context
                                  surcharge with its threshold, its boundary
-                                 and its multipliers, and time-of-day
-                                 windows that do not overlap
+                                 and its multipliers, time-of-day windows
+                                 that do not overlap, and dated price
+                                 changes in order after the read date
   agent-routing lint-consumers   reject concrete roster pins in consumers; fails
                                  when an accessor reports fewer sources than
                                  the floor routing/consumers.toml declares
@@ -281,8 +282,10 @@ EXPORT LIST PRICES FOR TAPES
   Claude Code or Codex subscription pays no surcharge. A row's
   time_of_day_prices become UTC time-of-day windows that price every category
   the row prices at its multiplier, as DeepSeek's off-peak hours are priced at
-  half. Prices are API list prices; a pool that bills below list does not
-  change them.
+  half. A row's api_price_changes export one model per price under the same
+  ids, each in effect from its date until the next, as Gemini 3.8 Flash
+  doubles on 2027-01-01. Prices are API list prices; a pool that bills below
+  list does not change them.
 
 EMIT STATIC CLAUDE AGENTS
   agent-routing emit claude-agents [--profile <shape>] [--variant <variant>]
