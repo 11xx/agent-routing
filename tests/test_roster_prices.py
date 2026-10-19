@@ -1,8 +1,6 @@
-"""Every roster price carries the date it was read, and a row whose list
-price rises above a prompt-size threshold exports no price tapes would apply
-unconditionally: tapes-price-table/1 prices a figure's categories at one rate
-and has no term for a threshold, so a short-prompt rate exported there would
-price a request over the threshold as complete at a fraction of its cost."""
+"""Every roster price carries the date it was read, and every priced row is
+exported, a row whose list price rises above a prompt-size threshold with the
+term that prices it."""
 
 import pathlib
 import sys
@@ -11,39 +9,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
-sys.path.insert(0, str(ROOT / "tests"))
-from price_export import price_export, price_problems, readable_table, tapes_table  # noqa: E402
-from test_price_export import FixtureRoster  # noqa: E402
-
-SURCHARGED_MODELS = '''
-[[model]]
-id = "short-1"
-family = "fixture"
-aliases = ["vendor-short-1"]
-api_price_per_million = { input = 0.1, cached_input = 0.01, cache_write = 0.125, cache_write_1h = 0.2, output = 0.5 }
-api_price_read = "2026-10-01"
-long_context_surcharge = { threshold_input_tokens = 100000, input_multiplier = 5.0, cache_multiplier = 5.0, output_multiplier = 5.0, applies = "the full request" }
-
-[[model]]
-id = "flat-2"
-family = "fixture"
-api_price_per_million = { input = 2.0, output = 6.0 }
-api_price_read = "2026-10-01"
-'''
-
-
-def list_price(per_million: dict, tokens: dict) -> tuple[float, list[str]]:
-    """A figure priced the way tapes prices one: each category with tokens at
-    its row price, and a category with tokens but no price named missing."""
-    amount, missing = 0.0, []
-    for category, count in tokens.items():
-        if not count:
-            continue
-        if category in per_million:
-            amount += count * per_million[category] / 1_000_000
-        else:
-            missing.append(category)
-    return amount, missing
+from price_export import price_export, price_problems  # noqa: E402
 
 
 class RosterPricesTest(unittest.TestCase):
@@ -61,27 +27,6 @@ api_price_undated = "no read date known"
         problems = price_problems(models)
         self.assertTrue(any("needs api_price_read" in problem for problem in problems), problems)
         self.assertTrue(any("api_price_undated is not accepted" in problem for problem in problems), problems)
-
-    def test_a_surcharged_row_prices_no_request_over_its_threshold_as_complete(self):
-        """Claim: a row with a long-context surcharge is exported under its ids
-        with no category priced, and its source and the table header name the
-        surcharge, so a fully measured request over the threshold is never a
-        complete estimate. Rejects the short-prompt rates exported as
-        unconditional prices: 200,000 uncached input and 1,000 output tokens
-        would read complete at $0.0205 against a list price of $0.1025."""
-        with FixtureRoster(SURCHARGED_MODELS) as root:
-            export = price_export(root)
-            text = tapes_table(export)
-        table = {model["id"]: model for model in tomllib.loads(text)["models"]}
-        self.assertEqual(table["short-1"]["aliases"], ["vendor-short-1"])
-        self.assertEqual(table["short-1"]["per_million"], {})
-        amount, missing = list_price(table["short-1"]["per_million"], {"uncached_input": 200_000, "output": 1_000})
-        self.assertTrue(missing, f"priced complete at {amount}")
-        self.assertIn("100,000 input tokens", table["short-1"]["source"])
-        self.assertIn("tapes-price-table/1 cannot express", table["short-1"]["source"])
-        self.assertIn("# Prices left out for short-1: ", text)
-        self.assertEqual(table["flat-2"]["per_million"], {"uncached_input": 2.0, "output": 6.0})
-        self.assertIn("prices left out: short-1: ", readable_table(export))
 
     def test_lint_refuses_a_malformed_surcharge(self):
         """Claim: a surcharge needs a positive whole-token threshold and
@@ -105,9 +50,9 @@ api_price_undated = "no read date known"
                                  'input_multiplier = 2.0, cache_multiplier = 2.0, output_multiplier = 2.0 }\n')["model"]
         self.assertTrue(price_problems(unpriced))
 
-    def test_the_roster_exports_every_priced_row_and_no_surcharged_price(self):
-        """Claim: every priced roster row is dated and exported, and every row
-        with a long-context surcharge exports with no category priced. Rejects
+    def test_the_roster_exports_every_priced_row(self):
+        """Claim: every priced roster row is dated and exported with prices,
+        and every row with a long-context surcharge carries its term. Rejects
         a roster row left out of the table, and a surcharged row whose
         short-prompt rate would price a long request as complete."""
         models = tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]
@@ -117,10 +62,8 @@ api_price_undated = "no read date known"
         for model_id, model in priced.items():
             with self.subTest(model=model_id):
                 self.assertIn("api_price_read", model)
-                if "long_context_surcharge" in model:
-                    self.assertEqual(rows[model_id]["per_million"], {})
-                else:
-                    self.assertTrue(rows[model_id]["per_million"])
+                self.assertTrue(rows[model_id]["per_million"])
+                self.assertEqual(rows[model_id]["long_context"] is not None, "long_context_surcharge" in model)
 
 
 if __name__ == "__main__":

@@ -41,7 +41,7 @@ picks models: `arc` records whatever `--model` string it is handed, and `tapes`
 reports whatever a transcript contains. They are not consumers of this data and
 should not become ones.
 `agent-routing prices --format tapes` keeps that true in the other direction:
-it writes the roster's API list prices in tapes' own `tapes-price-table/1`
+it writes the roster's API list prices in tapes' own `tapes-price-table/2`
 format, which the operator installs where tapes looks for a price table.
 agent-routing produces the file; tapes reads only the file.
 

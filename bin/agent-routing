@@ -25,7 +25,7 @@ Run `agent-routing` with no verb for the routing guide.
   lint                check pass@1/cost cells, model coverage, and routes
   prices [--format tapes] [--output <file>]
                       print the roster's API list prices, or write them as a
-                      tapes-price-table/1 file for tapes to read
+                      tapes-price-table/2 file for tapes to read
   lint-consumers      reject concrete roster pins in delegation consumers; fail when an
                       accessor reports fewer sources than its declared floor
   eras                list the model-era history files

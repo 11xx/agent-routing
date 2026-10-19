@@ -1,4 +1,4 @@
-"""The roster's API prices export as a tapes-price-table/1 file: each priced
+"""The roster's API prices export as a tapes-price-table/2 file: each priced
 row under its roster id with the ids harnesses record as aliases, dated by
 its read date, and pricing only the categories the row prices."""
 
@@ -86,12 +86,12 @@ class PriceExportTest(unittest.TestCase):
 
     def test_the_table_is_tapes_price_table_toml(self):
         """Claim: the written table parses as TOML in tapes' shape: schema,
-        currency, and per model an id, aliases, a date `effective`, a source
-        and per-million prices under tapes' category names only. Rejects a
-        string date or a roster key in the output."""
+        currency, and per model with no term an id, aliases, a date
+        `effective`, a source and per-million prices under tapes' category
+        names only. Rejects a string date or a roster key in the output."""
         with FixtureRoster() as root:
             table = tomllib.loads(tapes_table(price_export(root)))
-        self.assertEqual(table["schema"], "tapes-price-table/1")
+        self.assertEqual(table["schema"], "tapes-price-table/2")
         self.assertEqual(table["currency"], "USD")
         self.assertEqual([model["id"] for model in table["models"]], ["alpha-1", "beta-2"])
         for model in table["models"]:
@@ -140,18 +140,19 @@ class PriceExportTest(unittest.TestCase):
 
     def test_the_command_writes_the_table(self):
         """Claim: `agent-routing prices --format tapes --output FILE` writes the
-        table and the bare command prints a readable one naming the rows whose
-        prices are left out."""
+        table and the bare command prints a readable one naming each row's
+        terms."""
         with tempfile.TemporaryDirectory() as directory:
             output = pathlib.Path(directory) / "prices.toml"
             result = subprocess.run([ROOT / "bin/agent-routing", "prices", "--format", "tapes", "--output", output],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(tomllib.loads(output.read_text())["schema"], "tapes-price-table/1")
+            self.assertEqual(tomllib.loads(output.read_text())["schema"], "tapes-price-table/2")
         result = subprocess.run([ROOT / "bin/agent-routing", "prices"], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(result.stdout.startswith("model\tread\tuncached_input"))
-        self.assertIn("prices left out: haiku-5.5: ", result.stdout)
+        self.assertIn("above 100,000 prompt tokens, api billing", next(
+            line for line in result.stdout.splitlines() if line.startswith("haiku-5.5\t")))
 
 
 if __name__ == "__main__":

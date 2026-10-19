@@ -249,8 +249,9 @@ KEEP CONSUMERS HONEST
                                  cells against the manifest, check model
                                  coverage, and validate route structure and
                                  API prices: known category keys, a read
-                                 date on every price, and a well-formed
-                                 long-context surcharge
+                                 date on every price, and a long-context
+                                 surcharge with its threshold, its boundary
+                                 and its multipliers
   agent-routing lint-consumers   reject concrete roster pins in consumers; fails
                                  when an accessor reports fewer sources than
                                  the floor routing/consumers.toml declares
@@ -263,7 +264,7 @@ EXPORT LIST PRICES FOR TAPES
   agent-routing prices [--format tapes] [--output <file>]
 
   Print each roster row's api_price_per_million, or write it as a
-  tapes-price-table/1 file for tapes to price sessions with. tapes never reads
+  tapes-price-table/2 file for tapes to price sessions with. tapes never reads
   this repository: install the written file where tapes looks for a table,
   ~/.config/tapes/prices.toml, or point TAPES_PRICES or --prices at it. Each
   model is exported under its roster id with the ids harnesses record as
@@ -271,12 +272,13 @@ EXPORT LIST PRICES FOR TAPES
   by its api_price_read, and priced only in the categories the row prices:
   input and cache-miss input as uncached_input, cached and cache-hit input as
   cache_read, cache_write as cache_write_5m, cache_write_1h, and output. A row
-  with a long_context_surcharge is exported with no category priced, and the
-  file's header and the row's source name the surcharge: tapes-price-table/1
-  prices a category at one rate and has no prompt-size threshold, so a
-  short-prompt rate would price a request over the threshold as a complete
-  estimate. Prices are API list prices; a pool that bills below list does not
-  change them.
+  with a long_context_surcharge carries it as a long-context term: once a
+  request's whole prompt (uncached input, cache reads and cache writes) is
+  over the threshold, or reaches it where threshold_inclusive says so, the
+  whole request pays the input, cache and output multipliers, cache writes
+  at the cache multiplier. The term names API per-token billing only: a
+  Claude Code or Codex subscription pays no surcharge. Prices are API list
+  prices; a pool that bills below list does not change them.
 
 EMIT STATIC CLAUDE AGENTS
   agent-routing emit claude-agents [--profile <shape>] [--variant <variant>]
