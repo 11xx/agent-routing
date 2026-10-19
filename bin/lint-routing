@@ -17,7 +17,8 @@ doctrine puts them, so retiring a measurement does not release its numbers. It
 also validates route structure, so every profile and variant has to name a real
 model, effort, backend, and provider, with declared backend/model effort support,
 and API prices, so every `api_price_per_million` uses known category keys and
-carries an `api_price_read` date.
+carries an `api_price_read` date, and every `long_context_surcharge` has a
+positive threshold and input, cache and output multipliers of at least one.
 
 Everything else is outside its reach — the output-token column, every other
 number carried in prose, and the wording of both documents. A rule stated

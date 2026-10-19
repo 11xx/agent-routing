@@ -122,16 +122,16 @@ class PriceExportTest(unittest.TestCase):
         self.assertTrue(price_problems(stray))
 
     def test_the_roster_exports_and_lints(self):
-        """Claim: the real roster passes the price lint, every exported Claude
-        row prices one-hour cache writes at twice its input and five-minute
-        writes at 1.25 times, and the Opus row answers to the id Claude
+        """Claim: the real roster passes the price lint, every Claude row
+        exported with prices prices one-hour cache writes at twice its input
+        and five-minute writes at 1.25 times, and the Opus row answers to the id Claude
         records. Rejects an export with the one-hour write left out, which
         leaves a Claude estimate unpriced on its one-hour writes."""
         models = tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]
         self.assertEqual(price_problems(models), [])
         rows = {row["id"]: row for row in price_export(ROOT)["models"]}
         for model in models:
-            if model.get("family") == "claude" and model["id"] in rows:
+            if model.get("family") == "claude" and rows.get(model["id"], {}).get("per_million"):
                 prices = rows[model["id"]]["per_million"]
                 with self.subTest(model=model["id"]):
                     self.assertAlmostEqual(prices["cache_write_5m"], 1.25 * prices["uncached_input"])
@@ -140,7 +140,8 @@ class PriceExportTest(unittest.TestCase):
 
     def test_the_command_writes_the_table(self):
         """Claim: `agent-routing prices --format tapes --output FILE` writes the
-        table and the bare command prints a readable one."""
+        table and the bare command prints a readable one naming the rows whose
+        prices are left out."""
         with tempfile.TemporaryDirectory() as directory:
             output = pathlib.Path(directory) / "prices.toml"
             result = subprocess.run([ROOT / "bin/agent-routing", "prices", "--format", "tapes", "--output", output],
@@ -150,6 +151,7 @@ class PriceExportTest(unittest.TestCase):
         result = subprocess.run([ROOT / "bin/agent-routing", "prices"], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(result.stdout.startswith("model\tread\tuncached_input"))
+        self.assertIn("prices left out: haiku-5.5: ", result.stdout)
 
 
 if __name__ == "__main__":

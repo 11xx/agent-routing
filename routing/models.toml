@@ -27,9 +27,10 @@
 # cached_input, cache_write (five-minute), cache_write_1h and output, or a
 # provider's cache_miss_input and cache_hit_input. Each priced row carries
 # `api_price_read`, the date the prices were read from the vendor's page; a
-# category the page does not price is left out rather than guessed.
+# category the page does not price is left out rather than guessed. A price
+# that rises above a prompt-size threshold carries `long_context_surcharge`.
 # `agent-routing prices --format tapes` exports every priced row as a tapes
-# price table.
+# price table, with a surcharged row's prices left out.
 
 [meta]
 benchmark = "DeepSWE v1.1, 113 tasks; roster measured through 2026-09-02, with operator evidence added for Astra on 2026-09-05"
