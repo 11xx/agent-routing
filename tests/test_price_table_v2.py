@@ -84,7 +84,8 @@ def assert_tapes_shape(case: unittest.TestCase, table: dict) -> None:
         if "long_context" in model:
             case.assertLessEqual(set(model["long_context"]), LONG_CONTEXT_KEYS, model["id"])
         for window in model.get("time_of_day", []):
-            case.assertEqual(set(window), {"from", "until", "per_million"}, model["id"])
+            case.assertLessEqual({"from", "until", "per_million"}, set(window), model["id"])
+            case.assertLessEqual(set(window), {"from", "until", "per_million", "days"}, model["id"])
 
 
 class LongContextTermTest(unittest.TestCase):

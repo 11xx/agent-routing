@@ -7,7 +7,8 @@ only the categories the row prices. A row's `long_context_surcharge` becomes
 the model's long-context term: past the threshold the whole request pays the
 multiplied rates, under API per-token billing only, since a subscription plan
 pays no surcharge. Its `time_of_day_prices` become UTC time-of-day windows
-priced at the row's rates times each window's multiplier. Its
+priced at the row's rates times each window's multiplier, on the days of
+the week a window names. Its
 `api_price_changes` split it into one model per price, each in effect from
 its date until the next, carrying the row's terms at its own rates.
 """
@@ -51,6 +52,9 @@ PROMPT_CATEGORIES = ("uncached_input", "cache_read", "cache_write")
 # Long-context surcharges apply to API per-token billing; a subscription plan
 # pays none.
 SURCHARGE_BILLING = ("api",)
+# The days of the week a time-of-day window may name, as tapes names them.
+DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+MINUTES_PER_DAY = 24 * 60
 
 
 def _read_date(value: object) -> datetime.date | None:
@@ -70,10 +74,22 @@ def _minute_of_day(value: object) -> int | None:
     return int(hours) * 60 + int(minutes)
 
 
-def _window_minutes(start: int, end: int) -> set[int]:
-    """The minutes of the day a window from `start` until `end` holds, past
-    midnight when `end` is not after `start`."""
-    return set(range(start, end)) if start < end else set(range(start, 24 * 60)) | set(range(end))
+def _window_minutes(start: int, end: int, days: list[str]) -> set[int]:
+    """The minutes of a week, from Monday midnight, a window from `start`
+    until `end` holds when it opens on `days`; past midnight when `end` is
+    not after `start`, into the day after the one it opens on."""
+    length = (end - start) % MINUTES_PER_DAY
+    week = 7 * MINUTES_PER_DAY
+    return {(DAYS.index(day) * MINUTES_PER_DAY + start + minute) % week for day in days for minute in range(length)}
+
+
+def _days_problems(label: str, days: object) -> list[str]:
+    if not isinstance(days, list) or not days:
+        return [f"{label}: time_of_day_prices days must list at least one day"]
+    unknown = [f"{label}: time_of_day_prices days are written {', '.join(DAYS)}, not {day!r}"
+               for day in days if day not in DAYS]
+    return unknown or [f"{label}: time_of_day_prices days name {day!r} twice"
+                       for day in dict.fromkeys(days) if days.count(day) > 1]
 
 
 def _finite_at_least(value: object, floor: float) -> bool:
@@ -110,7 +126,12 @@ def _time_of_day_problems(label: str, windows: object) -> list[str]:
             continue
         if not _finite_at_least(window.get("multiplier"), 0):
             problems.append(f"{label}: time_of_day_prices multiplier must be a finite number of at least zero")
-        minutes = _window_minutes(start, end)
+        days = window.get("days", list(DAYS))
+        day_problems = _days_problems(label, days)
+        if day_problems:
+            problems.extend(day_problems)
+            continue
+        minutes = _window_minutes(start, end, days)
         if minutes & held:
             problems.append(f"{label}: time_of_day_prices windows overlap")
         held |= minutes
@@ -200,11 +221,13 @@ def long_context_term(surcharge: dict, per_million: dict) -> dict:
 
 def time_of_day_terms(windows: list[dict], per_million: dict) -> list[dict]:
     """The tapes time-of-day windows for `windows` on a row pricing
-    `per_million`: every category the row prices, scaled."""
+    `per_million`: every category the row prices, scaled, on the days a
+    window names, or every day."""
     return [{
         "from": window["from"],
         "until": window["until"],
         "per_million": {category: price * window["multiplier"] for category, price in per_million.items()},
+        **({"days": window["days"]} if "days" in window else {}),
     } for window in windows]
 
 
@@ -309,6 +332,8 @@ def tapes_table(export: dict) -> str:
                 f"until = {_string(window['until'])}",
                 f"per_million = {_inline(window['per_million'])}",
             ]
+            if "days" in window:
+                lines.append(f"days = {_strings(window['days'])}")
     return "\n".join(lines) + "\n"
 
 
@@ -325,7 +350,8 @@ def term_summary(row: dict) -> str:
         terms.append(f"{threshold} prompt tokens, {'/'.join(term['billing'])} billing: {scaled}")
     for window in row["time_of_day"]:
         prices = ", ".join(f"{category} {price:g}" for category, price in window["per_million"].items())
-        terms.append(f"{window['from']}-{window['until']} UTC: {prices}")
+        days = f" {'/'.join(window['days'])}" if "days" in window else ""
+        terms.append(f"{window['from']}-{window['until']} UTC{days}: {prices}")
     return "; ".join(terms) or "-"
 
 

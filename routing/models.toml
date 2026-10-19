@@ -37,7 +37,9 @@
 # Claude or Codex subscription pays none. `time_of_day_prices` lists UTC
 # windows, `from` inclusive and `until` exclusive (past midnight when `until`
 # is not after `from`), in which every price the row lists is scaled by the
-# window's `multiplier`. `api_price_changes` lists prices the vendor has
+# window's `multiplier`. A window's `days` names the UTC days of the week it
+# opens on, mon..sun, a window past midnight holding into the next day; one
+# without `days` opens every day. Public holidays are not expressed. `api_price_changes` lists prices the vendor has
 # published for a later date, each with the same keys as
 # `api_price_per_million` and in effect from its `from` date, midnight UTC,
 # until the next.
