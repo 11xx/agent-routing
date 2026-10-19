@@ -248,8 +248,8 @@ KEEP CONSUMERS HONEST
   agent-routing lint             compare the doctrine table's pass@1 and cost
                                  cells against the manifest, check model
                                  coverage, and validate route structure and
-                                 API prices: known category keys, and a read
-                                 date or a stated reason for its absence
+                                 API prices: known category keys, and a
+                                 read date on every price
   agent-routing lint-consumers   reject concrete roster pins in consumers; fails
                                  when an accessor reports fewer sources than
                                  the floor routing/consumers.toml declares
@@ -269,10 +269,9 @@ EXPORT LIST PRICES FOR TAPES
   aliases (the row's aliases and the backend_model routes bind to it), dated
   by its api_price_read, and priced only in the categories the row prices:
   input and cache-miss input as uncached_input, cached and cache-hit input as
-  cache_read, cache_write as cache_write_5m, cache_write_1h, and output. A row
-  whose prices carry api_price_undated instead of a date is left out and named
-  in the file's header. Prices are API list prices; a pool that bills below
-  list does not change them.
+  cache_read, cache_write as cache_write_5m, cache_write_1h, and output.
+  Prices are API list prices; a pool that bills below list does not change
+  them.
 
 EMIT STATIC CLAUDE AGENTS
   agent-routing emit claude-agents [--profile <shape>] [--variant <variant>]
