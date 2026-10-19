@@ -1,6 +1,6 @@
 """The roster's prices export as a tapes-price-table/2 file carrying every
 term the roster records: a long-context surcharge as a long-context term for
-API per-token billing only."""
+API per-token billing only, and time-of-day prices as UTC windows."""
 
 import pathlib
 import subprocess
@@ -43,6 +43,16 @@ id = "flat-3"
 family = "fixture"
 api_price_per_million = { input = 2.0, output = 6.0 }
 api_price_read = "2026-10-03"
+'''
+
+
+OFF_PEAK_MODELS = '''
+[[model]]
+id = "peak-4"
+family = "fixture"
+api_price_per_million = { cache_hit_input = 0.006, cache_miss_input = 0.30, output = 1.2 }
+api_price_read = "2026-10-04"
+time_of_day_prices = [{ from = "04:00", until = "06:00", multiplier = 0.5 }, { from = "10:00", until = "01:00", multiplier = 0.25 }]
 '''
 
 
@@ -141,6 +151,49 @@ class LongContextTermTest(unittest.TestCase):
         self.assertIn("above 100,000 prompt tokens, api billing: 5x uncached_input", row)
 
 
+class TimeOfDayTest(unittest.TestCase):
+    def test_time_of_day_prices_export_as_scaled_utc_windows(self):
+        """Claim: each time_of_day_prices window is exported with its UTC
+        bounds as written, one past midnight included, pricing every
+        category the row prices at the row's price times its multiplier.
+        Rejects a window that prices only some categories, which tapes would
+        leave unpriced inside it, and one exported at the peak price."""
+        table = written_table(OFF_PEAK_MODELS)
+        assert_tapes_shape(self, table)
+        model = table["models"][0]
+        self.assertEqual(model["per_million"], {"uncached_input": 0.3, "cache_read": 0.006, "output": 1.2})
+        self.assertEqual(model["time_of_day"], [
+            {"from": "04:00", "until": "06:00",
+             "per_million": {"uncached_input": 0.15, "cache_read": 0.003, "output": 0.6}},
+            {"from": "10:00", "until": "01:00",
+             "per_million": {"uncached_input": 0.075, "cache_read": 0.0015, "output": 0.3}},
+        ])
+
+    def test_lint_refuses_a_window_the_export_cannot_describe(self):
+        """Claim: a window needs HH:MM UTC bounds that differ, a multiplier
+        of at least zero, no overlap with another window of the row, and a
+        priced row. Rejects a table tapes would refuse for overlapping or
+        malformed windows."""
+        cases = {
+            '[{ from = "4:00", until = "06:00", multiplier = 0.5 }]': "must be UTC times written HH:MM",
+            '[{ from = "24:00", until = "06:00", multiplier = 0.5 }]': "must be UTC times written HH:MM",
+            '[{ from = "06:00", until = "06:00", multiplier = 0.5 }]': "must not start where it ends",
+            '[{ from = "04:00", until = "06:00", multiplier = -0.5 }]': "multiplier must be a finite number",
+            '[{ from = "22:00", until = "02:00", multiplier = 0.5 }, { from = "01:00", until = "03:00", multiplier = 0.5 }]':
+                "windows overlap",
+            '{ from = "04:00", until = "06:00", multiplier = 0.5 }': "must be a list of tables",
+        }
+        for body, expected in cases.items():
+            with self.subTest(expected=expected):
+                models = tomllib.loads('[[model]]\nid = "x"\napi_price_per_million = { input = 1.0 }\n'
+                                       f'api_price_read = "2026-09-01"\ntime_of_day_prices = {body}\n')["model"]
+                problems = price_problems(models)
+                self.assertTrue(any(expected in problem for problem in problems), problems)
+        unpriced = tomllib.loads('[[model]]\nid = "x"\n'
+                                 'time_of_day_prices = [{ from = "04:00", until = "06:00", multiplier = 0.5 }]\n')
+        self.assertTrue(price_problems(unpriced["model"]))
+
+
 class RosterTermsTest(unittest.TestCase):
     def roster(self) -> tuple[dict, dict]:
         models = {model["id"]: model for model in tomllib.loads(
@@ -176,6 +229,23 @@ class RosterTermsTest(unittest.TestCase):
         self.assertEqual(rows["grok-4.6"][0]["long_context"]["from_prompt_tokens"], 200000)
         self.assertEqual(rows["haiku-5.5"][0]["long_context"]["above_prompt_tokens"], 100000)
         self.assertEqual(rows["gpt-6-luna"][0]["long_context"]["above_prompt_tokens"], 272000)
+
+
+    def test_deepseek_rows_price_off_peak_hours_at_half(self):
+        """Claim: both DeepSeek rows export the vendor's off-peak hours (all
+        but 01:00-04:00 and 06:00-10:00 UTC) as windows at half the peak
+        price, and no window covers a weekday peak hour. Rejects an off-peak
+        DeepSeek request priced at peak, and a peak request priced at the
+        off-peak rate."""
+        _, rows = self.roster()
+        for model_id in ("deepseek-flash", "deepseek-v4-pro"):
+            with self.subTest(model=model_id):
+                row, = rows[model_id]
+                self.assertEqual([(window["from"], window["until"]) for window in row["time_of_day"]],
+                                 [("04:00", "06:00"), ("10:00", "01:00")])
+                for window in row["time_of_day"]:
+                    self.assertEqual(window["per_million"],
+                                     {category: price / 2 for category, price in row["per_million"].items()})
 
 
 if __name__ == "__main__":

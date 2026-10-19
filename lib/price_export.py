@@ -6,13 +6,15 @@ keyed by the ids harnesses record for it, dated by its `api_price_read`, with
 only the categories the row prices. A row's `long_context_surcharge` becomes
 the model's long-context term: past the threshold the whole request pays the
 multiplied rates, under API per-token billing only, since a subscription plan
-pays no surcharge.
+pays no surcharge. Its `time_of_day_prices` become UTC time-of-day windows
+priced at the row's rates times each window's multiplier.
 """
 
 import datetime
 import json
 import math
 import pathlib
+import re
 
 from routing_profiles import load_toml, model_identities, route_version
 
@@ -59,6 +61,19 @@ def _read_date(value: object) -> datetime.date | None:
     return parsed if parsed.isoformat() == value else None
 
 
+def _minute_of_day(value: object) -> int | None:
+    if not isinstance(value, str) or not re.fullmatch(r"([01][0-9]|2[0-3]):[0-5][0-9]", value):
+        return None
+    hours, minutes = value.split(":")
+    return int(hours) * 60 + int(minutes)
+
+
+def _window_minutes(start: int, end: int) -> set[int]:
+    """The minutes of the day a window from `start` until `end` holds, past
+    midnight when `end` is not after `start`."""
+    return set(range(start, end)) if start < end else set(range(start, 24 * 60)) | set(range(end))
+
+
 def _finite_at_least(value: object, floor: float) -> bool:
     return not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value) and value >= floor
 
@@ -79,21 +94,45 @@ def _surcharge_problems(label: str, surcharge: object) -> list[str]:
     return problems
 
 
+def _time_of_day_problems(label: str, windows: object) -> list[str]:
+    if not isinstance(windows, list) or not all(isinstance(window, dict) for window in windows):
+        return [f"{label}: time_of_day_prices must be a list of tables"]
+    problems, held = [], set()
+    for window in windows:
+        start, end = _minute_of_day(window.get("from")), _minute_of_day(window.get("until"))
+        if start is None or end is None:
+            problems.append(f"{label}: time_of_day_prices from and until must be UTC times written HH:MM")
+            continue
+        if start == end:
+            problems.append(f"{label}: a time_of_day_prices window must not start where it ends")
+            continue
+        if not _finite_at_least(window.get("multiplier"), 0):
+            problems.append(f"{label}: time_of_day_prices multiplier must be a finite number of at least zero")
+        minutes = _window_minutes(start, end)
+        if minutes & held:
+            problems.append(f"{label}: time_of_day_prices windows overlap")
+        held |= minutes
+    return problems
+
+
 def price_problems(models: list[dict]) -> list[str]:
     """Problems with the roster's API prices: unknown or doubled category
     keys, prices that are not finite non-negative numbers, a price without
-    its read date, and a long-context surcharge the export cannot describe."""
+    its read date, and a long-context surcharge or time-of-day window the
+    export cannot describe."""
     problems: list[str] = []
     for model in models:
         label = model.get("id", "<missing>")
         prices = model.get("api_price_per_million")
         surcharge = model.get("long_context_surcharge")
+        windows = model.get("time_of_day_prices")
         if "api_price_undated" in model:
             problems.append(f"{label}: api_price_undated is not accepted; date the price with api_price_read "
                             "or remove it")
         if prices is None:
-            if "api_price_read" in model or surcharge is not None:
-                problems.append(f"{label}: api_price_read or long_context_surcharge without api_price_per_million")
+            if "api_price_read" in model or surcharge is not None or windows is not None:
+                problems.append(f"{label}: api_price_read, long_context_surcharge or time_of_day_prices without "
+                                "api_price_per_million")
             continue
         if not isinstance(prices, dict):
             problems.append(f"{label}: api_price_per_million must be a table")
@@ -115,6 +154,8 @@ def price_problems(models: list[dict]) -> list[str]:
             problems.append(f"{label}: api_price_read must be a YYYY-MM-DD date")
         if surcharge is not None:
             problems.extend(_surcharge_problems(label, surcharge))
+        if windows is not None:
+            problems.extend(_time_of_day_problems(label, windows))
     return problems
 
 
@@ -130,9 +171,19 @@ def long_context_term(surcharge: dict, per_million: dict) -> dict:
     }
 
 
+def time_of_day_terms(windows: list[dict], per_million: dict) -> list[dict]:
+    """The tapes time-of-day windows for `windows` on a row pricing
+    `per_million`: every category the row prices, scaled."""
+    return [{
+        "from": window["from"],
+        "until": window["until"],
+        "per_million": {category: price * window["multiplier"] for category, price in per_million.items()},
+    } for window in windows]
+
+
 def price_export(root: pathlib.Path) -> dict:
-    """The priced rows, which categories each leaves unpriced, and the
-    long-context term of a surcharged row."""
+    """The priced rows, which categories each leaves unpriced, and the terms
+    each is priced by per request."""
     models = load_toml(root / "routing" / "models.toml").get("model", [])
     problems = price_problems(models)
     if problems:
@@ -160,6 +211,7 @@ def price_export(root: pathlib.Path) -> dict:
             "per_million": per_million,
             "unpriced": [category for category in CATEGORIES if category not in per_million],
             "long_context": long_context_term(surcharge, per_million) if surcharge is not None else None,
+            "time_of_day": time_of_day_terms(model.get("time_of_day_prices", []), per_million),
             "status": model.get("status"),
         })
     return {"schema": SCHEMA, "currency": CURRENCY, "route_version": version, "models": exported}
@@ -215,18 +267,30 @@ def tapes_table(export: dict) -> str:
                     lines.append(f"{key} = {_strings(value)}")
                 else:
                     lines.append(f"{key} = {value}")
+        for window in row["time_of_day"]:
+            lines += [
+                "",
+                "[[models.time_of_day]]",
+                f"from = {_string(window['from'])}",
+                f"until = {_string(window['until'])}",
+                f"per_million = {_inline(window['per_million'])}",
+            ]
     return "\n".join(lines) + "\n"
 
 
 def term_summary(row: dict) -> str:
     """A row's terms priced by the request, for a reader."""
+    terms = []
     term = row["long_context"]
-    if not term:
-        return "-"
-    threshold = (f"from {term['from_prompt_tokens']:,}" if "from_prompt_tokens" in term
-                 else f"above {term['above_prompt_tokens']:,}")
-    scaled = ", ".join(f"{factor:g}x {category}" for category, factor in term["multipliers"].items())
-    return f"{threshold} prompt tokens, {'/'.join(term['billing'])} billing: {scaled}"
+    if term:
+        threshold = (f"from {term['from_prompt_tokens']:,}" if "from_prompt_tokens" in term
+                     else f"above {term['above_prompt_tokens']:,}")
+        scaled = ", ".join(f"{factor:g}x {category}" for category, factor in term["multipliers"].items())
+        terms.append(f"{threshold} prompt tokens, {'/'.join(term['billing'])} billing: {scaled}")
+    for window in row["time_of_day"]:
+        prices = ", ".join(f"{category} {price:g}" for category, price in window["per_million"].items())
+        terms.append(f"{window['from']}-{window['until']} UTC: {prices}")
+    return "; ".join(terms) or "-"
 
 
 def readable_table(export: dict) -> str:
