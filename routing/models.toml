@@ -245,8 +245,8 @@ role = "superseded by gpt-6-sol and gpt-6-astra on 2026-09-23 across every seat 
 api_price_per_million = { input = 4.0, cached_input = 0.40, cache_write = 5.0, output = 20.0 }
 api_price_read = "2026-10-19"
 long_context_surcharge = { threshold_input_tokens = 272000, threshold_inclusive = false, input_multiplier = 2.0, cache_multiplier = 2.0, output_multiplier = 1.5, applies = "the full request, not the excess", scope = "API per-token billing only: OpenAI's API pricing page prices requests of more than 272K input tokens ('Long context: >272K input tokens') as their own Standard tier and names no ChatGPT or Codex plan, and a Codex subscription pays no surcharge" }
-subscription_credits_per_million = { input = 125.0, cached_input = 12.5, output = 750.0 }
-notes = "API pricing read from OpenAI's pricing page (developers.openai.com/api/docs/pricing) on 2026-10-19, Standard tier: $4.00 input, $0.40 cached input, $5.00 cache writes and $20.00 output per million up to 272K input tokens, and $8.00, $0.80, $10.00 and $30.00 above it."
+subscription_credits_per_million = { input = 100.0, cached_input = 10.0, output = 500.0 }
+notes = "API pricing read from OpenAI's pricing page (developers.openai.com/api/docs/pricing) on 2026-10-19, Standard tier: $4.00 input, $0.40 cached input, $5.00 cache writes and $20.00 output per million up to 272K input tokens, and $8.00, $0.80, $10.00 and $30.00 above it. Codex credit rates read from the Codex pricing page (learn.chatgpt.com/docs/pricing) on 2026-10-19, Standard speed: 100 input, 10 cached input and 500 output credits per million, 25 credits per dollar of the API price. Both pages call these promotional pricing, available at least through 2026-11-21, and neither publishes the rate that follows it."
 weaknesses = ["overbuild: state scope ceilings and 'no tests/refactors beyond those listed'", "over-determination: name exact targets, stop when they are absent, give explicit abort conditions, and prefer sandboxes for risky access; applies at low too"]
   [[model.effort]]
   effort = "max"

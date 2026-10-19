@@ -156,8 +156,9 @@ session stretches the window substantially, which is why one long single-context
 arc beats repeated cold re-derivation.
 
 OpenAI publishes the Codex weighting directly. Per million
-input/cached-input/output tokens, Sol costs **125/12.5/750 credits**, Terra
-**50/5/300**, and Luna **5/0.5/30**. The corresponding Plus estimates are
+input/cached-input/output tokens, Sol costs **100/10/500 credits** at a
+promotional rate published through at least 2026-11-21, Terra **50/5/300**,
+and Luna **5/0.5/30**. The corresponding Plus estimates are
 Sol 10–100, Terra 25–200, and Luna 250–2,000 local messages per five-hour
 window. Actual use still varies with context, reasoning, tools, retrieval, and
 caching; the published ranges are estimates rather than exact transforms of
