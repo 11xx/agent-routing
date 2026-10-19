@@ -228,9 +228,11 @@ id = "gpt-5.6-sol"
 family = "gpt-5.6"
 status = "superseded"
 role = "superseded by gpt-6-sol and gpt-6-astra on 2026-09-23 across every seat it held; never select. Its measured rows stay as the evidence the successors' tiers were seated on."
-api_price_per_million = { input = 5.0, cached_input = 0.5, output = 30.0 }
-api_price_read = "2026-07-30"
+api_price_per_million = { input = 4.0, cached_input = 0.40, cache_write = 5.0, output = 20.0 }
+api_price_read = "2026-10-19"
+long_context_surcharge = { threshold_input_tokens = 272000, input_multiplier = 2.0, cache_multiplier = 2.0, output_multiplier = 1.5, applies = "the full request, not the excess", scope = "API list price only; not an observed Codex subscription charge" }
 subscription_credits_per_million = { input = 125.0, cached_input = 12.5, output = 750.0 }
+notes = "API pricing read from OpenAI's pricing page (developers.openai.com/api/docs/pricing) on 2026-10-19, Standard tier: $4.00 input, $0.40 cached input, $5.00 cache writes and $20.00 output per million up to 272K input tokens, and $8.00, $0.80, $10.00 and $30.00 above it."
 weaknesses = ["overbuild: state scope ceilings and 'no tests/refactors beyond those listed'", "over-determination: name exact targets, stop when they are absent, give explicit abort conditions, and prefer sandboxes for risky access; applies at low too"]
   [[model.effort]]
   effort = "max"
@@ -272,9 +274,11 @@ id = "gpt-5.6-terra"
 family = "gpt-5.6"
 status = "superseded"
 role = "superseded by gpt-6-luna on 2026-09-23 across every seat it held; never select. It held no profile seat once Luna max took the workhorse role; its measured rows stay as history."
-api_price_per_million = { input = 2.0, cached_input = 0.2, output = 12.0 }
-api_price_read = "2026-07-30"
+api_price_per_million = { input = 2.0, cached_input = 0.20, cache_write = 2.5, output = 12.0 }
+api_price_read = "2026-10-19"
+long_context_surcharge = { threshold_input_tokens = 272000, input_multiplier = 2.0, cache_multiplier = 2.0, output_multiplier = 1.5, applies = "the full request, not the excess", scope = "API list price only; not an observed Codex subscription charge" }
 subscription_credits_per_million = { input = 50.0, cached_input = 5.0, output = 300.0 }
+notes = "API pricing read from OpenAI's pricing page (developers.openai.com/api/docs/pricing) on 2026-10-19, Standard tier: $2.00 input, $0.20 cached input, $2.50 cache writes and $12.00 output per million up to 272K input tokens, and $4.00, $0.40, $5.00 and $18.00 above it."
   [[model.effort]]
   effort = "high"
   pass_at_1 = 0.54
@@ -298,10 +302,11 @@ id = "gpt-5.6-luna"
 family = "gpt-5.6"
 status = "superseded"
 role = "superseded by gpt-6-luna on 2026-09-23 across every seat it held; never select. Its measured rows stay as the evidence the successor's tiers were seated on. The GOAT pool that served only this build is no longer used."
-api_price_per_million = { input = 0.2, cached_input = 0.02, output = 1.2 }
-api_price_read = "2026-07-30"
+api_price_per_million = { input = 0.20, cached_input = 0.02, cache_write = 0.25, output = 1.2 }
+api_price_read = "2026-10-19"
+long_context_surcharge = { threshold_input_tokens = 272000, input_multiplier = 2.0, cache_multiplier = 2.0, output_multiplier = 1.5, applies = "the full request, not the excess", scope = "API list price only; not an observed Codex subscription charge" }
 subscription_credits_per_million = { input = 5.0, cached_input = 0.5, output = 30.0 }
-notes = "reachable on two pools. The prices above are the Codex route. The same model also answers on the conditional opencode-go subscription through the opencode CLI, where capability rows transfer unchanged because the model is identical, but the quota accounting does not — see [quota].opencode_go_pool. pi 0.99.1's bundled opencode-go catalog lists both gpt-5.6-luna and gpt-6-luna. Its author_floor is 1 at every effort, matching successor GPT-6 Luna whose seats rest on these measured predecessor tiers and operator evidence of better capability; no evidence places the predecessor above its successor, and an author floor grants no reviewer seat."
+notes = "reachable on two pools. The prices above are the Codex route. The same model also answers on the conditional opencode-go subscription through the opencode CLI, where capability rows transfer unchanged because the model is identical, but the quota accounting does not — see [quota].opencode_go_pool. pi 0.99.1's bundled opencode-go catalog lists both gpt-5.6-luna and gpt-6-luna. Its author_floor is 1 at every effort, matching successor GPT-6 Luna whose seats rest on these measured predecessor tiers and operator evidence of better capability; no evidence places the predecessor above its successor, and an author floor grants no reviewer seat. API pricing read from OpenAI's pricing page (developers.openai.com/api/docs/pricing) on 2026-10-19, Standard tier: $0.20 input, $0.02 cached input, $0.25 cache writes and $1.20 output per million up to 272K input tokens, and $0.40, $0.04, $0.50 and $1.80 above it."
   [[model.effort]]
   effort = "max"
   author_floor = 1
