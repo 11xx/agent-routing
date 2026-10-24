@@ -276,8 +276,8 @@ fallback = [
 ]
 purpose = "broad or multi-slice implementation where technical judgment and long-horizon persistence remain material"
 # Judgment-bearing arcs take the Codex-side technical peer rather than the
-# bounded-work Luna seat, and on the Claude window the head model's standing
-# tier, high, rather than the bounded-work low implementer.
+# bounded-work Luna seat. On the Claude window the lead picks the tier by the
+# work's stakes: low by default, `opus-high` where a wrong result is costly.
 provider = "openai-codex"
 model = "gpt-6.1-sol"
 effort = "xhigh"
@@ -299,10 +299,19 @@ backends = ["codex"]
   provider = "anthropic"
   model = "opus-5.5"
   backend_model = "claude-opus-5-5"
-  effort = "high"
+  effort = "low"
   stability = "stable"
   backends = ["claude"]
   default_for_backend = true
+
+  [[profile.variant]]
+  id = "opus-high"
+  provider = "anthropic"
+  model = "opus-5.5"
+  backend_model = "claude-opus-5-5"
+  effort = "high"
+  stability = "stable"
+  backends = ["claude"]
 
 [[profile]]
 id = "review"

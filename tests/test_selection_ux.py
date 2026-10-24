@@ -27,8 +27,8 @@ class SelectionUXTest(unittest.TestCase):
         self.assertIn("seated efforts", str(caught.exception))
         with self.assertRaises(RouteRefusal) as caught:
             self.selection(profile_id="execute", backend="claude", provider="anthropic",
-                           model="opus-5.5", effort="low")
-        self.assertEqual(caught.exception.payload()["seated_efforts"], ["high"])
+                           model="opus-5.5", effort="medium")
+        self.assertEqual(sorted(caught.exception.payload()["seated_efforts"]), ["high", "low"])
 
     def test_backend_spelling_and_named_tuple_cover_explicit_and_trial_tiers(self):
         for effort in ("high", "xhigh"):

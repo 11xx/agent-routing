@@ -267,8 +267,12 @@ role = "steered generator for tests only"
         self.assertEqual(route["effort"], "xhigh")
         self.assertEqual(route["stability"], "stable")
 
+    def test_execute_offers_high_on_claude_by_choice(self):
+        route = resolve(ROOT, "execute", "claude", variant_id="opus-high")
+        self.assertEqual((route["profile"], route["effort"]), ("execute:opus-high", "high"))
+
     def test_claude_backend_defaults_follow_the_opus_tiers(self):
-        for profile, variant, effort in (("implement", "opus-low", "low"), ("execute", "opus", "high"),
+        for profile, variant, effort in (("implement", "opus-low", "low"), ("execute", "opus", "low"),
                                          ("plan", "opus", "high"), ("review", "opus", "xhigh")):
             route = resolve(ROOT, profile, "claude")
             self.assertEqual(route["profile"], f"{profile}:{variant}")
