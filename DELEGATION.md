@@ -438,7 +438,8 @@ Backend selection between the two GPT routes:
   for a slice that needs more; `plan`, `execute`, `design` and `explore
   --variant opus` resolve to high, the head model's standing tier; `review`
   resolves to xhigh, the deep-review tier, as do `plan --variant opus-xhigh`
-  and `design --variant xhigh`. Low and high cover most work.
+  and `design --variant xhigh`. Low and high cover most work. The relay proxy
+  shells run on Opus low.
 - **Sonnet 5.5 is a trial, not a seat.** It is unmeasured and no profile
   resolves to it. Reach it as `claude -p --model claude-sonnet-5-5 --effort
   <tier>` through a validated operator-directed selection:

@@ -54,9 +54,9 @@ class ConsumerLintTest(unittest.TestCase):
         self.proxy = delegate_root / "agents/codex.md"
         files = {
             str(self.settings): json.dumps({"$route": "interactive"}),
-            str(self.proxy): "model: sonnet\neffort: low\n",
-            str(delegate_root / "agents/pi.md"): "model: sonnet\neffort: low\n",
-            str(delegate_root / "agents/opencode.md"): "model: sonnet\neffort: low\n",
+            str(self.proxy): "model: opus\neffort: low\n",
+            str(delegate_root / "agents/pi.md"): "model: opus\neffort: low\n",
+            str(delegate_root / "agents/opencode.md"): "model: opus\neffort: low\n",
         }
         implementers = claude_agent_bundle(ROOT, profile_id="implement")["files"]
         for name, content in implementers.items():
@@ -115,7 +115,7 @@ class ConsumerLintTest(unittest.TestCase):
     def test_clean_proxy_exception_is_exact(self):
         code = self.fixture_code_root()
         self.assertEqual(self.run_lint(code).returncode, 0)
-        self.proxy.write_text("model: opus\neffort: low\n")
+        self.proxy.write_text("model: sonnet\neffort: low\n")
         result = self.run_lint(code)
         self.assertEqual(result.returncode, 1)
         self.assertIn("pins model frontmatter", result.stdout)

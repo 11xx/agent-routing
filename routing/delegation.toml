@@ -79,7 +79,7 @@ policy = "prefer programmatic orchestration (one-off script encoding per-agent p
 [[rule]]
 id = "proxy-shells"
 harness = "claude-code"
-policy = "backend proxy shells (codex and pi agent types) stay at sonnet low; they relay the exact command and result, never perform or redesign the delegated task; labels use cx- for codex-backed spawns and pi- for pi-backed spawns"
+policy = "backend proxy shells (codex and pi agent types) run on Opus at low effort through the version-agnostic `opus` alias; they relay the exact command and result, never perform or redesign the delegated task; labels use cx- for codex-backed spawns and pi- for pi-backed spawns"
 
 [[rule]]
 id = "luna-invocation"

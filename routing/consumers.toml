@@ -36,19 +36,19 @@ checks = ["roster-literals"]
 [[proxy]]
 consumer = "delegate-agents"
 path = "codex.md"
-model = "sonnet"
+model = "opus"
 effort = "low"
 
 [[proxy]]
 consumer = "delegate-agents"
 path = "pi.md"
-model = "sonnet"
+model = "opus"
 effort = "low"
 
 [[proxy]]
 consumer = "delegate-agents"
 path = "opencode.md"
-model = "sonnet"
+model = "opus"
 effort = "low"
 
 # A harness-native agent definition whose frontmatter carries a route the

@@ -126,6 +126,20 @@ class OpusEffortsTest(unittest.TestCase):
         route = resolve(ROOT, "review", "claude")
         self.assertEqual((route["model"], route["effort"]), ("claude-opus-5-5", "xhigh"))
 
+    def test_no_default_seat_names_sonnet(self):
+        # Rejects Sonnet as a profile default, a proxy shell, or a pinned agent.
+        for seat in seats_view(ROOT)["seats"]:
+            if seat["default"]:
+                with self.subTest(seat=(seat["profile"], seat["variant"], seat["backend"])):
+                    self.assertNotIn("sonnet", seat["roster_model"])
+        consumers = tomllib.loads((ROOT / "routing/consumers.toml").read_text())
+        for entry in (*consumers.get("proxy", []), *consumers.get("pin", [])):
+            with self.subTest(path=entry["path"]):
+                self.assertNotEqual(entry["model"], "sonnet")
+        proxy_policy = next(row for row in tomllib.loads((ROOT / "routing/delegation.toml").read_text())["rule"]
+                            if row["id"] == "proxy-shells")["policy"]
+        self.assertNotIn("sonnet", proxy_policy)
+
 
 if __name__ == "__main__":
     unittest.main()
