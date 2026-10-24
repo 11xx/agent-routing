@@ -205,7 +205,7 @@ role = "steered generator for tests only"
 
     def test_direct_selection_checks_non_pi_backend_efforts(self):
         for backend, model, provider in (("codex", "gpt-6.1-sol", "openai-codex"),
-                                         ("claude", "opus-5.5", "anthropic")):
+                                         ("claude", "haiku-5.5", "anthropic")):
             with self.subTest(backend=backend):
                 root = self.fixture_root()
                 self.declare_backend_model_efforts(root, backend, model, ["low", "medium", "high", "xhigh"])
@@ -238,7 +238,7 @@ role = "steered generator for tests only"
                         allow_experimental=True)
         self.assertEqual((route["model"], route["effort"]),
                          ("claude-opus-5-5", "medium"))
-        for effort in ("low", "medium", "high", "xhigh", "max"):
+        for effort in ("low", "medium", "high", "xhigh"):
             selection = self.direct_selection(
                 profile_id="computer-use", backend="claude", model="opus-5.5",
                 effort=effort, provider="anthropic",
@@ -246,6 +246,10 @@ role = "steered generator for tests only"
             self.assertEqual(selection["backend_model"], "claude-opus-5-5")
             self.assertEqual(selection["effort"], effort)
             self.assertEqual(selection["selection_kind"], "operator-directed")
+        with self.assertRaises(RouteRefusal) as caught:
+            self.direct_selection(profile_id="computer-use", backend="claude", model="opus-5.5",
+                                  effort="max", provider="anthropic")
+        self.assertEqual(caught.exception.kind, "prohibited")
 
     def test_stable_route_resolves_for_supported_backend(self):
         route = resolve(ROOT, "implement", "codex")
@@ -263,15 +267,18 @@ role = "steered generator for tests only"
         self.assertEqual(route["effort"], "xhigh")
         self.assertEqual(route["stability"], "stable")
 
-    def test_claude_backend_defaults_to_opus_xhigh_for_work_and_review(self):
-        for profile in ("implement", "execute", "review"):
+    def test_claude_backend_defaults_follow_the_opus_tiers(self):
+        for profile, variant, effort in (("implement", "opus-low", "low"), ("execute", "opus", "high"),
+                                         ("plan", "opus", "high"), ("review", "opus", "xhigh")):
             route = resolve(ROOT, profile, "claude")
-            self.assertEqual(route["profile"], f"{profile}:opus")
+            self.assertEqual(route["profile"], f"{profile}:{variant}")
             self.assertEqual(route["backend"], "claude")
             self.assertEqual(route["provider"], "anthropic")
             self.assertEqual(route["model"], "claude-opus-5-5")
-            self.assertEqual(route["effort"], "xhigh")
+            self.assertEqual(route["effort"], effort)
             self.assertEqual(route["stability"], "stable")
+        design = resolve(ROOT, "design", "claude")
+        self.assertEqual((design["model"], design["effort"]), ("claude-opus-5-5", "high"))
 
     def test_only_one_variant_can_default_for_each_backend(self):
         root = self.fixture_root()
@@ -923,8 +930,8 @@ role = "steered generator for tests only"
 id = "bad-explicit"
 purpose = "fixture"
 provider = "anthropic"
-model = "opus-5.5"
-effort = "high"
+model = "haiku-5.5"
+effort = "low"
 stability = "stable"
 backends = ["claude"]
 ''')
@@ -970,7 +977,7 @@ backends = ["claude"]
 
     def test_check_distinguishes_explicit_tiers_and_status_only_models(self):
         command = ROOT / "bin" / "routing-check"
-        explicit = subprocess.run([command, "opus-5.5", "high"], capture_output=True, text=True)
+        explicit = subprocess.run([command, "haiku-5.5", "low"], capture_output=True, text=True)
         self.assertEqual(explicit.returncode, 0)
         self.assertIn("explicit-only", explicit.stdout)
         restricted = subprocess.run([command, "sonnet-5", "low"], capture_output=True, text=True)
@@ -1103,7 +1110,11 @@ backends = ["claude"]
                 self.assertEqual(route["effort"], "high")
                 self.assertEqual(route["stability"], "stable")
 
-        for profile in ("plan", "generate", "interactive"):
+        route = resolve(ROOT, "plan", "claude")
+        self.assertEqual((route["profile"], route["model"], route["effort"]),
+                         ("plan:opus", "claude-opus-5-5", "high"))
+
+        for profile in ("generate", "interactive"):
             with self.subTest(profile=profile):
                 with self.assertRaises(RouteRefusal) as caught:
                     resolve(ROOT, profile, "claude")
@@ -1113,7 +1124,7 @@ backends = ["claude"]
         route = resolve(ROOT, "explore", "claude", variant_id="opus")
         self.assertEqual(route["profile"], "explore:opus")
         self.assertEqual(route["model"], "claude-opus-5-5")
-        self.assertEqual(route["effort"], "xhigh")
+        self.assertEqual(route["effort"], "high")
         self.assertEqual(route["stability"], "stable")
 
     def test_haiku_is_served_by_the_claude_backend_alone(self):
@@ -1471,8 +1482,8 @@ role = "retired fixture with no shipped authorship"
 
     def test_lint_cli_separates_seated_review_tiers_from_author_floors(self):
         for field, anchor, replacement, diagnostic in (
-            ("author_floor", '  effort = "xhigh"\n  review_tier = 2\n  rank = { "anthropic" = 2 }',
-             '  effort = "xhigh"\n  review_tier = 2\n  author_floor = 2\n  rank = { "anthropic" = 2 }',
+            ("author_floor", '  effort = "xhigh"\n  review_tier = 2\n  rank = { "anthropic" = 5 }',
+             '  effort = "xhigh"\n  review_tier = 2\n  author_floor = 2\n  rank = { "anthropic" = 5 }',
              "author_floor on a seated tier"),
             ("review_tier", 'id = "sonnet-5.5"', 'id = "sonnet-5.5"',
              "review_tier on a tier no stable route seats"),
@@ -1577,7 +1588,7 @@ role = "retired fixture with no shipped authorship"
         root = self.fixture_root()
         path = root / "routing" / "models.toml"
         text = path.read_text()
-        anchor = '  effort = "xhigh"\n  review_tier = 2\n  rank = { "anthropic" = 2 }'
+        anchor = '  effort = "xhigh"\n  review_tier = 2\n  rank = { "anthropic" = 5 }'
         self.assertIn(anchor, text)
         path.write_text(text.replace(anchor, anchor.replace('review_tier = 2', 'review_tier = 3'), 1))
         route = resolve(root, "review", "codex", author="opus-5.5#xhigh")

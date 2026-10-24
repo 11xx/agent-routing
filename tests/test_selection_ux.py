@@ -26,9 +26,9 @@ class SelectionUXTest(unittest.TestCase):
         self.assertEqual(caught.exception.payload()["seated_efforts"], ["xhigh"])
         self.assertIn("seated efforts", str(caught.exception))
         with self.assertRaises(RouteRefusal) as caught:
-            self.selection(profile_id="implement", backend="claude", provider="anthropic",
-                           model="opus-5.5", effort="high")
-        self.assertEqual(caught.exception.payload()["seated_efforts"], ["xhigh"])
+            self.selection(profile_id="execute", backend="claude", provider="anthropic",
+                           model="opus-5.5", effort="low")
+        self.assertEqual(caught.exception.payload()["seated_efforts"], ["high"])
 
     def test_backend_spelling_and_named_tuple_cover_explicit_and_trial_tiers(self):
         for effort in ("high", "xhigh"):
@@ -58,9 +58,9 @@ class SelectionUXTest(unittest.TestCase):
         self.assertEqual(caught.exception.kind, "pool")
 
     def test_unsupported_profiles_name_read_only_alternatives_in_prose_and_json(self):
-        for select in (lambda: self.selection(profile_id="plan", backend="claude",
+        for select in (lambda: self.selection(profile_id="generate", backend="claude",
                                              provider="anthropic", model="opus-5.5", effort="xhigh"),
-                       lambda: resolve(ROOT, "plan", "claude")):
+                       lambda: resolve(ROOT, "generate", "claude")):
             with self.assertRaises(RouteRefusal) as caught:
                 select()
             self.assertIn("explore:haiku", caught.exception.payload()["backend_routes"])

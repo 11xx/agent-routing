@@ -22,7 +22,7 @@
 
 [meta]
 schema = "routing-profiles/1"
-updated = "2026-10-09"
+updated = "2026-10-24"
 
 # Pi routes to DeepSeek V4.1 Flash on the OpenCode Go pool by operator
 # direction: the GPT profiles name the codex backend alone, and a
@@ -103,7 +103,7 @@ backends = ["codex"]
   default_for_backend = true
 
   # Reconnaissance on the Claude window defaults to Haiku; Opus at the head
-  # model's standing tier is selected with `--variant opus`.
+  # model's standing tier, high, is selected with `--variant opus`.
   [[profile.variant]]
   id = "haiku"
   provider = "anthropic"
@@ -119,7 +119,7 @@ backends = ["codex"]
   provider = "anthropic"
   model = "opus-5.5"
   backend_model = "claude-opus-5-5"
-  effort = "xhigh"
+  effort = "high"
   stability = "stable"
   backends = ["claude"]
 
@@ -145,26 +145,46 @@ backends = ["codex"]
   backends = ["pi"]
   default_for_backend = true
 
-  # First-party Claude implementation uses the head model's standing tier.
-  [[profile.variant]]
-  id = "opus"
-  provider = "anthropic"
-  model = "opus-5.5"
-  backend_model = "claude-opus-5-5"
-  effort = "xhigh"
-  stability = "stable"
-  backends = ["claude"]
-  default_for_backend = true
-
-  # An explicit capacity trial when the operator requests low effort or the
-  # Claude window is the binding constraint. It does not displace the default.
+  # First-party Claude implementation defaults to Opus low, below the head
+  # model's standing tier of high: the brief names the targets and probes, and
+  # the lead inspects the result. Each other stable tier is a named variant a
+  # lead picks for the slice: high where it needs the lead's judgment, xhigh
+  # for hard reasoning, medium between low and high.
   [[profile.variant]]
   id = "opus-low"
   provider = "anthropic"
   model = "opus-5.5"
   backend_model = "claude-opus-5-5"
   effort = "low"
-  stability = "experimental"
+  stability = "stable"
+  backends = ["claude"]
+  default_for_backend = true
+
+  [[profile.variant]]
+  id = "opus-medium"
+  provider = "anthropic"
+  model = "opus-5.5"
+  backend_model = "claude-opus-5-5"
+  effort = "medium"
+  stability = "stable"
+  backends = ["claude"]
+
+  [[profile.variant]]
+  id = "opus-high"
+  provider = "anthropic"
+  model = "opus-5.5"
+  backend_model = "claude-opus-5-5"
+  effort = "high"
+  stability = "stable"
+  backends = ["claude"]
+
+  [[profile.variant]]
+  id = "opus-xhigh"
+  provider = "anthropic"
+  model = "opus-5.5"
+  backend_model = "claude-opus-5-5"
+  effort = "xhigh"
+  stability = "stable"
   backends = ["claude"]
 
 [[profile]]
@@ -227,6 +247,27 @@ backends = ["codex"]
   stability = "stable"
   backends = ["codex"]
 
+  # The head model plans at its standing tier, high; this binding is the head
+  # default `agent-routing seats` reports. Xhigh is the deep-reasoning variant.
+  [[profile.variant]]
+  id = "opus"
+  provider = "anthropic"
+  model = "opus-5.5"
+  backend_model = "claude-opus-5-5"
+  effort = "high"
+  stability = "stable"
+  backends = ["claude"]
+  default_for_backend = true
+
+  [[profile.variant]]
+  id = "opus-xhigh"
+  provider = "anthropic"
+  model = "opus-5.5"
+  backend_model = "claude-opus-5-5"
+  effort = "xhigh"
+  stability = "stable"
+  backends = ["claude"]
+
 [[profile]]
 id = "execute"
 fallback = [
@@ -235,7 +276,8 @@ fallback = [
 ]
 purpose = "broad or multi-slice implementation where technical judgment and long-horizon persistence remain material"
 # Judgment-bearing arcs take the Codex-side technical peer rather than the
-# bounded-work Luna seat.
+# bounded-work Luna seat, and on the Claude window the head model's standing
+# tier, high, rather than the bounded-work low implementer.
 provider = "openai-codex"
 model = "gpt-6.1-sol"
 effort = "xhigh"
@@ -257,7 +299,7 @@ backends = ["codex"]
   provider = "anthropic"
   model = "opus-5.5"
   backend_model = "claude-opus-5-5"
-  effort = "xhigh"
+  effort = "high"
   stability = "stable"
   backends = ["claude"]
   default_for_backend = true
@@ -291,7 +333,8 @@ backends = ["codex"]
 
   # GPT-authored diffs need a reviewer outside the Codex pool. Keep the roster
   # id separate from the first-party Claude client id so the route records both
-  # the policy model and the callable backend model.
+  # the policy model and the callable backend model. First-party review runs
+  # at xhigh, the deep-review tier, above the head model's standing high.
   [[profile.variant]]
   id = "opus"
   excluded_author_families = ["claude"]
@@ -322,12 +365,23 @@ backends = ["codex"]
 [[profile]]
 id = "design"
 purpose = "read-only judgment on UX, copy, API ergonomics, or architectural simplicity"
+# Taste is the head model's axis, so design judgment takes its standing tier,
+# high; `--variant xhigh` is the deep design review.
 provider = "anthropic"
 model = "opus-5.5"
 backend_model = "claude-opus-5-5"
-effort = "xhigh"
+effort = "high"
 stability = "stable"
 backends = ["claude"]
+
+  [[profile.variant]]
+  id = "xhigh"
+  provider = "anthropic"
+  model = "opus-5.5"
+  backend_model = "claude-opus-5-5"
+  effort = "xhigh"
+  stability = "stable"
+  backends = ["claude"]
 
 [[profile]]
 id = "computer-use"

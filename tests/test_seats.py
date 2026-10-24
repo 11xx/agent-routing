@@ -18,8 +18,8 @@ class SeatViewTest(unittest.TestCase):
         view = seats_view(ROOT)
         self.assertEqual({(s["profile"], s["variant"], s["backend"]) for s in view["seats"]}, expected)
         self.assertEqual(len(view["seats"]), len(expected))
-        self.assertIsNone(view["head_default"])
-        self.assertEqual(view["head_default_refusal"]["kind"], "unsupported-backend")
+        self.assertEqual(view["head_default"], resolve(ROOT, "plan", "claude"))
+        self.assertIsNone(view["head_default_refusal"])
         for seat in view["seats"]:
             with self.subTest(seat=seat):
                 route = resolve(ROOT, seat["profile"], seat["backend"], variant_id=seat["variant"], allow_experimental=True)

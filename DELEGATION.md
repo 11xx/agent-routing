@@ -432,6 +432,13 @@ Backend selection between the two GPT routes:
   `independent-review` obligation; it supplies no approval. Preserve an actual
   reviewer's verdict verbatim and bind it to the reviewed head before Arc
   integration. No quota result is review evidence.
+- **Opus 5.5 holds the claude backend's judgment and implementation seats.**
+  Every tier from low to xhigh is stable and max is prohibited. `implement`
+  resolves to low, with `--variant opus-medium`, `opus-high` and `opus-xhigh`
+  for a slice that needs more; `plan`, `execute`, `design` and `explore
+  --variant opus` resolve to high, the head model's standing tier; `review`
+  resolves to xhigh, the deep-review tier, as do `plan --variant opus-xhigh`
+  and `design --variant xhigh`. Low and high cover most work.
 - **Sonnet 5.5 is a trial, not a seat.** It is unmeasured and no profile
   resolves to it. Reach it as `claude -p --model claude-sonnet-5-5 --effort
   <tier>` through a validated operator-directed selection:
@@ -449,7 +456,7 @@ Backend selection between the two GPT routes:
   backend.** It is the fixed id `claude-haiku-5-5`, the cheap Claude
   subscription seat for read-only reconnaissance (scouts) and fixed-shape
   extraction: `resolve explore --backend claude` and `resolve extract
-  --backend claude` return it, and `--variant opus` selects Opus 5.5 xhigh for
+  --backend claude` return it, and `--variant opus` selects Opus 5.5 high for
   reconnaissance instead. It is never routed through an API-billed pool: a pi
   or OpenCode provider that bills the Claude API pays five times the
   short-prompt price above 100k prompt tokens and draws a paid pool where the

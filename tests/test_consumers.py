@@ -57,9 +57,11 @@ class ConsumerLintTest(unittest.TestCase):
             str(self.proxy): "model: sonnet\neffort: low\n",
             str(delegate_root / "agents/pi.md"): "model: sonnet\neffort: low\n",
             str(delegate_root / "agents/opencode.md"): "model: sonnet\neffort: low\n",
-            str(delegate_root / "agents/implement-opus.md"): claude_agent_bundle(
-                ROOT, profile_id="implement", variant_id="opus")["files"]["agents/implement-opus.md"],
         }
+        implementers = claude_agent_bundle(ROOT, profile_id="implement")["files"]
+        for name, content in implementers.items():
+            if name.startswith("agents/"):
+                files[str(delegate_root / name)] = content
         directories = [
             f"{instructions}/fragments",
             f"{instructions}/agents",
@@ -120,11 +122,11 @@ class ConsumerLintTest(unittest.TestCase):
 
     def test_generated_native_trial_is_registered_by_the_roster(self):
         code = self.fixture_code_root()
-        bundle = claude_agent_bundle(ROOT, profile_id="implement", variant_id="opus-low", allow_experimental=True)
-        path = self.proxy.parent / "implement-opus-low.md"
-        path.write_text(bundle["files"]["agents/implement-opus-low.md"])
+        bundle = claude_agent_bundle(ROOT, profile_id="computer-use", variant_id="opus", allow_experimental=True)
+        path = self.proxy.parent / "computer-use-opus.md"
+        path.write_text(bundle["files"]["agents/computer-use-opus.md"])
         self.assertEqual(self.run_lint(code).returncode, 0)
-        path.write_text(path.read_text().replace("effort: low", "effort: max"))
+        path.write_text(path.read_text().replace("effort: medium", "effort: max"))
         result = self.run_lint(code)
         self.assertEqual(result.returncode, 1)
         self.assertIn("generated agent differs", result.stdout)
@@ -132,7 +134,7 @@ class ConsumerLintTest(unittest.TestCase):
 
     def test_generated_definition_body_drift_is_rejected(self):
         code = self.fixture_code_root()
-        path = self.proxy.parent / "implement-opus.md"
+        path = self.proxy.parent / "implement-opus-low.md"
         path.write_text(path.read_text() + "Do unrelated work.\n")
         result = self.run_lint(code)
         self.assertEqual(result.returncode, 1)

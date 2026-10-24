@@ -125,7 +125,7 @@ routes require `--allow-experimental`, and prohibited tiers cannot be emitted.
 ```sh
 agent-routing emit claude-agents --output-dir ./claude-agent-bundle
 agent-routing emit claude-agents --output-dir ./claude-agent-bundle --check
-agent-routing emit claude-agents --profile implement --variant opus
+agent-routing emit claude-agents --profile implement --variant opus-low
 ```
 
 An explicit output directory receives `agents/` and `consumers-pins.toml`.
@@ -156,15 +156,17 @@ agent-routing resolve extract --backend pi --json
 agent-routing resolve generate --backend pi --allow-experimental --json
 ```
 
-`implement --backend claude --variant opus-low --allow-experimental` selects
-an explicit Opus 5.5 low capacity trial. Choose it by operator direction or
-when Claude-window headroom binds; its capacity benefit is unmeasured, so the
-standing implementation route remains xhigh. Its native definition is emitted
-with the same explicit experimental opt-in.
+Opus 5.5 is stable at low, medium, high and xhigh, and its max tier is
+prohibited. On the Claude backend `implement` defaults to low; `--variant
+opus-medium`, `opus-high` and `opus-xhigh` select the other tiers, each with
+its own native definition. The head model's standing tier is high: `plan`,
+the head default `seats` reports, and `execute` and `design` resolve there.
+First-party review stays at xhigh, the deep-review tier, which `plan --variant
+opus-xhigh` and `design --variant xhigh` also select.
 
 On the Claude backend `explore` and `extract` default to Haiku 5.5 at high, the
 cheap subscription seat for read-only reconnaissance and fixed-shape
-extraction; `explore --variant opus` selects Opus 5.5 xhigh. Haiku is reached
+extraction; `explore --variant opus` selects Opus 5.5 high. Haiku is reached
 only through the `claude` backend, never through an API-billed pool.
 
 Profiles stay on one axis: extraction, exploration, candidate generation,

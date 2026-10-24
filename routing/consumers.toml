@@ -60,10 +60,40 @@ effort = "low"
 # the harness's own subagent tool.
 [[pin]]
 consumer = "delegate-agents"
-path = "implement-opus.md"
+path = "implement-opus-low.md"
+model = "opus"
+effort = "low"
+profile = "implement"
+variant = "opus-low"
+backend = "claude"
+generated = true
+
+[[pin]]
+consumer = "delegate-agents"
+path = "implement-opus-medium.md"
+model = "opus"
+effort = "medium"
+profile = "implement"
+variant = "opus-medium"
+backend = "claude"
+generated = true
+
+[[pin]]
+consumer = "delegate-agents"
+path = "implement-opus-high.md"
+model = "opus"
+effort = "high"
+profile = "implement"
+variant = "opus-high"
+backend = "claude"
+generated = true
+
+[[pin]]
+consumer = "delegate-agents"
+path = "implement-opus-xhigh.md"
 model = "opus"
 effort = "xhigh"
 profile = "implement"
-variant = "opus"
+variant = "opus-xhigh"
 backend = "claude"
 generated = true
