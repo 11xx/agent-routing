@@ -161,7 +161,7 @@ prohibited. On the Claude backend `implement` defaults to low; `--variant
 opus-medium`, `opus-high` and `opus-xhigh` select the other tiers, each with
 its own native definition. The head model's standing tier is high: `plan`,
 the head default `seats` reports, and `execute` and `design` resolve there.
-First-party review stays at xhigh, the deep-review tier, which `plan --variant
+First-party review runs at xhigh, the deep-review tier, which `plan --variant
 opus-xhigh` and `design --variant xhigh` also select.
 
 On the Claude backend `explore` and `extract` default to Haiku 5.5 at high, the
