@@ -136,6 +136,30 @@ stability = "stable"
 backends = ["codex"]
 
   [[profile.variant]]
+  id = "terra-medium"
+  provider = "openai-codex"
+  model = "gpt-6.1-terra"
+  effort = "medium"
+  stability = "stable"
+  backends = ["codex"]
+
+  [[profile.variant]]
+  id = "terra-high"
+  provider = "openai-codex"
+  model = "gpt-6.1-terra"
+  effort = "high"
+  stability = "stable"
+  backends = ["codex"]
+
+  [[profile.variant]]
+  id = "terra-xhigh"
+  provider = "openai-codex"
+  model = "gpt-6.1-terra"
+  effort = "xhigh"
+  stability = "stable"
+  backends = ["codex"]
+
+  [[profile.variant]]
   id = "deepseek-go"
   provider = "opencode-go"
   model = "deepseek-flash"

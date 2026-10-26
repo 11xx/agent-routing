@@ -141,7 +141,7 @@ supported_efforts = ["low", "medium", "high", "xhigh", "max"]
 status = "verified"
 providers = ["openai-codex"]
 entrypoint = "codex exec \"<prompt>\""
-model_flag = "-m gpt-6-{luna,astra} | gpt-6.1-sol"
+model_flag = "-m gpt-6-{luna,astra} | gpt-6.1-{sol,terra}"
 effort_flag = "-c model_reasoning_effort=\"low|medium|high|xhigh|max\""
 workdir_flag = "-C <dir>"
 capture = "-o <file>; stdout is the full transcript (noisy)"
@@ -237,7 +237,7 @@ why = "a dollar-metered small plan whose value is cheap-tier capacity off both s
 provider = "openai-codex"
 usage_key = "codex"
 plan = "the Codex subscription"
-serves = ["gpt-5.6-sol", "gpt-5.6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"]
+serves = ["gpt-5.6-sol", "gpt-5.6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-luna"]
 pays_for = "itself: Sol runs here and nowhere else"
 why = "Sol belongs to the subscription that already covers it. pi and opencode reach it with the same OpenAI login, so the backend is never a reason to route Sol elsewhere"
 
