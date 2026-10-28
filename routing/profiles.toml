@@ -85,7 +85,9 @@ id = "explore"
 escalation_sources = ["plan", "review"]
 purpose = "read-only codebase reconnaissance and source mapping without a verdict"
 # Reconnaissance is bounded reading rather than judgment, so it takes the same
-# workhorse as implementation.
+# workhorse as implementation, and pi's Go-pool seat reads at low: scouts fan
+# out wide, and every fact they report is checked against source before it
+# enters a brief, a decision or a report.
 provider = "openai-codex"
 model = "gpt-6-luna"
 effort = "max"
@@ -97,7 +99,7 @@ backends = ["codex"]
   provider = "opencode-go"
   model = "deepseek-flash"
   backend_model = "deepseek-v4.1-flash"
-  effort = "max"
+  effort = "low"
   stability = "stable"
   backends = ["pi"]
   default_for_backend = true

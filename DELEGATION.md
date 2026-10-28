@@ -358,10 +358,11 @@ Backend selection between the two GPT routes:
   probationary MiMo rows on the Go subscription, and `deepseek` reaches V4.1
   Flash on independent API billing that no profile uses. Any harness that can run a shell can
   drive it. A non-Claude, non-Codex lead delegating to GPT goes through Pi.
-- **DeepSeek V4.1 Flash 1017 is pi's default route, at max.** It is reached
-  on the Go pool as `--provider opencode-go --model deepseek-v4.1-flash`,
-  through each GPT profile's `deepseek-go` variant and through `generate`.
-  Low and high are explicit alternatives. Five field arcs belong to September
+- **DeepSeek V4.1 Flash 1017 is pi's default route: max on the writing
+  profiles, low on `explore`.** It is reached on the Go pool as `--provider
+  opencode-go --model deepseek-v4.1-flash`, through each GPT profile's
+  `deepseek-go` variant and through `generate`. High is an explicit
+  alternative. Five field arcs belong to September
   V4.1 Flash; the vendor's 54.4 DeepSWE result and fabrication observations
   belong to V4 Flash 0731. Neither measures 1017. Record each new observation's
   checkpoint, provider, harness and effort, and qualify provider-reported

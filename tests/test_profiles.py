@@ -481,9 +481,9 @@ role = "steered generator for tests only"
 
     def test_baseline_is_the_canonical_backend_default(self):
         pi = self.direct_selection(
-            profile_id="explore", backend="pi", model="deepseek-v4.1-flash", effort="max", provider="opencode-go"
+            profile_id="explore", backend="pi", model="deepseek-v4.1-flash", effort="low", provider="opencode-go"
         )
-        self.assertEqual(pi["baseline"], "deepseek-flash#max")
+        self.assertEqual(pi["baseline"], "deepseek-flash#low")
         claude = self.direct_selection(
             profile_id="explore", backend="claude", model="opus-5.5", effort="xhigh",
             provider="anthropic", allow_experimental=False,
@@ -510,7 +510,7 @@ role = "steered generator for tests only"
         self.assertIn(old, block)
         profiles.write_text(text[:start] + block.replace(old, 'default_for_backend = false', 1) + text[end:])
         route = self.direct_selection(
-            root, profile_id="explore", backend="pi", model="deepseek-flash", effort="max", provider="opencode-go"
+            root, profile_id="explore", backend="pi", model="deepseek-flash", effort="low", provider="opencode-go"
         )
         self.assertIsNone(route["baseline"])
         self.assertEqual(route["direction"], "unranked")
@@ -1066,7 +1066,7 @@ backends = ["claude"]
             self.assertEqual(route["profile"], f"{profile}:deepseek-go")
             self.assertEqual(route["provider"], "opencode-go")
             self.assertEqual(route["model"], "deepseek-v4.1-flash")
-            self.assertEqual(route["effort"], "max")
+            self.assertEqual(route["effort"], "low" if profile == "explore" else "max")
             self.assertEqual(route["stability"], "stable")
         interactive = resolve(ROOT, "interactive", "pi")
         self.assertEqual((interactive["provider"], interactive["model"]), ("opencode-go", "deepseek-v4.1-flash"))
@@ -1948,7 +1948,11 @@ class RankLintTest(unittest.TestCase):
             "model 'deepseek-flash' effort 'max': seated on pool 'deepseek' without a rank",
             self.problems(root),
         )
-        self.rewrite(root, "models.toml", '  rank = { "opencode-go" = 1 }\n', '  rank = { "opencode-go" = 1, "deepseek" = 1 }\n')
+        self.rewrite(
+            root, "models.toml",
+            '  rank = { "opencode-go" = 1 }\n  predecessor = "V4 Flash 0731"',
+            '  rank = { "opencode-go" = 1, "deepseek" = 1 }\n  predecessor = "V4 Flash 0731"',
+        )
         self.assertEqual(self.problems(root), [])
 
     def test_a_duplicate_model_id_is_reported(self):

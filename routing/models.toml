@@ -463,9 +463,9 @@ family = "deepseek"
 build = "DeepSeek-V4.1-Flash-1017"
 build_released = "2026-10-17"
 aliases = ["deepseek/deepseek-v4.1-flash", "deepseek/deepseek-v4.1-flash-1017", "DeepSeek-V4.1-Flash-1017"]
-role = "Pi's default for every GPT profile and steered generation on OpenCode Go, retained by operator direction at max. Low and high are explicit alternatives; every identifier and factual claim is checked against source."
+role = "Pi's default for every GPT profile and steered generation on OpenCode Go: max on the writing seats and low on `explore`, by operator direction. High is an explicit alternative; every identifier and factual claim is checked against source."
 character = "DeepSeek V4.1 Flash 1017, released 2026-10-17. Its quality and effort curve have no local measurement. Five field arcs from September V4.1 Flash and the V4 Flash 0731 board row are predecessor evidence, retained in eras/2026-10-18-deepseek-flash-1017.md; neither establishes this checkpoint's performance."
-weaknesses = ["No 1017 field arc or local latency/quality comparison establishes an optimum effort. Max remains the operator's default, including when longer reasoning costs more wall time.", "Rolling provider aliases do not attest a checkpoint. Record the expected build and provider-reported identity separately; do not relabel earlier sessions as 1017.", "Predecessor evidence includes fabrication on V4 Flash 0731 and an unbounded-search stall on September V4.1 Flash. Bound search targets and verify claims; these are inherited precautions, not measured 1017 failures."]
+weaknesses = ["No 1017 field arc or local latency/quality comparison establishes an optimum effort. Max remains the operator's default for pi's writing seats, including when longer reasoning costs more wall time; reconnaissance at low is an operator choice, not a measured one.", "Rolling provider aliases do not attest a checkpoint. Record the expected build and provider-reported identity separately; do not relabel earlier sessions as 1017.", "Predecessor evidence includes fabrication on V4 Flash 0731 and an unbounded-search stall on September V4.1 Flash. Bound search targets and verify claims; these are inherited precautions, not measured 1017 failures."]
 api_price_per_million = { cache_hit_input = 0.006, cache_miss_input = 0.30, output = 1.2 }
 api_price_read = "2026-10-19"
 time_of_day_prices = [{ from = "04:00", until = "06:00", multiplier = 0.5 }, { from = "10:00", until = "01:00", multiplier = 0.5 }, { from = "01:00", until = "04:00", multiplier = 0.5, days = ["sat", "sun"] }, { from = "06:00", until = "10:00", multiplier = 0.5, days = ["sat", "sun"] }]
@@ -474,7 +474,9 @@ open_weights = true
 niches = ["Open weights permit local hosting; model availability and local hosting do not establish output correctness."]
   [[model.effort]]
   effort = "low"
-  use = "Explicit lower-effort alternative; no local 1017 comparison measures its quality or latency."
+  review_tier = 1
+  rank = { "opencode-go" = 1 }
+  use = "The `explore` seat: wide read-only fan-out whose reports the lead verifies against source. No local 1017 comparison measures its quality or latency on reconnaissance."
   [[model.effort]]
   effort = "high"
   use = "Explicit alternative for bounded work, including session pickup; no local 1017 comparison measures its quality or latency."
@@ -485,7 +487,7 @@ niches = ["Open weights permit local hosting; model availability and local hosti
   predecessor = "V4 Flash 0731"
   predecessor_pass_at_1 = 0.53
   predecessor_usd_per_task = 0.46
-  use = "Default for every existing Pi seat by operator direction. Keep checkpoint-specific evidence separate: neither September V4.1 field arcs nor the 0731 board row measures 1017. Verify claims against source; no measured 1017 effort curve establishes max as optimal."
+  use = "Default for every other Pi seat by operator direction. Keep checkpoint-specific evidence separate: neither September V4.1 field arcs nor the 0731 board row measures 1017. Verify claims against source; no measured 1017 effort curve establishes max as optimal."
 
 [[model]]
 id = "deepseek-v4-pro"
