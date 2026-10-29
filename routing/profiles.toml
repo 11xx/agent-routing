@@ -244,12 +244,10 @@ id = "plan"
 escalation_sources = ["review"]
 purpose = "read-only technical planning where feasibility, failure modes, and ordered execution are the work"
 # Planning is the head model's own seat; a lead on another harness delegates it
-# to Astra. Astra reads and reasons where it will not write — apply_patch falls
-# from 16.3% of its tool calls at low effort to 0.8% at high — and medium buys
-# what high does for less, so medium is the seat.
+# to Sol at xhigh, the strongest Codex tier, by operator direction.
 provider = "openai-codex"
-model = "gpt-6-astra"
-effort = "medium"
+model = "gpt-6.1-sol"
+effort = "xhigh"
 stability = "stable"
 backends = ["codex"]
 
@@ -263,8 +261,7 @@ backends = ["codex"]
   backends = ["pi"]
   default_for_backend = true
 
-  # The deliberate try-harder tier, for high-stakes planning or resolving an
-  # argued discussion rather than producing a plan.
+  # Astra at xhigh, selected by name.
   [[profile.variant]]
   id = "astra-xhigh"
   provider = "openai-codex"
