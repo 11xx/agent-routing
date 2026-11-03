@@ -20,8 +20,20 @@ def _number(value: object) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
+WINDOWS = ("five_hour", "seven_day")
+
+
 def pool_window(root: pathlib.Path, provider: str, usage: dict, now: int) -> dict:
-    key = pools(root).get(provider, {}).get("usage_key")
+    """A pool's headroom from the windows its plan has.
+
+    A window the pool declares must be reported, valid and current, or the
+    pool is unmeasured. A window the plan does not have is not expected, but
+    one that is reported anyway still counts, so an exhausted window always
+    blocks.
+    """
+    pool = pools(root).get(provider, {})
+    key = pool.get("usage_key")
+    declared = pool.get("windows", ())
     observation = usage.get(key) if isinstance(usage, dict) and key else None
     unknown = {"state": "unknown", "provider": provider}
     if not isinstance(observation, dict) or observation.get("state") != "fresh":
@@ -31,9 +43,9 @@ def pool_window(root: pathlib.Path, provider: str, usage: dict, now: int) -> dic
     if not _number(updated) or not 0 <= now - updated <= policy["max_age_seconds"]:
         return unknown
     windows = {}
-    for name in ("five_hour", "seven_day"):
+    for name in WINDOWS:
         window = observation.get(name)
-        if window is None and name == "seven_day":
+        if window is None and name not in declared:
             continue
         if not isinstance(window, dict):
             return unknown

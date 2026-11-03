@@ -450,6 +450,14 @@ def structural_problems(root: pathlib.Path) -> list[str]:
     if (any(not isinstance(key, str) or key not in {"codex", "claude"} for key in usage_keys)
             or len(usage_keys) != len(set(key for key in usage_keys if isinstance(key, str)))):
         problems.append("pools: usage_key must name a distinct normalized account")
+    for pool in delegation.get("pool", []):
+        if "usage_key" not in pool:
+            continue
+        windows = pool.get("windows")
+        if (not isinstance(windows, list) or not windows or len(windows) != len(set(map(str, windows)))
+                or any(window not in ("five_hour", "seven_day") for window in windows)):
+            problems.append(f"pools: {pool.get('provider')} must declare the windows its plan has "
+                            "(five_hour, seven_day)")
     problems.extend(backend_effort_problems(delegation.get("backend", []), models))
     by_pool = {pool["provider"]: pool for pool in delegation.get("pool", [])}
     for provider, pool in by_pool.items():

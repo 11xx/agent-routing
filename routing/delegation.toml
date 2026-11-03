@@ -237,6 +237,8 @@ why = "a dollar-metered small plan whose value is cheap-tier capacity off both s
 provider = "openai-codex"
 usage_key = "codex"
 plan = "the Codex subscription"
+# Pro has no five-hour limit, only the weekly one; Plus has both.
+windows = ["seven_day"]
 serves = ["gpt-5.6-sol", "gpt-5.6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-luna"]
 pays_for = "itself: Sol runs here and nowhere else"
 why = "Sol belongs to the subscription that already covers it. pi and opencode reach it with the same OpenAI login, so the backend is never a reason to route Sol elsewhere"
@@ -247,6 +249,8 @@ provider = "anthropic"
 scarcer_than = ["openai-codex"]
 usage_key = "claude"
 plan = "the Claude subscription"
+# Max has a five-hour rolling window and a weekly cap.
+windows = ["five_hour", "seven_day"]
 serves = ["opus-5.5", "fable-5.1", "sonnet-5.5", "haiku-5.5"]
 pays_for = "itself: never reach a Claude model through metered credits when the subscription covers it"
 why = "the same rule as Sol, on the other window"

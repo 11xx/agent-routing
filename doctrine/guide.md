@@ -48,9 +48,12 @@ QUOTA ADMISSION BEFORE DISPATCH
   The caller supplies normalized account-window JSON from `agent-status usage`.
   Routing reads that file alone and never probes an account. Pool `usage_key`
   bindings in delegation.toml identify the account; profiles.toml owns snapshot
-  freshness, the review threshold and each ordered fallback list. Fresh, valid
-  five-hour and any reported seven-day windows must have room. Unavailable,
-  stale, expired or inconsistent observations do not establish availability.
+  freshness, the review threshold and each ordered fallback list. Each pool
+  declares the windows its plan has (`windows`: Codex Pro has only the weekly
+  one, Claude Max both). Every declared window must be reported fresh and
+  valid, and every reported window must have room, declared or not.
+  Unavailable, stale, expired or inconsistent observations do not establish
+  availability.
 
   Without --usage-file, resolve remains a manifest-only query. With it, an
   exhausted execute pool follows the standing Codex-to-Opus or Claude-to-Sol

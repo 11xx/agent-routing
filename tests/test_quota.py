@@ -56,6 +56,43 @@ class QuotaAdmissionTest(unittest.TestCase):
                 observed["claude"][field] = value
                 self.assertEqual(self.review(observed)["reason"], "pool-unknown")
 
+    def test_a_pool_is_measured_by_the_windows_its_plan_has(self):
+        # Codex Pro has no five-hour window, so a weekly-only snapshot is a
+        # complete measurement there; Claude's plan has both, so the same
+        # snapshot shape leaves Claude unmeasured.
+        observed = usage()
+        del observed["codex"]["five_hour"]
+        route = self.review(observed, "opus-5.5#xhigh")
+        self.assertEqual(route["status"], "route")
+        self.assertEqual(route["quota"]["windows"], {"seven_day": {"remaining_percentage": 80,
+                                                                   "resets_at": NOW + 3600}})
+        observed["codex"]["seven_day"] = window(0)
+        self.assertEqual(self.review(observed, "opus-5.5#xhigh")["reason"], "pool-exhausted")
+        del observed["codex"]["seven_day"]
+        self.assertEqual(self.review(observed, "opus-5.5#xhigh")["reason"], "pool-unknown")
+        observed = usage()
+        del observed["claude"]["five_hour"]
+        self.assertEqual(self.review(observed)["reason"], "pool-unknown")
+
+    def test_a_measured_pool_must_declare_its_windows(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            shutil.copytree(ROOT / "routing", root / "routing")
+            delegation = root / "routing/delegation.toml"
+            text = delegation.read_text()
+            delegation.write_text(text.replace('windows = ["seven_day"]\n', "", 1))
+            self.assertIn("pools: openai-codex must declare the windows its plan has (five_hour, seven_day)",
+                          validation_problems(root))
+            delegation.write_text(text.replace('windows = ["seven_day"]', 'windows = ["daily"]', 1))
+            self.assertTrue(any("openai-codex must declare" in problem for problem in validation_problems(root)))
+
+    def test_a_reported_window_the_plan_does_not_declare_still_counts(self):
+        observed = usage()
+        observed["codex"]["five_hour"] = window(0)
+        self.assertEqual(self.review(observed, "opus-5.5#xhigh")["reason"], "pool-exhausted")
+        observed["codex"]["five_hour"] = dict(remaining_percentage=90, used_percentage=5, resets_at=NOW + 50)
+        self.assertEqual(self.review(observed, "opus-5.5#xhigh")["reason"], "pool-unknown")
+
     def test_weekly_exhaustion_blocks_an_otherwise_healthy_window(self):
         observed = usage()
         observed["claude"]["seven_day"] = window(0)
