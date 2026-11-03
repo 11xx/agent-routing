@@ -34,7 +34,8 @@ Run `agent-routing` with no verb for the routing guide.
   all                 print all three manifests
   check <model> [eff] exit non-zero if that model/effort is prohibited
   resolve <profile> --backend <backend> [--variant <name>] [--author <model>[#effort]]
-          [--allow-experimental] [--accept-ineligible] [--usage-file <file>] --json
+          [--purpose findings|clearance] [--allow-experimental] [--accept-ineligible]
+          [--usage-file <file>] --json
                       resolve a caller-selected task profile
   admit-review --author <model>[#effort] --usage-file <file> --base <base> --head <head> --json
                       select quota-admitted independent review or typed review debt
@@ -62,9 +63,11 @@ authors with shipped diffs retain floors at least as high as their successors.
 `assess` applies the same floors to any reviewer, seated or not, answers
 whether its read finds and whether it clears, and names why it falls short. A
 read clears only from outside the authors' families at or above both their
-floors and the clearance floor in models.toml [review]. `resolve
---accept-ineligible` returns the strongest seat with that assessment when no
-eligible one exists. `frontier` keeps the seats `assess`
+floors and the clearance floor in models.toml [review]. `resolve review
+--purpose clearance`, the default, seats only a clearing reviewer; `--purpose
+findings` accepts any seat at the author's floor, its own family only strictly
+above it. `resolve --accept-ineligible` returns the strongest seat with its
+answers when none serves the purpose. `frontier` keeps the seats `assess`
 calls independent for an author and answers the highest review_tier among
 them; pool availability never moves it.
 EOF

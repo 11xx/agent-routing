@@ -62,7 +62,7 @@ def pool_window(root: pathlib.Path, provider: str, usage: dict, now: int) -> dic
 
 
 def admit_route(root, profile, route, usage, *, now=None, pinned=False,
-                author=None, accept_ineligible=False, caller=None, caller_provider=None):
+                author=None, purpose=None, accept_ineligible=False, caller=None, caller_provider=None):
     now = int(time.time()) if now is None else now
     quota = pool_window(root, route["provider"], usage, now)
     if quota["state"] == "available":
@@ -76,7 +76,7 @@ def admit_route(root, profile, route, usage, *, now=None, pinned=False,
             if rule["from_provider"] != route["provider"]:
                 continue
             candidate = resolve(root, profile["id"], rule["backend"], variant_id=rule.get("variant"),
-                                author=author, accept_ineligible=accept_ineligible,
+                                author=author, purpose=purpose, accept_ineligible=accept_ineligible,
                                 caller=caller, caller_provider=caller_provider)
             alternative_quota = pool_window(root, candidate["provider"], usage, now)
             if alternative_quota["state"] == "available":

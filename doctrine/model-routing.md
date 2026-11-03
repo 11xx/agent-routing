@@ -196,7 +196,13 @@ Independent-review dispatch resolves `review` with `--author '<model>#<effort>'`
 from the diff's recorded authorship. Family exclusions in `profiles.toml` and
 cross-family `review_tier` floors on seated tiers and `author_floor` values on
 unseated tiers in `models.toml` require a stable route outside
-the author's family at or above its tier. Superseded authors of shipped diffs
+the author's family at or above its tier. A read clears review debt only when
+it also reaches the single clearance floor in `models.toml` `[review]`; that is
+what `--purpose clearance`, the default, resolves. A read below the floor, or
+from the author's family strictly above the author's tier, can still report
+findings: `--purpose findings` resolves it and `agent-routing assess` labels it
+`findings: eligible` with `clears: false`, so its approval leaves the debt
+owed. Superseded authors of shipped diffs
 retain floors at least as high as their successors at each declared effort;
 rows without shipped authorship need no floor. Pool-local escalation ranks do not
 compare across providers. A missing author leaves `review.independence`

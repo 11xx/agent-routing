@@ -61,7 +61,10 @@ this document. Resolve the `review` profile for the backend in use with
 stability, effort, and `review.independence` before independent-review dispatch.
 A result without the author reports `unverified`; it is not evidence of
 independence. The resolver refuses when no stable route outside the author's
-family meets its review floor and recommends Arc debt. `ARC_MODEL` identifies
+family meets both its review floor and the clearance floor, and recommends Arc
+debt. A findings read (`--purpose findings`) may come from below the clearance
+floor or, strictly above the author's tier, from its own family; its
+`clears: false` keeps the debt owed. `ARC_MODEL` identifies
 the caller and is not an author fallback. Operator-directed selections require
 their own independence check. Sol low never reviews under
 the current roster; future roster changes belong in `agent-routing models` and

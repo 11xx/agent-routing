@@ -26,6 +26,7 @@ from routing_profiles import (  # noqa: E402
     assess_review,
     dumps,
     frontier_review,
+    resolve,
     route_version,
     validation_problems,
 )
@@ -216,6 +217,78 @@ class AssessCliTest(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertEqual(result.stdout, "")
         self.assertIn("agent-routing-assessment/1 answers clearance only", result.stderr)
+
+
+class ResolveReviewPurposeTest(unittest.TestCase):
+    def test_findings_may_seat_a_same_family_reviewer_above_the_author(self):
+        # Rejects: a findings resolve refusing the only seat that can find, or
+        # reporting that seat as independent or clearing.
+        route = resolve(ROOT, "review", "codex", author="gpt-6.1-sol#low", purpose="findings")
+        self.assertEqual((route["model"], route["effort"], route["profile"]), ("gpt-6.1-sol", "xhigh", "review"))
+        review = route["review"]
+        self.assertEqual((review["purpose"], review["independence"], review["findings"], review["clears"]),
+                         ("findings", "ineligible", "eligible", False))
+        self.assertIn("same-family", review["qualifiers"])
+
+    def test_clearance_never_seats_a_same_family_reviewer(self):
+        # Rejects: the default purpose admitting a seat that cannot clear.
+        for backend in ("codex", "claude", "pi"):
+            with self.subTest(backend=backend):
+                try:
+                    route = resolve(ROOT, "review", backend, author="gpt-6.1-sol#low")
+                except RouteRefusal as refusal:
+                    self.assertEqual(refusal.payload()["recommendation"], "record-debt")
+                    continue
+                self.assertNotIn(route["model"], ("gpt-6.1-sol", "gpt-6-astra"))
+                self.assertEqual((route["review"]["purpose"], route["review"]["clears"]), ("clearance", True))
+
+    def test_clearance_refuses_a_seat_below_the_floor_that_findings_accepts(self):
+        # Rejects: a tier-1 seat offered as clearing coverage.
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "review", "pi", author="gpt-6.1-sol#low")
+        self.assertEqual(caught.exception.payload()["reason"], "no-eligible-route")
+        self.assertEqual(caught.exception.payload()["clearance"], 2)
+        route = resolve(ROOT, "review", "pi", author="gpt-6.1-sol#low", purpose="findings")
+        self.assertEqual((route["model"], route["effort"]), ("deepseek-v4.1-flash", "max"))
+        self.assertEqual((route["review"]["independence"], route["review"]["findings"], route["review"]["clears"],
+                          route["review"]["qualifiers"]), ("eligible", "eligible", False, ["below-clearance"]))
+        route = resolve(ROOT, "review", "pi", author="gpt-6.1-sol#low", accept_ineligible=True)
+        self.assertEqual((route["review"]["clears"], route["review"]["recommendation"], route["review"]["debt_kind"]),
+                         (False, "record-debt", "ineligible-review"))
+
+    def test_findings_never_falls_through_to_a_cost_gated_same_family_seat(self):
+        # Rejects: a findings resolve reaching Astra as a fallback default.
+        with self.assertRaises(RouteRefusal):
+            resolve(ROOT, "review", "codex", author="gpt-6.1-sol#high", purpose="findings")
+        route = resolve(ROOT, "review", "codex", variant_id="high-stakes", author="gpt-6.1-sol#high",
+                        purpose="findings")
+        self.assertEqual((route["model"], route["review"]["findings"], route["review"]["clears"]),
+                         ("gpt-6-astra", "eligible", False))
+
+    def test_a_clearing_resolve_reports_both_answers(self):
+        # Rejects: a clearing route whose review block omits the answers arc reads.
+        review = resolve(ROOT, "review", "codex", author="opus-5.5#xhigh")["review"]
+        self.assertEqual((review["purpose"], review["independence"], review["findings"], review["clears"],
+                          review["qualifiers"]), ("clearance", "eligible", "eligible", True, []))
+
+    def test_purpose_needs_a_review_author(self):
+        # Rejects: a purpose accepted where it can change nothing.
+        for kwargs in ({"profile_id": "implement", "author": None}, {"profile_id": "review", "author": None}):
+            with self.subTest(**kwargs), self.assertRaises(RouteRefusal) as caught:
+                resolve(ROOT, kwargs["profile_id"], "codex", author=kwargs["author"], purpose="findings")
+            self.assertEqual(caught.exception.kind, "invalid-purpose")
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(ROOT, "review", "codex", author="opus-5.5#xhigh", purpose="approval")
+        self.assertEqual(caught.exception.kind, "invalid-purpose")
+
+    def test_cli_accepts_purpose(self):
+        result = subprocess.run(
+            [ROOT / "bin" / "agent-routing", "resolve", "review", "--backend", "codex",
+             "--author", "gpt-6.1-sol#low", "--purpose", "findings", "--json"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["review"]["findings"], "eligible")
 
 
 if __name__ == "__main__":

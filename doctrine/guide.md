@@ -18,27 +18,39 @@ RESOLVE A ROUTE
   variant — so a route that is not ready cannot be reached by accident.
 
   For independent review, add --author '<model>#<effort>' using the diff
-  author's recorded coordinate. Review routes exclude their own model family
-  and require a stable reviewer at or above the author's review_tier, or
-  author_floor for an unseated tier. An author_floor grants no reviewer seat. An
-  ineligible default may select an eligible variant on the same backend;
-  --variant confines the choice. No eligible route means a refusal recommending
-  Arc review debt, not a weaker or same-family reviewer. Unknown author floors
-  also recommend debt. Omitting #effort uses the highest declared author floor;
+  author's recorded coordinate, and --purpose for what the read is for.
+  --purpose clearance, the default, asks for a read that may clear review
+  debt: a stable seat outside the author's excluded families, at or above
+  both the author's review_tier (or author_floor for an unseated tier) and the
+  clearance floor in models.toml [review]. --purpose findings asks only for a
+  read whose findings can be trusted: a seat at or above the author's tier,
+  and one from an excluded family only strictly above it and only on the
+  route resolved (the backend default or the named --variant), never as a
+  fallback. An author_floor grants no reviewer seat. A default that does not
+  serve the purpose may select a variant that does on the same backend;
+  --variant confines the choice. No such route means a refusal recommending
+  Arc review debt, not a weaker reviewer. Unknown author floors also
+  recommend debt. Omitting #effort uses the highest declared author floor;
   missing floors are not inferred.
 
   Without --author, review JSON carries independence: "unverified", the
-  excluded author families, and the reviewer tier inside `review`. With an
-  eligible author it carries independence: "eligible" and the author floor.
-  Eligibility is not a verdict. ARC_MODEL is never used as the author, since
-  the caller may not have written the diff. --author is only valid for review.
+  excluded author families, and the reviewer tier inside `review`; --purpose
+  then refuses, since there is nothing to judge. With an author it carries
+  the author floor, the purpose, and the seat's three answers:
+  independence ("eligible" when outside the excluded families and at the
+  author's tier), findings ("eligible" or "ineligible") and clears (true or
+  false), with the assessment qualifiers. A findings route may say
+  independence "ineligible" and clears false; only clears true discharges
+  debt. Eligibility is not a verdict. ARC_MODEL is never used as the author,
+  since the caller may not have written the diff. --author and --purpose are
+  only valid for review.
 
-  When no eligible route exists, --accept-ineligible (which needs --author)
-  returns the strongest stable seat instead of refusing, ties broken by the
-  profile's order of preference. Its `review` block carries independence:
-  "ineligible", the assessment qualifiers, recommendation: "record-debt" and
-  debt_kind: "ineligible-review". It never appears as independent. Where an
-  eligible route exists the answer is the same with or without the flag.
+  When no route serves the purpose, --accept-ineligible (which needs
+  --author) returns the strongest stable seat instead of refusing, ties
+  broken by the profile's order of preference. Its `review` block carries the
+  seat's answers and qualifiers, recommendation: "record-debt" and debt_kind:
+  "ineligible-review". Where a route serves the purpose the answer is the same
+  with or without the flag.
 
 QUOTA ADMISSION BEFORE DISPATCH
   agent-routing resolve execute --backend codex --usage-file usage.json --json

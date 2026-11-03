@@ -27,9 +27,16 @@ def main() -> int:
         help="diff author model[#effort]; review routes only; requires a nonblank family and review_tier or unseated author_floor",
     )
     parser.add_argument(
+        "--purpose",
+        choices=("findings", "clearance"),
+        help="with --author, the read's purpose: clearance of review debt (the default) needs an independent seat "
+        "at the clearance floor; findings accepts any seat at the author's tier, its own family only strictly "
+        "above it and only on the resolved route",
+    )
+    parser.add_argument(
         "--accept-ineligible",
         action="store_true",
-        help="with --author, return the strongest seat when none is eligible, marked ineligible with its qualifiers and debt kind",
+        help="with --author, return the strongest seat when none serves the purpose, with its answers, qualifiers and debt kind",
     )
     parser.add_argument("--caller", help="observed caller model#effort; adds an advisory confirmation block")
     parser.add_argument("--caller-provider", help="observed caller pool; required when its model belongs to multiple pools")
@@ -61,6 +68,7 @@ def main() -> int:
             caller=args.caller,
             caller_provider=args.caller_provider,
             author=args.author,
+            purpose=args.purpose,
             accept_ineligible=args.accept_ineligible,
             usage=usage,
         )

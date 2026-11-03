@@ -1508,6 +1508,26 @@ def _review_constraints(root: pathlib.Path, profile: dict, selected: dict) -> di
     }
 
 
+def _seat_answers(author: dict, constraints: dict, clearance: int) -> dict[str, bool]:
+    """A review seat's answers for one author, by the route's family exclusions.
+
+    Independent: outside the author's excluded families and at or above the
+    author's tier. Clears: independent and at or above the clearance floor.
+    Findings: at or above the author's tier, strictly above it from an
+    excluded family.
+    """
+    tier, floor = constraints["reviewer_tier"], author["tier"]
+    excluded = author["family"] in constraints["excluded_author_families"]
+    reaches = floor is not None and tier >= floor
+    independent = reaches and not excluded
+    return {
+        "independent": independent,
+        "findings": reaches and (not excluded or tier > floor),
+        "clears": independent and tier >= clearance,
+        "excluded": excluded,
+    }
+
+
 def resolve(
     root: pathlib.Path,
     profile_id: str,
@@ -1517,6 +1537,7 @@ def resolve(
     allow_experimental: bool = False,
     allow_cross_pool: bool = False,
     author: str | None = None,
+    purpose: str | None = None,
     accept_ineligible: bool = False,
     caller: str | None = None,
     caller_provider: str | None = None,
@@ -1550,6 +1571,20 @@ def resolve(
         raise RouteRefusal(
             "invalid-author",
             "--author is only valid when resolving review",
+            profile=profile_id,
+            backend=backend,
+        )
+    if purpose is not None and (profile_id != "review" or author is None):
+        raise RouteRefusal(
+            "invalid-purpose",
+            "--purpose needs review and the diff --author to judge against",
+            profile=profile_id,
+            backend=backend,
+        )
+    if purpose is not None and purpose not in REVIEW_PURPOSES:
+        raise RouteRefusal(
+            "invalid-purpose",
+            f"purpose must be one of {', '.join(REVIEW_PURPOSES)}, not {purpose!r}",
             profile=profile_id,
             backend=backend,
         )
@@ -1617,6 +1652,8 @@ def resolve(
         constraints = _review_constraints(root, profile, selected)
         review = {"author": None, "independence": "unverified", **constraints}
         if author is not None:
+            purpose = _purpose(purpose)
+            clearance = clearance_floor(root)
             author_facts = _review_author(
                 root, author, resolved_profile, backend, allow_unknown_floor=accept_ineligible
             )
@@ -1632,23 +1669,21 @@ def resolve(
                 if pool_refusal(pools(root), profile_id, candidate["provider"], candidate["model"]) and not allow_cross_pool:
                     continue
                 seats.append(candidate)
-                if author_facts["family"] in constraints["excluded_author_families"]:
-                    continue
-                if author_facts["tier"] is None or constraints["reviewer_tier"] < author_facts["tier"]:
-                    continue
-                eligible = candidate
-                break
-            assessment = None
+                answers = _seat_answers(author_facts, constraints, clearance)
+                # An excluded-family seat is never a fallback: a findings read
+                # from the author's own family comes only from the route the
+                # caller resolved, so a cost-gated variant is reached by name.
+                if answers["clears"] if purpose == "clearance" else (
+                        answers["findings"] and (candidate is selected or not answers["excluded"])):
+                    eligible = candidate
+                    break
+            accepted = False
             if eligible is None and accept_ineligible and seats:
                 # The strongest seat by review tier; max keeps the first of
                 # equals, which is the profile's own order of preference.
                 eligible = max(seats, key=lambda seat: _review_constraints(root, profile, seat)["reviewer_tier"])
                 constraints = _review_constraints(root, profile, eligible)
-                assessment = assess_review(
-                    root,
-                    f"{eligible['model']}#{eligible['effort']}",
-                    [author_facts["coordinate"]],
-                )
+                accepted = True
             if eligible is None:
                 raise RouteRefusal(
                     "review-independence",
@@ -1659,24 +1694,29 @@ def resolve(
                     author=author_facts["coordinate"],
                     author_family=author_facts["family"],
                     author_tier=author_facts["tier"],
+                    purpose=purpose,
+                    clearance=clearance,
                     recommendation="record-debt",
                     reason="no-eligible-route",
                 )
             selected = eligible
             resolved_profile = profile_id if selected is profile else f"{profile_id}:{selected['id']}"
+            assessment = assess_review(
+                root, f"{selected['model']}#{selected['effort']}", [author_facts["coordinate"]], purpose=purpose
+            )
+            answers = _seat_answers(author_facts, constraints, clearance)
             review = {
                 "author": author_facts["coordinate"],
                 "author_tier": author_facts["tier"],
-                "independence": "eligible",
+                "purpose": purpose,
+                "independence": "eligible" if answers["independent"] else "ineligible",
+                "findings": "eligible" if answers["findings"] else "ineligible",
+                "clears": answers["clears"],
+                "qualifiers": assessment["qualifiers"],
                 **constraints,
             }
-            if assessment is not None:
-                review.update(
-                    independence=assessment["independence"],
-                    qualifiers=assessment["qualifiers"],
-                    recommendation="record-debt",
-                    debt_kind=assessment["debt_kind"],
-                )
+            if accepted:
+                review.update(recommendation="record-debt", debt_kind=INELIGIBLE_REVIEW_DEBT_KIND)
     stability = selected["stability"]
     if stability != "stable" and not allow_experimental:
         raise RouteRefusal(
@@ -1721,7 +1761,7 @@ def resolve(
         from quota_routing import admit_route
 
         route = admit_route(root, profile, route, usage, now=now,
-                            pinned=variant_id is not None, author=author,
+                            pinned=variant_id is not None, author=author, purpose=purpose,
                             accept_ineligible=accept_ineligible, caller=caller,
                             caller_provider=caller_provider)
     return route

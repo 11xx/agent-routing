@@ -246,19 +246,34 @@ an explicit top effort beyond the offered review seats. These are conservative
 policy floors, independent of benchmark scores and pool-local escalation ranks.
 An unclassified model or effort has no assumed position on this scale.
 
-An author-aware result requires a stable route outside the excluded families
-with `reviewer_tier >= author_tier`. The backend default keeps precedence when
-eligible; otherwise the resolver checks the remaining routes in manifest order
-on that same backend. An explicit `--variant` confines eligibility to that
-variant. It never switches backends. Experimental opt-in cannot waive
-independence or the author floor.
+`--purpose` says what the read is for. The default, `clearance`, requires a
+stable route outside the excluded families with `reviewer_tier >=
+author_tier` and `reviewer_tier` at or above the single clearance floor that
+`routing/models.toml` declares in `[review]`, so the read may discharge review
+debt. `findings` requires only `reviewer_tier >= author_tier`; a route whose
+excluded families hold the author's needs `reviewer_tier > author_tier` and
+must be the route resolved, the backend default or the named `--variant`, so
+a same-family read that finds but never clears is never reached as a
+fallback, and a cost-gated variant such as Astra is reached only by name.
+The backend default keeps precedence when it serves the purpose; otherwise the
+resolver checks the remaining routes in manifest order on that same backend.
+An explicit `--variant` confines the choice to that variant. It never
+switches backends. Experimental opt-in cannot waive independence, the author
+floor or the clearance floor.
+
+```sh
+agent-routing resolve review --backend codex --author 'gpt-6.1-sol#low' --purpose findings --json
+```
 
 Successful review JSON adds `review` with `author`, `independence`,
 `excluded_author_families`, and `reviewer_tier`; author-aware results also carry
-`author_tier` and report `independence: "eligible"`. This is route eligibility,
-not a review verdict or proof that a different actor performed the review.
-For a diff with multiple authors, check every author; one coordinate does not
-certify the others.
+`author_tier`, `purpose`, the seat's `findings` (`eligible` or `ineligible`)
+and `clears` (true or false), and its assessment `qualifiers`. `independence`
+is `eligible` when the seat is outside the excluded families and at the
+author's tier. Only `clears: true` is coverage that discharges review debt.
+This is route eligibility, not a review verdict or proof that a different
+actor performed the review. For a diff with multiple authors, check every
+author; one coordinate does not certify the others.
 
 Without `--author`, the same concrete route remains available and `review`
 reports `author: null` and `independence: "unverified"`, alongside its family
