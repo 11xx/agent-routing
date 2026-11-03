@@ -248,6 +248,7 @@ class ResolveReviewPurposeTest(unittest.TestCase):
             resolve(ROOT, "review", "pi", author="gpt-6.1-sol#low")
         self.assertEqual(caught.exception.payload()["reason"], "no-eligible-route")
         self.assertEqual(caught.exception.payload()["clearance"], 2)
+        self.assertIn("at or above clearance floor 2", caught.exception.payload()["message"])
         route = resolve(ROOT, "review", "pi", author="gpt-6.1-sol#low", purpose="findings")
         self.assertEqual((route["model"], route["effort"]), ("deepseek-v4.1-flash", "max"))
         self.assertEqual((route["review"]["independence"], route["review"]["findings"], route["review"]["clears"],
@@ -258,8 +259,10 @@ class ResolveReviewPurposeTest(unittest.TestCase):
 
     def test_findings_never_falls_through_to_a_cost_gated_same_family_seat(self):
         # Rejects: a findings resolve reaching Astra as a fallback default.
-        with self.assertRaises(RouteRefusal):
+        with self.assertRaises(RouteRefusal) as caught:
             resolve(ROOT, "review", "codex", author="gpt-6.1-sol#high", purpose="findings")
+        self.assertIn("no stable review route for findings", caught.exception.payload()["message"])
+        self.assertNotIn("independent", caught.exception.payload()["message"])
         route = resolve(ROOT, "review", "codex", variant_id="high-stakes", author="gpt-6.1-sol#high",
                         purpose="findings")
         self.assertEqual((route["model"], route["review"]["findings"], route["review"]["clears"]),

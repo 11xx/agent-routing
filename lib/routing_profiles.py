@@ -1687,8 +1687,11 @@ def resolve(
             if eligible is None:
                 raise RouteRefusal(
                     "review-independence",
-                    f"no independent stable review route at or above author {author!r} on backend {backend!r}; "
-                    "record Arc review debt",
+                    (f"no independent stable review route at or above author {author!r} "
+                     f"and at or above clearance floor {clearance}"
+                     if purpose == "clearance" else
+                     f"no stable review route for findings at or above author {author!r}")
+                    + f" on backend {backend!r}; record Arc review debt",
                     profile=resolved_profile,
                     backend=backend,
                     author=author_facts["coordinate"],
