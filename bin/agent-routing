@@ -63,7 +63,9 @@ authors with shipped diffs retain floors at least as high as their successors.
 `assess` applies the same floors to any reviewer, seated or not, answers
 whether its read finds and whether it clears, and names why it falls short. A
 read clears only from outside the authors' families at or above both their
-floors and the clearance floor in models.toml [review]. `resolve review
+floors and the clearance floor in models.toml [review]. A family is the
+lineages models.toml [[family]] groups; assess and resolve read that one
+relation. `resolve review
 --purpose clearance`, the default, seats only a clearing reviewer; `--purpose
 findings` accepts any seat at the author's floor, its own family only strictly
 above it. `resolve --accept-ineligible` returns the strongest seat with its

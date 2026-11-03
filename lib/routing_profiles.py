@@ -26,7 +26,6 @@ PROFILE_KEYS = frozenset(
         "backends",
         "variant",
         "escalation_sources",
-        "excluded_author_families",
         "fallback",
     }
 )
@@ -41,7 +40,6 @@ VARIANT_KEYS = frozenset(
         "backends",
         "default_for_backend",
         "role_exception",
-        "excluded_author_families",
     }
 )
 UNROUTABLE_MODEL_STATUSES = {"deprecated", "inactive", "restricted", "retired", "superseded"}
@@ -366,6 +364,59 @@ def _family(model: dict) -> str:
     return model["family"].strip()
 
 
+def family_problems(models: list[dict], rows: object) -> list[str]:
+    """Why the manifest's ``[[family]]`` rows do not declare one family relation.
+
+    Each row's ``id`` and ``aliases`` must be family values roster models
+    carry, and a value may name only one family, so the relation partitions
+    the roster's families.
+    """
+    if not isinstance(rows, list):
+        return ["[[family]] must be an array of tables"]
+    known = {model["family"] for model in models if _family_value(model.get("family"))}
+    claimed: dict[str, object] = {}
+    problems: list[str] = []
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != {"id", "aliases"}:
+            problems.append("[[family]]: each row declares exactly id and aliases")
+            continue
+        family_id, aliases = row["id"], row["aliases"]
+        if not isinstance(aliases, list) or not aliases:
+            problems.append(f"family {family_id!r}: aliases must be a nonempty list of roster families")
+            continue
+        for value in [family_id, *aliases]:
+            if not isinstance(value, str) or value not in known:
+                problems.append(f"family {family_id!r}: {value!r} is not a roster model family")
+            elif value in claimed:
+                problems.append(f"family {family_id!r}: {value!r} already names family {claimed[value]!r}")
+            else:
+                claimed[value] = family_id
+    return problems
+
+
+def family_relation(root: pathlib.Path) -> dict[str, list[str]]:
+    """Each family value a ``[[family]]`` row names, with every value of its family.
+
+    The one family relation review independence reads: ``assess`` calls a
+    reviewer and an author the same family, and ``resolve review`` excludes a
+    seat for an author, exactly when the author's family is among the
+    reviewer's family values. A value no row names is a family of its own. A
+    manifest whose rows do not partition the roster's families refuses rather
+    than letting a family slip out of its relation.
+    """
+    manifest = load_toml(root / "routing" / "models.toml")
+    rows = manifest.get("family", [])
+    problems = family_problems(manifest.get("model", []), rows)
+    if problems:
+        raise RouteRefusal("manifest-invalid", "; ".join(problems))
+    return {value: [row["id"], *row["aliases"]] for row in rows for value in [row["id"], *row["aliases"]]}
+
+
+def _family_values(relation: dict[str, list[str]], model: dict) -> list[str]:
+    """Every family value naming ``model``'s family: its row's id and aliases, else its own alone."""
+    return relation.get(_family(model), [_family(model)])
+
+
 def clearance_problem(review: object) -> str | None:
     """Why the manifest's ``[review]`` table does not declare one usable clearance floor."""
     if not isinstance(review, dict) or set(review) != {"clearance"}:
@@ -390,7 +441,6 @@ def clearance_floor(root: pathlib.Path) -> int:
 
 def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict]) -> list[str]:
     by_model = {model["id"]: model for model in models}
-    families = {_family(model) for model in models if _nonblank_string(model.get("family"))}
     seated = _seated_tiers(profiles, by_pool)
     problems: list[str] = []
     for model in models:
@@ -410,25 +460,10 @@ def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: di
         for route in [profile, *profile.get("variant", [])]:
             label = profile["id"] if route is profile else f"{profile['id']}:{route['id']}"
             if profile["id"] != "review":
-                if "excluded_author_families" in route:
-                    problems.append(f"{label}: excluded_author_families is only valid for review")
                 continue
-            excluded = route.get("excluded_author_families", profile.get("excluded_author_families"))
-            if not isinstance(excluded, list) or not excluded or not all(_nonblank_string(family) for family in excluded):
-                problems.append(f"{label}: excluded_author_families must be a nonempty list of model families")
-                continue
-            excluded = [family.strip() for family in excluded]
-            for family in route.get("excluded_author_families", profile.get("excluded_author_families")):
-                if family != family.strip():
-                    problems.append(f"{label}: excluded author family {family!r} has surrounding whitespace")
-            for family in excluded:
-                if family not in families:
-                    problems.append(f"{label}: unknown excluded author family {family!r}")
             model = by_model.get(route.get("model"))
             if model is None:
                 continue
-            if not _nonblank_string(model.get("family")) or _family(model) not in excluded:
-                problems.append(f"{label}: excluded_author_families must exclude the reviewer's family")
             tier = next((tier for tier in model.get("effort", []) if tier.get("effort") == route.get("effort")), {})
             if "review_tier" not in tier:
                 problems.append(f"{label}: reviewer model/effort has no review_tier")
@@ -616,9 +651,11 @@ def structural_problems(root: pathlib.Path) -> list[str]:
     problems.extend(rank_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
     problems.extend(escalation_source_problems(profiles))
     problems.extend(review_policy_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
-    problem = clearance_problem(load_toml(root / "routing" / "models.toml").get("review"))
+    model_manifest = load_toml(root / "routing" / "models.toml")
+    problem = clearance_problem(model_manifest.get("review"))
     if problem:
         problems.append(problem)
+    problems.extend(family_problems(models, model_manifest.get("family", [])))
     for profile in profiles:
         rules = profile.get("fallback", [])
         if not isinstance(rules, list):
@@ -1297,6 +1334,7 @@ def _assessed_coordinate(root: pathlib.Path, coordinate: str, role: str, *, effo
         "model": facts["model_id"],
         "effort": effort if separator else None,
         "family": _family(model),
+        "family_values": _family_values(family_relation(root), model),
         "identities": model_identities(root, facts["model_id"]),
         "tier": facts["tier"] if separator else None,
         "floors": _floors(model, facts["tier"] if separator else None),
@@ -1345,7 +1383,7 @@ def _assessment(
     qualifiers = []
     if any(author["model"] == reader["model"] for author in written):
         qualifiers.append("same-model")
-    if any(author["family"] == reader["family"] for author in written):
+    if any(author["family"] in reader["family_values"] for author in written):
         qualifiers.append("same-family")
     if review_tier is not None and floor is not None and review_tier < floor:
         qualifiers.append("below-floor")
@@ -1376,7 +1414,7 @@ def _assessment(
     }
     if schema > 1:
         findings = review_tier is not None and floors_known and all(
-            review_tier > row["floor"] if row["family"] == reader["family"] else review_tier >= row["floor"]
+            review_tier > row["floor"] if row["family"] in reader["family_values"] else review_tier >= row["floor"]
             for row in author_rows
         )
         assessment.update(purpose=purpose, clearance=clearance,
@@ -1430,10 +1468,9 @@ FRONTIER_SCHEMA = "agent-routing-frontier/1"
 def frontier_review(root: pathlib.Path, author: str, reads: list[str] | tuple[str, ...] = ()) -> dict[str, object]:
     """The strongest eligible review seat for one author, and where reads stand against it.
 
-    A seat is a stable, pool-valid review route on any backend: a route whose
-    effective ``excluded_author_families`` (its own, else its profile's) is
-    set, the mark ``profiles.toml`` gives a seat ``resolve review`` can sell.
-    A seat on another profile is not a review a caller can buy. It is eligible exactly when ``assess`` calls it independent, and seats are ordered
+    A seat is a stable, pool-valid route of the ``review`` profile on any
+    backend, the kind ``resolve review`` can sell. A seat on another profile is
+    not a review a caller can buy. It is eligible exactly when ``assess`` calls it independent, and seats are ordered
     by ``review_tier``, the cross-family scale ``assess`` compares, never by a
     pool-local rank. Quota and pool availability are not inputs: the answer
     moves only when the manifests do. An author whose floor is unestablished
@@ -1450,7 +1487,7 @@ def frontier_review(root: pathlib.Path, author: str, reads: list[str] | tuple[st
 
     seated: dict[tuple[str, str], set[tuple[str, str]]] = {}
     for profile, route in _seating_routes(profiles, pools(root)):
-        if not route.get("excluded_author_families", profile.get("excluded_author_families")):
+        if profile["id"] != "review":
             continue
         seated.setdefault((route["model"], route["effort"]), set()).update(
             (backend, route["provider"]) for backend in route.get("backends", [])
@@ -1497,14 +1534,12 @@ def frontier_review(root: pathlib.Path, author: str, reads: list[str] | tuple[st
     }
 
 
-def _review_constraints(root: pathlib.Path, profile: dict, selected: dict) -> dict:
-    tier = model_effort_facts(root, selected["model"], selected["effort"])["tier"]
+def _review_constraints(root: pathlib.Path, selected: dict) -> dict:
+    """A review route's family exclusions and tier: its reviewer's family values, by the family relation."""
+    facts = model_effort_facts(root, selected["model"], selected["effort"])
     return {
-        "excluded_author_families": [
-            family.strip()
-            for family in selected.get("excluded_author_families", profile["excluded_author_families"])
-        ],
-        "reviewer_tier": tier["review_tier"],
+        "excluded_author_families": _family_values(family_relation(root), facts["model"]),
+        "reviewer_tier": facts["tier"]["review_tier"],
     }
 
 
@@ -1649,7 +1684,7 @@ def resolve(
         )
     review = None
     if profile_id == "review":
-        constraints = _review_constraints(root, profile, selected)
+        constraints = _review_constraints(root, selected)
         review = {"author": None, "independence": "unverified", **constraints}
         if author is not None:
             purpose = _purpose(purpose)
@@ -1665,7 +1700,7 @@ def resolve(
             for candidate in candidates:
                 if backend not in candidate.get("backends", []) or candidate["stability"] != "stable":
                     continue
-                constraints = _review_constraints(root, profile, candidate)
+                constraints = _review_constraints(root, candidate)
                 if pool_refusal(pools(root), profile_id, candidate["provider"], candidate["model"]) and not allow_cross_pool:
                     continue
                 seats.append(candidate)
@@ -1681,8 +1716,8 @@ def resolve(
             if eligible is None and accept_ineligible and seats:
                 # The strongest seat by review tier; max keeps the first of
                 # equals, which is the profile's own order of preference.
-                eligible = max(seats, key=lambda seat: _review_constraints(root, profile, seat)["reviewer_tier"])
-                constraints = _review_constraints(root, profile, eligible)
+                eligible = max(seats, key=lambda seat: _review_constraints(root, seat)["reviewer_tier"])
+                constraints = _review_constraints(root, eligible)
                 accepted = True
             if eligible is None:
                 raise RouteRefusal(

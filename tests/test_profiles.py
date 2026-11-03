@@ -1610,31 +1610,13 @@ role = "retired fixture with no shipped authorship"
             resolve(root, "review", "codex", variant_id="high-stakes", author="opus-5.5#xhigh", allow_experimental=True)
         self.assertEqual(caught.exception.kind, "review-independence")
 
-    def test_review_policy_lint_rejects_missing_or_ineffective_constraints(self):
-        for replacement in ('[]', '["unknown"]', '["openai"]', '"claude"'):
-            root = self.fixture_root()
-            path = root / "routing" / "profiles.toml"
-            path.write_text(path.read_text().replace('excluded_author_families = ["claude"]',
-                                                     f'excluded_author_families = {replacement}', 1))
-            with self.subTest(replacement=replacement):
-                self.assertTrue(any("author famil" in problem or "excluded_author_families" in problem
-                                    for problem in validation_problems(root)))
-
-    def test_lint_rejects_a_family_or_excluded_family_with_surrounding_whitespace(self):
-        cases = (
-            ("models.toml", 'family = "claude"', 'family = " claude "'),
-            ("profiles.toml", 'excluded_author_families = ["claude"]', 'excluded_author_families = ["claude "]'),
-            ("profiles.toml", 'excluded_author_families = ["openai", "gpt-5.6", "gpt-5.5"]',
-             'excluded_author_families = [" openai", "gpt-5.6", "gpt-5.5"]'),
-        )
-        for name, original, padded in cases:
-            root = self.fixture_root()
-            path = root / "routing" / name
-            self.assertIn(original, path.read_text())
-            path.write_text(path.read_text().replace(original, padded, 1))
-            with self.subTest(padded=padded):
-                self.assertTrue(any("surrounding whitespace" in problem for problem in validation_problems(root)),
-                                validation_problems(root))
+    def test_lint_rejects_a_family_with_surrounding_whitespace(self):
+        root = self.fixture_root()
+        path = root / "routing" / "models.toml"
+        self.assertIn('family = "claude"', path.read_text())
+        path.write_text(path.read_text().replace('family = "claude"', 'family = " claude "', 1))
+        self.assertTrue(any("surrounding whitespace" in problem for problem in validation_problems(root)),
+                        validation_problems(root))
 
     def test_a_padded_family_cannot_mark_a_same_family_reviewer_eligible(self):
         root = self.fixture_root()

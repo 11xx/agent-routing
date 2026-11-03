@@ -193,10 +193,10 @@ free.
 ### Routing rules
 
 Independent-review dispatch resolves `review` with `--author '<model>#<effort>'`
-from the diff's recorded authorship. Family exclusions in `profiles.toml` and
-cross-family `review_tier` floors on seated tiers and `author_floor` values on
-unseated tiers in `models.toml` require a stable route outside
-the author's family at or above its tier. A read clears review debt only when
+from the diff's recorded authorship. The `[[family]]` relation, cross-family
+`review_tier` floors on seated tiers and `author_floor` values on unseated
+tiers in `models.toml` require a stable route outside the author's family at
+or above its tier. A read clears review debt only when
 it also reaches the single clearance floor in `models.toml` `[review]`; that is
 what `--purpose clearance`, the default, resolves. A read below the floor, or
 from the author's family strictly above the author's tier, can still report

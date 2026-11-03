@@ -26,12 +26,14 @@ RESOLVE A ROUTE
   read whose findings can be trusted: a seat at or above the author's tier,
   and one from an excluded family only strictly above it and only on the
   route resolved (the backend default or the named --variant), never as a
-  fallback. An author_floor grants no reviewer seat. A default that does not
-  serve the purpose may select a variant that does on the same backend;
-  --variant confines the choice. No such route means a refusal recommending
-  Arc review debt, not a weaker reviewer. Unknown author floors also
-  recommend debt. Omitting #effort uses the highest declared author floor;
-  missing floors are not inferred.
+  fallback. A route's excluded families are its reviewer's family: the
+  lineages models.toml [[family]] groups with the reviewer's own, the same
+  relation assess reads for same-family. An author_floor grants no reviewer
+  seat. A default that does not serve the purpose may select a variant that
+  does on the same backend; --variant confines the choice. No such route
+  means a refusal recommending Arc review debt, not a weaker reviewer.
+  Unknown author floors also recommend debt. Omitting #effort uses the
+  highest declared author floor; missing floors are not inferred.
 
   Without --author, review JSON carries independence: "unverified", the
   excluded author families, and the reviewer tier inside `review`; --purpose
@@ -125,8 +127,9 @@ ASSESS A REVIEW
   A read clears exactly when no qualifier holds. The qualifiers are a closed
   set:
     same-model         the reviewer is an author's model, at any effort
-    same-family        the reviewer shares a family with an author; always
-                       present with same-model
+    same-family        the reviewer shares a family with an author, by the
+                       models.toml [[family]] relation; always present with
+                       same-model
     below-floor        the reviewer's review_tier is under the highest author
                        floor
     below-clearance    the reviewer's review_tier is under the clearance floor
@@ -144,8 +147,7 @@ FIND THE REVIEW FRONTIER
   frontier answers the strongest review seat eligible for an author, so a
   caller can tell whether a recorded read is still the best routing can buy.
   A seat is a stable review route on any backend whose pool serves its
-  model, one that carries excluded_author_families, the kind resolve review
-  can sell; a seat on another profile never raises the frontier. It is
+  model, a route of the review profile, the kind resolve review can sell; a seat on another profile never raises the frontier. It is
   eligible exactly when assess calls it independent, so frontier carries no
   independence rule of its own. Seats are ordered by review_tier, the
   cross-family scale assess compares, never by a pool-local rank. Quota and

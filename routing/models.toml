@@ -25,7 +25,7 @@
 #
 # `[review].clearance` is the one tier on that scale a read must reach to clear
 # review debt, declared once rather than per model. A clearing read is
-# family-independent of every author and its reviewer's `review_tier` is at or
+# family-independent (by `[[family]]` below) of every author and its reviewer's `review_tier` is at or
 # above both this floor and each author's floor. A read below it may still
 # report findings, but never clears.
 #
@@ -62,6 +62,18 @@ vendor_benchmarks = "a vendor's own harness produces its own scale, not a row on
 
 [review]
 clearance = 2
+
+# A model's `family` is the lineage it was released in. A `[[family]]` row
+# names lineages that are one family for review independence: its `id` and
+# each of its `aliases` are `family` values roster models carry, and no value
+# appears in two rows. A lineage no row names is a family of its own. This is
+# the one family relation review reads: `assess` calls a reviewer and an
+# author the same family, and a `resolve review` route excludes an author as
+# its reviewer's family, exactly when the author's lineage is one of the
+# reviewer's family's values.
+[[family]]
+id = "openai"
+aliases = ["gpt-5.6", "gpt-5.5"]
 
 [[model]]
 id = "opus-5.5"

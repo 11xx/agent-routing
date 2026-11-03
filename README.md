@@ -224,15 +224,20 @@ agent-routing resolve review --backend claude --author 'gpt-6.1-sol#xhigh' --jso
 canonicalized; `ARC_MODEL` is not read, because the caller may differ from the
 diff author. A model without `#effort` uses its highest declared review floor.
 If any of that model's efforts lacks a floor, supply the recorded effort or
-expect a refusal. Model families and excluded author families must be nonblank strings without
+expect a refusal. Model families must be nonblank strings without
 surrounding whitespace; malformed families invalidate the manifest, and every
 family comparison reads the trimmed value. Unknown author models, efforts, or review floors recommend
 debt rather than inferring eligibility.
 
-Each review route declares `excluded_author_families` in `profiles.toml`.
-Variants inherit the base profile's exclusions unless they declare their own;
-every route must exclude its reviewer's family. This fences the Claude and GPT
-pools by model lineage, including a model reached through another provider.
+A model's `family` in `models.toml` is the lineage it was released in, and a
+`[[family]]` row groups lineages that are one family: its `id` and `aliases`
+are lineages roster models carry, no lineage sits in two rows, and a lineage
+no row names is a family of its own. `openai` groups `gpt-5.6` and `gpt-5.5`.
+This is the one family relation review reads. A review route excludes exactly
+the authors of its reviewer's family, reported as `excluded_author_families`,
+and `assess` calls exactly those pairs `same-family`; a route declares no
+exclusions of its own. This fences the Claude and GPT pools by model family,
+including a model reached through another provider.
 `review_tier` in `models.toml` sets a seated tier's reviewer tier and author
 floor. An unseated tier may carry `author_floor`, which sets only the author
 requirement and grants no reviewer eligibility. Superseded models with shipped
@@ -341,9 +346,8 @@ tier as a model, effort, backend and pool. A caller that stores the reads a
 change received compares them against it at read time, so no tier is ever
 stored.
 
-A seat is a stable review route on any backend whose pool serves its model:
-a route whose effective `excluded_author_families` is set, the kind
-`resolve review` can sell. A seat on another profile never raises the
+A seat is a stable route of the `review` profile on any backend whose pool
+serves its model, the kind `resolve review` can sell. A seat on another profile never raises the
 frontier. Eligibility is `assess`'s independence verbatim: the frontier adds no
 independence rule. Seats are ordered by `review_tier`, the cross-family scale `assess`
 compares, never by the pool-local `rank`. Quota is not an input, so an
