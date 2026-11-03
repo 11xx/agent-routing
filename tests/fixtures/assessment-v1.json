@@ -1,0 +1,313 @@
+[
+  {
+    "reviewer": "deepseek-flash#max",
+    "authors": [
+      "gpt-6.1-sol#low"
+    ],
+    "json": {
+      "authors": [
+        {
+          "effort": "low",
+          "family": "openai",
+          "floor": 1,
+          "model": "gpt-6.1-sol"
+        }
+      ],
+      "debt_kind": null,
+      "floor": 1,
+      "independence": "eligible",
+      "qualifiers": [],
+      "reviewer": {
+        "effort": "max",
+        "family": "deepseek",
+        "model": "deepseek-flash",
+        "review_tier": 1
+      },
+      "schema": "agent-routing-assessment/1"
+    },
+    "text": "eligible: reviewer deepseek-flash#max (tier 1) against gpt-6.1-sol#low (floor 1); qualifiers none\n"
+  },
+  {
+    "reviewer": "gpt-6.1-sol#xhigh",
+    "authors": [
+      "gpt-6.1-sol#low"
+    ],
+    "json": {
+      "authors": [
+        {
+          "effort": "low",
+          "family": "openai",
+          "floor": 1,
+          "model": "gpt-6.1-sol"
+        }
+      ],
+      "debt_kind": "ineligible-review",
+      "floor": 1,
+      "independence": "ineligible",
+      "qualifiers": [
+        "same-model",
+        "same-family"
+      ],
+      "reviewer": {
+        "effort": "xhigh",
+        "family": "openai",
+        "model": "gpt-6.1-sol",
+        "review_tier": 2
+      },
+      "schema": "agent-routing-assessment/1"
+    },
+    "text": "ineligible: reviewer gpt-6.1-sol#xhigh (tier 2) against gpt-6.1-sol#low (floor 1); qualifiers same-model,same-family\n"
+  },
+  {
+    "reviewer": "opus-5.5#xhigh",
+    "authors": [
+      "gpt-6.1-sol#low"
+    ],
+    "json": {
+      "authors": [
+        {
+          "effort": "low",
+          "family": "openai",
+          "floor": 1,
+          "model": "gpt-6.1-sol"
+        }
+      ],
+      "debt_kind": null,
+      "floor": 1,
+      "independence": "eligible",
+      "qualifiers": [],
+      "reviewer": {
+        "effort": "xhigh",
+        "family": "claude",
+        "model": "opus-5.5",
+        "review_tier": 2
+      },
+      "schema": "agent-routing-assessment/1"
+    },
+    "text": "eligible: reviewer opus-5.5#xhigh (tier 2) against gpt-6.1-sol#low (floor 1); qualifiers none\n"
+  },
+  {
+    "reviewer": "opus-5.5#xhigh",
+    "authors": [
+      "sonnet-5.5#high"
+    ],
+    "json": {
+      "authors": [
+        {
+          "effort": "high",
+          "family": "claude",
+          "floor": 2,
+          "model": "sonnet-5.5"
+        }
+      ],
+      "debt_kind": "ineligible-review",
+      "floor": 2,
+      "independence": "ineligible",
+      "qualifiers": [
+        "same-family"
+      ],
+      "reviewer": {
+        "effort": "xhigh",
+        "family": "claude",
+        "model": "opus-5.5",
+        "review_tier": 2
+      },
+      "schema": "agent-routing-assessment/1"
+    },
+    "text": "ineligible: reviewer opus-5.5#xhigh (tier 2) against sonnet-5.5#high (floor 2); qualifiers same-family\n"
+  },
+  {
+    "reviewer": "haiku-5.5#high",
+    "authors": [
+      "opus-5.5#xhigh"
+    ],
+    "json": {
+      "authors": [
+        {
+          "effort": "xhigh",
+          "family": "claude",
+          "floor": 2,
+          "model": "opus-5.5"
+        }
+      ],
+      "debt_kind": "ineligible-review",
+      "floor": 2,
+      "independence": "ineligible",
+      "qualifiers": [
+        "same-family",
+        "below-floor"
+      ],
+      "reviewer": {
+        "effort": "high",
+        "family": "claude",
+        "model": "haiku-5.5",
+        "review_tier": 1
+      },
+      "schema": "agent-routing-assessment/1"
+    },
+    "text": "ineligible: reviewer haiku-5.5#high (tier 1) against opus-5.5#xhigh (floor 2); qualifiers same-family,below-floor\n"
+  },
+  {
+    "reviewer": "gpt-6.1-sol#xhigh",
+    "authors": [
+      "opus-5.5#max"
+    ],
+    "json": {
+      "authors": [
+        {
+          "effort": "max",
+          "family": "claude",
+          "floor": 4,
+          "model": "opus-5.5"
+        }
+      ],
+      "debt_kind": "ineligible-review",
+      "floor": 4,
+      "independence": "ineligible",
+      "qualifiers": [
+        "below-floor"
+      ],
+      "reviewer": {
+        "effort": "xhigh",
+        "family": "openai",
+        "model": "gpt-6.1-sol",
+        "review_tier": 2
+      },
+      "schema": "agent-routing-assessment/1"
+    },
+    "text": "ineligible: reviewer gpt-6.1-sol#xhigh (tier 2) against opus-5.5#max (floor 4); qualifiers below-floor\n"
+  },
+  {
+    "reviewer": "sonnet-5.5#high",
+    "authors": [
+      "gpt-6.1-sol#xhigh"
+    ],
+    "json": {
+      "authors": [
+        {
+          "effort": "xhigh",
+          "family": "openai",
+          "floor": 2,
+          "model": "gpt-6.1-sol"
+        }
+      ],
+      "debt_kind": "ineligible-review",
+      "floor": 2,
+      "independence": "ineligible",
+      "qualifiers": [
+        "reviewer-unseated"
+      ],
+      "reviewer": {
+        "effort": "high",
+        "family": "claude",
+        "model": "sonnet-5.5",
+        "review_tier": null
+      },
+      "schema": "agent-routing-assessment/1"
+    },
+    "text": "ineligible: reviewer sonnet-5.5#high (tier unseated) against gpt-6.1-sol#xhigh (floor 2); qualifiers reviewer-unseated\n"
+  },
+  {
+    "reviewer": "opus-5.5#xhigh",
+    "authors": [
+      "opus-5.5#xhigh",
+      "sonnet-5.5#high"
+    ],
+    "json": {
+      "authors": [
+        {
+          "effort": "xhigh",
+          "family": "claude",
+          "floor": 2,
+          "model": "opus-5.5"
+        },
+        {
+          "effort": "high",
+          "family": "claude",
+          "floor": 2,
+          "model": "sonnet-5.5"
+        }
+      ],
+      "debt_kind": "ineligible-review",
+      "floor": 2,
+      "independence": "ineligible",
+      "qualifiers": [
+        "same-model",
+        "same-family"
+      ],
+      "reviewer": {
+        "effort": "xhigh",
+        "family": "claude",
+        "model": "opus-5.5",
+        "review_tier": 2
+      },
+      "schema": "agent-routing-assessment/1"
+    },
+    "text": "ineligible: reviewer opus-5.5#xhigh (tier 2) against opus-5.5#xhigh (floor 2), sonnet-5.5#high (floor 2); qualifiers same-model,same-family\n"
+  },
+  {
+    "reviewer": "gpt-6-astra#xhigh",
+    "authors": [
+      "opus-5.5"
+    ],
+    "json": {
+      "authors": [
+        {
+          "effort": null,
+          "family": "claude",
+          "floor": 4,
+          "model": "opus-5.5"
+        }
+      ],
+      "debt_kind": "ineligible-review",
+      "floor": 4,
+      "independence": "ineligible",
+      "qualifiers": [
+        "below-floor"
+      ],
+      "reviewer": {
+        "effort": "xhigh",
+        "family": "openai",
+        "model": "gpt-6-astra",
+        "review_tier": 3
+      },
+      "schema": "agent-routing-assessment/1"
+    },
+    "text": "ineligible: reviewer gpt-6-astra#xhigh (tier 3) against opus-5.5 (floor 4); qualifiers below-floor\n"
+  },
+  {
+    "reviewer": "gpt-6-luna#max",
+    "authors": [
+      "opus-5.5#low",
+      "deepseek-flash#max"
+    ],
+    "json": {
+      "authors": [
+        {
+          "effort": "low",
+          "family": "claude",
+          "floor": 1,
+          "model": "opus-5.5"
+        },
+        {
+          "effort": "max",
+          "family": "deepseek",
+          "floor": 1,
+          "model": "deepseek-flash"
+        }
+      ],
+      "debt_kind": null,
+      "floor": 1,
+      "independence": "eligible",
+      "qualifiers": [],
+      "reviewer": {
+        "effort": "max",
+        "family": "openai",
+        "model": "gpt-6-luna",
+        "review_tier": 1
+      },
+      "schema": "agent-routing-assessment/1"
+    },
+    "text": "eligible: reviewer gpt-6-luna#max (tier 1) against opus-5.5#low (floor 1), deepseek-flash#max (floor 1); qualifiers none\n"
+  }
+]

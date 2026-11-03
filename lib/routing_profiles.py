@@ -366,6 +366,28 @@ def _family(model: dict) -> str:
     return model["family"].strip()
 
 
+def clearance_problem(review: object) -> str | None:
+    """Why the manifest's ``[review]`` table does not declare one usable clearance floor."""
+    if not isinstance(review, dict) or set(review) != {"clearance"}:
+        return "[review] must declare exactly one clearance floor"
+    if type(review["clearance"]) is not int or review["clearance"] < 1:
+        return "[review].clearance must be a positive integer review_tier"
+    return None
+
+
+def clearance_floor(root: pathlib.Path) -> int:
+    """The ``review_tier`` a read must reach to clear review debt.
+
+    A manifest without a usable floor refuses rather than letting every read
+    clear.
+    """
+    review = load_toml(root / "routing" / "models.toml").get("review")
+    problem = clearance_problem(review)
+    if problem:
+        raise RouteRefusal("manifest-invalid", problem)
+    return review["clearance"]
+
+
 def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict]) -> list[str]:
     by_model = {model["id"]: model for model in models}
     families = {_family(model) for model in models if _nonblank_string(model.get("family"))}
@@ -594,6 +616,9 @@ def structural_problems(root: pathlib.Path) -> list[str]:
     problems.extend(rank_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
     problems.extend(escalation_source_problems(profiles))
     problems.extend(review_policy_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
+    problem = clearance_problem(load_toml(root / "routing" / "models.toml").get("review"))
+    if problem:
+        problems.append(problem)
     for profile in profiles:
         rules = profile.get("fallback", [])
         if not isinstance(rules, list):
@@ -1222,7 +1247,9 @@ def _review_author(
     }
 
 
-ASSESSMENT_SCHEMA = "agent-routing-assessment/1"
+ASSESSMENT_SCHEMAS = {1: "agent-routing-assessment/1", 2: "agent-routing-assessment/2"}
+ASSESSMENT_SCHEMA = ASSESSMENT_SCHEMAS[2]
+REVIEW_PURPOSES = ("findings", "clearance")
 INELIGIBLE_REVIEW_DEBT_KIND = "ineligible-review"
 
 
@@ -1292,11 +1319,25 @@ def _author_rows(written: list[dict]) -> tuple[list[dict], int | None, bool]:
     return rows, max(known_floors) if known_floors else None, len(known_floors) == len(rows)
 
 
-def _assessment(reader: dict, written: list[dict], version: str) -> dict[str, object]:
+def _assessment(
+    reader: dict,
+    written: list[dict],
+    version: str,
+    clearance: int | None,
+    *,
+    schema: int = 2,
+    purpose: str = "clearance",
+) -> dict[str, object]:
     """The assessment of a resolved reviewer against resolved authors.
 
     The one place eligibility is decided: ``assess_review`` and ``frontier_review``
     both read it, so no second independence rule can disagree with it.
+
+    ``independence`` is eligible exactly when no qualifier but
+    ``below-clearance`` holds; a read clears exactly when none holds.
+    ``findings`` asks only that the reviewer's tier reach each author's floor,
+    strictly above it for an author of its own family. Schema 1 carries the
+    independence answer alone.
     """
     review_tier = (reader["tier"] or {}).get("review_tier")
     author_rows, floor, floors_known = _author_rows(written)
@@ -1308,13 +1349,17 @@ def _assessment(reader: dict, written: list[dict], version: str) -> dict[str, ob
         qualifiers.append("same-family")
     if review_tier is not None and floor is not None and review_tier < floor:
         qualifiers.append("below-floor")
+    if schema > 1 and review_tier is not None and review_tier < clearance:
+        qualifiers.append("below-clearance")
     if not floors_known:
         qualifiers.append("floor-unknown")
     if review_tier is None:
         qualifiers.append("reviewer-unseated")
+    independent = not [qualifier for qualifier in qualifiers if qualifier != "below-clearance"]
+    clears = not qualifiers
 
-    return {
-        "schema": ASSESSMENT_SCHEMA,
+    assessment = {
+        "schema": ASSESSMENT_SCHEMAS[schema],
         "route_version": version,
         "reviewer": {
             "model": reader["model"],
@@ -1325,24 +1370,58 @@ def _assessment(reader: dict, written: list[dict], version: str) -> dict[str, ob
         },
         "authors": author_rows,
         "floor": floor,
-        "independence": "ineligible" if qualifiers else "eligible",
+        "independence": "eligible" if independent else "ineligible",
         "qualifiers": qualifiers,
-        "debt_kind": INELIGIBLE_REVIEW_DEBT_KIND if qualifiers else None,
+        "debt_kind": None if clears else INELIGIBLE_REVIEW_DEBT_KIND,
     }
+    if schema > 1:
+        findings = review_tier is not None and floors_known and all(
+            review_tier > row["floor"] if row["family"] == reader["family"] else review_tier >= row["floor"]
+            for row in author_rows
+        )
+        assessment.update(purpose=purpose, clearance=clearance,
+                          findings="eligible" if findings else "ineligible", clears=clears)
+    return assessment
 
 
-def assess_review(root: pathlib.Path, reviewer: str, authors: list[str]) -> dict[str, object]:
+def _purpose(purpose: str | None) -> str:
+    if purpose is None:
+        return "clearance"
+    if purpose not in REVIEW_PURPOSES:
+        raise RouteRefusal("invalid-purpose", f"purpose must be one of {', '.join(REVIEW_PURPOSES)}, not {purpose!r}")
+    return purpose
+
+
+def assess_review(
+    root: pathlib.Path,
+    reviewer: str,
+    authors: list[str],
+    *,
+    purpose: str | None = None,
+    schema: int = 2,
+) -> dict[str, object]:
     """Assess one reviewer against the authors of the diff it read.
 
     Pure policy over the roster: any reviewer can be assessed, seated by a
-    profile or not. The qualifiers are a closed set and the read is eligible
-    exactly when none holds.
+    profile or not. The qualifiers are a closed set; the read clears exactly
+    when none holds. Both answers are given whatever the purpose; the purpose
+    records which question the caller asked. Schema 1 answers independence
+    alone, so it refuses a findings purpose.
     """
+    if schema not in ASSESSMENT_SCHEMAS:
+        raise RouteRefusal("invalid-schema", f"no assessment schema {schema!r}")
+    if schema == 1 and purpose == "findings":
+        raise RouteRefusal(
+            "invalid-purpose",
+            "--purpose findings needs schema 2: agent-routing-assessment/1 answers clearance only",
+        )
+    purpose = _purpose(purpose)
+    clearance = clearance_floor(root)
     if not authors:
         raise RouteRefusal("unknown-coordinate", "no author given", role="author")
     reader = _assessed_coordinate(root, reviewer, "reviewer", effort_required=True)
     written = [_assessed_coordinate(root, author, "author", effort_required=False) for author in authors]
-    return _assessment(reader, written, route_version(root))
+    return _assessment(reader, written, route_version(root), clearance, schema=schema, purpose=purpose)
 
 
 FRONTIER_SCHEMA = "agent-routing-frontier/1"
@@ -1354,13 +1433,13 @@ def frontier_review(root: pathlib.Path, author: str, reads: list[str] | tuple[st
     A seat is a stable, pool-valid review route on any backend: a route whose
     effective ``excluded_author_families`` (its own, else its profile's) is
     set, the mark ``profiles.toml`` gives a seat ``resolve review`` can sell.
-    A seat on another profile is not a review a caller can buy. It is eligible exactly when ``assess`` calls it so, and seats are ordered
+    A seat on another profile is not a review a caller can buy. It is eligible exactly when ``assess`` calls it independent, and seats are ordered
     by ``review_tier``, the cross-family scale ``assess`` compares, never by a
     pool-local rank. Quota and pool availability are not inputs: the answer
     moves only when the manifests do. An author whose floor is unestablished
     has no frontier, since every seat would be ``floor-unknown``.
 
-    Each read is assessed under the same route version; its ``standing`` is
+    Each read carries its ``agent-routing-assessment/1`` under the same route version; its ``standing`` is
     ``below``, ``at`` or ``above`` the frontier's tier, or ``unranked`` when the
     read has no tier or there is no frontier.
     """
@@ -1379,7 +1458,7 @@ def frontier_review(root: pathlib.Path, author: str, reads: list[str] | tuple[st
     eligible = []
     for (model, effort), places in seated.items():
         reader = _assessed_coordinate(root, f"{model}#{effort}", "reviewer", effort_required=True)
-        assessment = _assessment(reader, [written], version)
+        assessment = _assessment(reader, [written], version, None, schema=1)
         if assessment["independence"] == "eligible":
             eligible.append((assessment["reviewer"]["review_tier"], model, effort, places))
 
@@ -1400,7 +1479,7 @@ def frontier_review(root: pathlib.Path, author: str, reads: list[str] | tuple[st
 
     answered = []
     for read in reads:
-        assessment = assess_review(root, read, [author])
+        assessment = assess_review(root, read, [author], schema=1)
         tier = assessment["reviewer"]["review_tier"]
         if tier is None or frontier is None:
             standing = "unranked"

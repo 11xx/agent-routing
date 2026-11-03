@@ -8,7 +8,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 
-from routing_profiles import RouteRefusal, assess_review, dumps  # noqa: E402
+from routing_profiles import REVIEW_PURPOSES, RouteRefusal, assess_review, dumps  # noqa: E402
 
 
 def coordinate(row: dict) -> str:
@@ -25,10 +25,24 @@ def line(assessment: dict) -> str:
     )
 
 
+def line_v2(assessment: dict) -> str:
+    """One line leading with the answer to the purpose asked, then the other answer."""
+    authors = ", ".join(f"{coordinate(row)} (floor {row['floor']})" for row in assessment["authors"])
+    reviewer = assessment["reviewer"]
+    qualifiers = ",".join(assessment["qualifiers"]) or "none"
+    findings = f"findings {assessment['findings']}"
+    clears = "clears" if assessment["clears"] else "does not clear"
+    asked, other = (findings, clears) if assessment["purpose"] == "findings" else (clears, findings)
+    return (
+        f"{asked}: reviewer {coordinate(reviewer)} (tier {reviewer['review_tier'] or 'unseated'}, "
+        f"clearance {assessment['clearance']}) against {authors}; {other}; qualifiers {qualifiers}"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="agent-routing assess",
-        description="Assess whether a reviewer is independent of, and strong enough for, the authors of a diff.",
+        description="Assess whether a reviewer's read can report findings on, and clear, the authors of a diff.",
     )
     parser.add_argument("--reviewer", required=True, metavar="MODEL#EFFORT")
     parser.add_argument(
@@ -38,15 +52,31 @@ def main() -> int:
         metavar="MODEL[#EFFORT]",
         help="a diff author; repeat for each; omitting #effort uses the highest declared floor",
     )
-    parser.add_argument("--json", action="store_true", help="emit the agent-routing-assessment/1 contract")
+    parser.add_argument(
+        "--purpose",
+        choices=REVIEW_PURPOSES,
+        help="the question asked of the read: findings, or clearance of review debt (the default); "
+        "both answers are always reported",
+    )
+    parser.add_argument(
+        "--schema",
+        type=int,
+        choices=(1, 2),
+        default=2,
+        help="the assessment version to emit; 1 answers independence alone and refuses --purpose findings",
+    )
+    parser.add_argument("--json", action="store_true", help="emit the agent-routing-assessment contract")
     args = parser.parse_args()
     try:
-        assessment = assess_review(ROOT, args.reviewer, args.author)
+        assessment = assess_review(ROOT, args.reviewer, args.author, purpose=args.purpose, schema=args.schema)
     except RouteRefusal as refusal:
         print(f"agent-routing: cannot assess reviewer {args.reviewer!r}: {refusal}", file=sys.stderr)
         print(dumps(refusal.payload()), file=sys.stderr)
-        return 1
-    print(dumps(assessment) if args.json else line(assessment))
+        return 2 if refusal.kind == "invalid-purpose" else 1
+    if args.json:
+        print(dumps(assessment))
+    else:
+        print(line(assessment) if args.schema == 1 else line_v2(assessment))
     return 0
 
 

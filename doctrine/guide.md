@@ -80,24 +80,44 @@ QUOTA ADMISSION BEFORE DISPATCH
 
 ASSESS A REVIEW
   agent-routing assess --reviewer <model>#<effort>
-    --author <model>[#<effort>] [--author ...] [--json]
+    --author <model>[#<effort>] [--author ...]
+    [--purpose findings|clearance] [--schema 1|2] [--json]
 
   assess judges any reviewer against the authors of the diff it read: a seated
-  route, an operator-directed selection, or a model no profile seats. --json
-  emits agent-routing-assessment/1: the route version, the reviewer with its
-  review_tier (null when its tier is unseated), each author with its floor, the
-  highest known floor, independence "eligible" or "ineligible", the qualifiers,
-  and debt_kind "ineligible-review" when ineligible. The reviewer and each
-  author carry identities: the sorted roster id, aliases, and routed
-  backend_model and model strings that routing resolves to that model, so a
-  caller holding a harness-reported name can match it without routing data.
-  Without --json it prints one line. A read is eligible exactly when no qualifier holds. The qualifiers
-  are a closed set:
+  route, an operator-directed selection, or a model no profile seats. It
+  answers two questions about the read:
+    findings  "eligible" when the reviewer's review_tier reaches every
+              author's floor, and strictly exceeds the floor of each author
+              of its own family; the findings can be trusted, but the read
+              does not by that alone clear review debt
+    clears    true when the reviewer is family-independent of every author
+              and its review_tier is at or above both the highest author
+              floor and the clearance floor, models.toml [review] clearance;
+              only a clearing read discharges review debt
+  --purpose names the question asked, clearance by default. Both answers are
+  always given; the purpose is recorded and leads the text line.
+
+  --json emits agent-routing-assessment/2: the route version, the purpose, the
+  clearance floor, the reviewer with its review_tier (null when its tier is
+  unseated), each author with its floor, the highest known floor, findings,
+  clears, independence, the qualifiers, and debt_kind "ineligible-review" when
+  the read does not clear. independence is "eligible" exactly when no
+  qualifier other than below-clearance holds. The reviewer and each author
+  carry identities: the sorted roster id, aliases, and routed backend_model
+  and model strings that routing resolves to that model, so a caller holding a
+  harness-reported name can match it without routing data. --schema 1 emits
+  agent-routing-assessment/1, the independence answer alone, without
+  below-clearance, purpose, clearance, findings or clears; it refuses
+  --purpose findings. Without --json it prints one line.
+
+  A read clears exactly when no qualifier holds. The qualifiers are a closed
+  set:
     same-model         the reviewer is an author's model, at any effort
     same-family        the reviewer shares a family with an author; always
                        present with same-model
     below-floor        the reviewer's review_tier is under the highest author
                        floor
+    below-clearance    the reviewer's review_tier is under the clearance floor
     floor-unknown      an author's floor is unestablished
     reviewer-unseated  the reviewer's tier has no review_tier
   Floors follow the resolve rules: review_tier, else author_floor; an author
@@ -114,8 +134,8 @@ FIND THE REVIEW FRONTIER
   A seat is a stable review route on any backend whose pool serves its
   model, one that carries excluded_author_families, the kind resolve review
   can sell; a seat on another profile never raises the frontier. It is
-  eligible exactly when assess says so, so frontier carries no independence
-  rule of its own. Seats are ordered by review_tier, the
+  eligible exactly when assess calls it independent, so frontier carries no
+  independence rule of its own. Seats are ordered by review_tier, the
   cross-family scale assess compares, never by a pool-local rank. Quota and
   pool availability are not inputs: an exhausted pool still marks the
   frontier, and the answer moves only when the manifests do. --json emits
@@ -127,8 +147,8 @@ FIND THE REVIEW FRONTIER
     status "floor-unknown"     an author floor is unestablished, so there is
                                no frontier; a floor is never guessed
     status "no-eligible-seat"  the floor is known and no seat reaches it
-  Each --reads coordinate carries its assessment under the answered route
-  version, and a standing against the frontier's tier: "below", "at" or
+  Each --reads coordinate carries its agent-routing-assessment/1 under the
+  answered route version, and a standing against the frontier's tier: "below", "at" or
   "above", or "unranked" when the read's tier is unseated or there is no
   frontier. Standing compares tiers only; the read's own independence is in
   its assessment. Without --json it prints one line for the author and one per

@@ -273,6 +273,36 @@ Record Arc review debt or wait for eligible capacity according to repository
 policy; debt never overrides a changes-requested verdict. Non-review routes
 keep their concrete output contract.
 
+### Assessing a read
+
+```sh
+agent-routing assess --reviewer 'deepseek-flash#max' --author 'gpt-6.1-sol#low' --json
+```
+
+`assess` judges any reviewer coordinate, seated or not, against every author
+of the diff it read, and answers two questions. `findings` is `eligible` when
+the reviewer's `review_tier` reaches each author's floor, strictly above the
+floor of each author in its own family. `clears` is true when the reviewer is
+family-independent of every author and at or above both the highest author
+floor and the clearance floor; only a clearing read discharges review debt.
+At a floor of 2, the GPT-6.1 Sol xhigh, Opus 5.5 high and xhigh and Astra
+seats clear for authors outside their family at or below their tier, and
+tier-1 seats such as DeepSeek Flash max report findings without clearing.
+
+`--json` emits `agent-routing-assessment/2`: `purpose` (`findings` or
+`clearance`, the default, which only records the question asked), the
+`clearance` floor, the reviewer and authors with their tiers, floors and
+identities, `findings`, `clears`, `independence`, the closed set of
+`qualifiers`, and `debt_kind: "ineligible-review"` when the read does not
+clear. `independence` keeps its `agent-routing-assessment/1` meaning, eligible
+when no qualifier other than `below-clearance` holds. `--schema 1` emits the
+`/1` contract unchanged, independence alone, and refuses `--purpose findings`.
+Arc reads `/1` through its 2026.9.29 release and reads `/2` from its next
+release; pass `--schema 1` to an older arc.
+
+`frontier` reads embed `agent-routing-assessment/1`, and its seats are those
+`assess` calls independent.
+
 ## Seat bindings
 
 `seats` projects the profile and variant bindings, including labeled trials,
@@ -299,15 +329,15 @@ stored.
 A seat is a stable review route on any backend whose pool serves its model:
 a route whose effective `excluded_author_families` is set, the kind
 `resolve review` can sell. A seat on another profile never raises the
-frontier. Eligibility is `assess`'s verbatim: the frontier adds no independence
-rule. Seats are ordered by `review_tier`, the cross-family scale `assess`
+frontier. Eligibility is `assess`'s independence verbatim: the frontier adds no
+independence rule. Seats are ordered by `review_tier`, the cross-family scale `assess`
 compares, never by the pool-local `rank`. Quota is not an input, so an
 exhausted pool still marks the frontier and a clearance cannot flip on a pool
 running dry. An author whose floor is unestablished answers `floor-unknown`
 with no frontier; one whose floor no seat reaches answers `no-eligible-seat`.
 
-Each `--reads` coordinate returns its `assess` result under the same route
-version and a `standing` of `below`, `at` or `above` the frontier's tier, or
+Each `--reads` coordinate returns its `assess --schema 1` result under the
+same route version and a `standing` of `below`, `at` or `above` the frontier's tier, or
 `unranked` when the read's tier is unseated or no frontier exists. Standing
 compares tiers only; the read's own independence is its assessment's.
 

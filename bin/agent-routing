@@ -38,8 +38,10 @@ Run `agent-routing` with no verb for the routing guide.
                       resolve a caller-selected task profile
   admit-review --author <model>[#effort] --usage-file <file> --base <base> --head <head> --json
                       select quota-admitted independent review or typed review debt
-  assess --reviewer <model>#<effort> --author <model>[#<effort>] [--author ...] [--json]
-                      assess any reviewer against the authors of a diff
+  assess --reviewer <model>#<effort> --author <model>[#<effort>] [--author ...]
+         [--purpose findings|clearance] [--schema 1|2] [--json]
+                      assess any reviewer against the authors of a diff: whether
+                      its findings can be trusted and whether it clears debt
   frontier --author <model>[#<effort>] [--reads <model>#<effort>...] [--json]
                       the strongest eligible review seat for an author, by
                       review_tier and regardless of quota, and where each read
@@ -57,11 +59,14 @@ waive it. `check` remains limited to the prohibition list.
 Review author requirements use a seated tier's review_tier or an unseated
 tier's author_floor; an author_floor grants no reviewer seat. Superseded
 authors with shipped diffs retain floors at least as high as their successors.
-`assess` applies the same floors to any reviewer, seated or not, and names why
-a read is ineligible; `resolve --accept-ineligible` returns the strongest seat
-with that assessment when no eligible one exists. `frontier` keeps the seats
-`assess` calls eligible for an author and answers the highest review_tier
-among them; pool availability never moves it.
+`assess` applies the same floors to any reviewer, seated or not, answers
+whether its read finds and whether it clears, and names why it falls short. A
+read clears only from outside the authors' families at or above both their
+floors and the clearance floor in models.toml [review]. `resolve
+--accept-ineligible` returns the strongest seat with that assessment when no
+eligible one exists. `frontier` keeps the seats `assess`
+calls independent for an author and answers the highest review_tier among
+them; pool availability never moves it.
 EOF
 }
 

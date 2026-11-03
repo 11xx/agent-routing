@@ -1269,7 +1269,7 @@ class ReviewAuthorTest(unittest.TestCase):
 
     def test_assessment_of_a_same_family_read_at_the_floor_is_ineligible(self):
         result = self.assess("opus-5.5#xhigh", "sonnet-5.5#high")
-        self.assertEqual(result["schema"], "agent-routing-assessment/1")
+        self.assertEqual(result["schema"], "agent-routing-assessment/2")
         self.assertEqual(result["route_version"], route_version(ROOT))
         self.assertEqual(result["reviewer"]["review_tier"], 2)
         self.assertEqual(result["authors"], [
@@ -1286,7 +1286,7 @@ class ReviewAuthorTest(unittest.TestCase):
 
     def test_assessment_names_a_same_family_read_below_the_floor(self):
         result = self.assess("haiku-5.5#high", "opus-5.5#xhigh")
-        self.assertEqual(result["qualifiers"], ["same-family", "below-floor"])
+        self.assertEqual(result["qualifiers"], ["same-family", "below-floor", "below-clearance"])
 
     def test_assessment_names_a_cross_family_read_below_the_floor_alone(self):
         result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5#max")
