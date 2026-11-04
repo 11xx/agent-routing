@@ -19,6 +19,10 @@ def cli(*args):
 
 
 class CapabilityTest(unittest.TestCase):
+    def test_a_known_default_effort_is_judgeable_without_a_reasoning_effort_order(self):
+        answer = routing.assess_review(ROOT, "small-model-class#default", ["small-model-class#default"])
+        self.assertEqual((answer["findings"], answer["clears"]), ("eligible", False))
+
     def test_every_known_effort_has_capability_even_without_a_seat(self):
         manifest = tomllib.loads((ROOT / "routing/models.toml").read_text())
         for model in manifest["model"]:

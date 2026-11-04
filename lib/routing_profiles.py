@@ -1395,6 +1395,7 @@ def _assessment(
             review_tier >= row["floor"] and not (
                 row["model"] == reader["model"] and reader["effort"] is not None
                 and row["effort"] is not None
+                and reader["effort"] != row["effort"]
                 and EFFORT_ORDER.index(reader["effort"]) < EFFORT_ORDER.index(row["effort"])
             )
             for row in author_rows
@@ -1573,7 +1574,7 @@ def _review_constraints(root: pathlib.Path, selected: dict) -> dict:
 def _lower_same_model(reviewer: str, author: str) -> bool:
     model, _, effort = reviewer.partition("#")
     author_model, separator, author_effort = author.partition("#")
-    return (model == author_model and bool(separator)
+    return (model == author_model and bool(separator) and effort != author_effort
             and EFFORT_ORDER.index(effort) < EFFORT_ORDER.index(author_effort))
 
 
