@@ -164,6 +164,38 @@ def table_problems(models: list[dict]) -> list[str]:
     return problems
 
 
+def validate(ladder: dict) -> None:
+    if ladder.get("schema") != SCHEMA or not ladder.get("version"):
+        raise ValueError(f"expected {SCHEMA} with at least one version")
+    seen = set()
+    previous = None
+    for version in ladder["version"]:
+        label = version.get("id")
+        try:
+            if not isinstance(label, str) or not label.strip() or label in seen:
+                raise ValueError("version id must be nonempty and unique")
+            seen.add(label)
+            timestamp = instant(version.get("effective_from"))
+            if previous is not None and timestamp <= previous:
+                raise ValueError("effective_from must increase")
+            previous = timestamp
+            if not isinstance(version.get("source"), str) or not version["source"].strip():
+                raise ValueError("source is empty")
+            if type(version.get("gap")) is not bool:
+                raise ValueError("gap must be boolean")
+            if version["gap"]:
+                if "model" in version:
+                    raise ValueError("gap carries a model table")
+            else:
+                if not version.get("model"):
+                    raise ValueError("model table is empty")
+                problems = table_problems(version["model"])
+                if problems:
+                    raise ValueError("; ".join(problems))
+        except ValueError as error:
+            raise ValueError(f"version {label!r}: {error}") from error
+
+
 def commits(root: pathlib.Path) -> list[tuple[str, str]]:
     start = git(root, "rev-parse", NUMERIC_START).strip()
     entries = git(root, "log", "--first-parent", "--reverse", "--format=%H %cI",
@@ -185,3 +217,52 @@ def read_at(root: pathlib.Path, as_of: str) -> tuple[str, dict[str, str]]:
     rev, _ = max(eligible, key=lambda entry: instant(entry[1]))
     return rev, {name: git(root, "show", f"{rev}:routing/{name}.toml")
                  for name in ("models", "profiles", "delegation")}
+
+
+def source(root: pathlib.Path, rev: str) -> str:
+    eras = git(root, "ls-tree", "-r", "--name-only", rev, "--", "eras").splitlines()
+    eras = [name for name in eras if any(term in name for term in (
+        "fable", "opus", "gpt-6", "haiku", "sonnet", "author-floor", "workhorse", "field-test", "september", "mimo",
+    ))]
+    return f"agent-routing routing/models.toml at {rev}; reconstruction: {EVIDENCE}; era evidence: " + ", ".join(eras)
+
+
+def export(root: pathlib.Path, *, history: bool = False) -> dict:
+    if history:
+        entries = commits(root)
+    else:
+        rev, date = git(root, "log", "-1", "--format=%H %cI", "--", "routing/models.toml").split()
+        entries = [(rev, utc(date))]
+    versions = []
+    if history:
+        versions.append({"id": "gap-2026-08-01", "effective_from": GAP_START, "gap": True,
+                         "source": f"No numeric capability record before routing/models.toml at {NUMERIC_START}; {EVIDENCE}"})
+        for rev, date in entries:
+            try:
+                manifest = historical_manifest(root, rev, "models")
+                profiles = historical_manifest(root, rev, "profiles")
+                table = project(manifest, profiles, historical=legacy(manifest))
+            except (ValueError, KeyError, TypeError) as error:
+                raise ValueError(f"version v-{rev}: {error}") from error
+            version = {"id": f"v-{rev}", "effective_from": date, "source": source(root, rev),
+                       "gap": False, "model": table}
+            validate({"schema": SCHEMA, "version": [version]})
+            if len(versions) == 1 or versions[-1]["model"] != table:
+                versions.append(version)
+    manifest = tomllib.loads((root / "routing/models.toml").read_text())
+    profiles = tomllib.loads((root / "routing/profiles.toml").read_text())
+    table = project(manifest, profiles)
+    last_rev, date = entries[-1]
+    current = {"id": f"v-{last_rev}", "effective_from": date, "source": source(root, last_rev),
+               "gap": False, "model": table}
+    validate({"schema": SCHEMA, "version": [current]})
+    committed_manifest = historical_manifest(root, last_rev, "models")
+    committed = project(committed_manifest, historical_manifest(root, last_rev, "profiles"),
+                        historical=legacy(committed_manifest))
+    if not history or table != versions[-1]["model"]:
+        if table != committed:
+            raise ValueError("current capability table is uncommitted; commit routing/models.toml before exporting")
+        versions.append(current)
+    ladder = {"schema": SCHEMA, "version": versions}
+    validate(ladder)
+    return ladder

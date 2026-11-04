@@ -43,6 +43,8 @@ Run `agent-routing` with no verb for the routing guide.
          [--purpose findings|clearance] [--as-of <RFC3339>] [--schema 1|2] [--json]
                       assess any reviewer against the authors of a diff: whether
                       its findings can be trusted and whether it clears debt
+  ladder --json [--history]
+                      export the dated capability ladder for Arc
   frontier --author <model>[#<effort>] [--reads <model>#<effort>...] [--json]
                       the strongest eligible review seat for an author, by
                       review_tier and regardless of quota, and where each read
@@ -63,7 +65,9 @@ every floor must be met by another family. Lint enforces both declarations.
 Pool ordering uses seat_rank. assess compares rank against author floors and
 [review].clearance; reviewer-unseated is informational. Same-family reads can
 find but never clear; the same model at a lower effort cannot find.
-assess --as-of reads the dated git table. Run the guide for the complete contracts.
+assess --as-of reads the dated git table. ladder --json exports the committed
+current table; --history adds distinct reconstructed tables and the pre-numeric
+gap, in arc-review-ladder/1. Run the guide for the complete contracts.
 EOF
 }
 
@@ -92,6 +96,7 @@ case "${1:-}" in
   all)        cat "$routing_dir/models.toml"; echo; cat "$routing_dir/profiles.toml"; echo; cat "$routing_dir/delegation.toml" ;;
   check)      shift; check "$@" ;;
   assess)     shift; exec "$root/bin/assess-review" "$@" ;;
+  ladder)     shift; exec "$root/bin/review-ladder" "$@" ;;
   frontier)   shift; exec "$root/bin/frontier-review" "$@" ;;
   resolve)    shift; exec "$root/bin/resolve-route" "$@" ;;
   validate)   shift; exec "$root/bin/validate-selection" "$@" ;;

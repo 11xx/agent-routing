@@ -134,6 +134,22 @@ ASSESS A REVIEW
   Independence ignores below-clearance and reviewer-unseated. Clearance
   ignores only reviewer-unseated. Unknown models or efforts are refused.
 
+EXPORT THE CAPABILITY LADDER
+  agent-routing ladder --json [--history]
+
+  Emit arc-review-ladder/1, the same structure Arc imports as JSON or TOML.
+  The current committed table produces one version. --history reconstructs
+  distinct capability tables from dc54196 (2026-10-07T04:51:04Z) onward,
+  ignoring changes only to prices or seats. Each version has a stable id,
+  commit-time effective_from, and sources naming its commit and era evidence.
+  From 2026-08-01 until the numeric record begins there is one gap=true
+  version without a model table; no rank is invented for that span.
+  The producer validates every version before emitting any bytes: positive
+  integers, reachable cross-family floors, unique ids and identities,
+  nonempty efforts, and RFC 3339 instants. Failure names the version.
+  Commit capability edits before exporting so a version has an immutable
+  source and effective time. A shallow or unavailable history is refused.
+
 FIND THE REVIEW FRONTIER
   agent-routing frontier --author <model>[#<effort>]
     [--reads <model>#<effort>...] [--json]

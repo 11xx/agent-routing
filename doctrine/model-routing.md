@@ -209,7 +209,12 @@ remain judgeable without becoming routes. Pool-local `seat_rank` orders
 selections only within their providers.
 
 `agent-routing assess --as-of <RFC3339>` reads the committed table in force
-at the instant and keeps assessment /2's shape. A missing author leaves
+at the instant and keeps assessment /2's shape. `agent-routing ladder --json`
+exports one current `arc-review-ladder/1` version; adding `--history` exports
+each distinct capability table from dc54196 onward, with commit times and
+source evidence. The preceding span from 2026-08-01 is one gap with no model
+table. Export validates every version and names an invalid version rather
+than emitting a partial history. A missing author leaves
 `review.independence` unverified; no eligible route recommends debt.
 Route eligibility does not establish an actor's independence or discharge
 review. Ordinary lead coverage of delegated work remains valid without that
