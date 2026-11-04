@@ -18,6 +18,42 @@ def cli(*args):
     return subprocess.run([ROOT / "bin/agent-routing", *args], text=True, capture_output=True)
 
 
+class OperatorClearanceDirectionTest(unittest.TestCase):
+    def test_sol_high_and_max_share_the_top_review_band_and_peer_author_floor(self):
+        for effort in ("high", "max"):
+            with self.subTest(effort=effort):
+                reviewer = routing.assess_review(ROOT, f"gpt-6.1-sol#{effort}", ["haiku-5.5#max"])
+                author = routing.assess_review(ROOT, "opus-5.5#high", [f"gpt-6.1-sol#{effort}"])
+                self.assertEqual((reviewer["reviewer"]["review_tier"], author["floor"]), (3, 2))
+                self.assertTrue(author["clears"])
+
+    def test_sol_xhigh_is_at_the_current_rosters_top_review_rank(self):
+        manifest = tomllib.loads((ROOT / "routing/models.toml").read_text())
+        top = max(tier["rank"] for model in manifest["model"] for tier in model["effort"])
+        answer = routing.assess_review(ROOT, "gpt-6.1-sol#xhigh", ["haiku-5.5#max"])
+        self.assertGreaterEqual(answer["reviewer"]["review_tier"], top)
+
+    def test_opus_high_clears_sol_xhigh_work_without_inheriting_its_reviewer_rank(self):
+        author = routing.assess_review(ROOT, "opus-5.5#high", ["gpt-6.1-sol#xhigh"])
+        reviewer = routing.assess_review(ROOT, "gpt-6.1-sol#xhigh", ["haiku-5.5#max"])
+        self.assertGreater(reviewer["reviewer"]["review_tier"], author["authors"][0]["floor"])
+        self.assertTrue(author["clears"])
+        self.assertEqual(author["findings"], "eligible")
+        self.assertIsNone(author["debt_kind"])
+
+    def test_sol_clears_haiku_max_while_every_qualified_opus_effort_only_finds(self):
+        answer = routing.assess_review(ROOT, "gpt-6.1-sol#xhigh", ["haiku-5.5#max"])
+        self.assertEqual((answer["findings"], answer["clears"]), ("eligible", True))
+        self.assertIsNone(answer["debt_kind"])
+        for effort in ("low", "medium", "high", "xhigh", "max"):
+            with self.subTest(effort=effort):
+                answer = routing.assess_review(ROOT, f"opus-5.5#{effort}", ["haiku-5.5#max"])
+                self.assertGreaterEqual(answer["reviewer"]["review_tier"], answer["floor"])
+                self.assertEqual((answer["findings"], answer["clears"]), ("eligible", False))
+                self.assertIn("same-family", answer["qualifiers"])
+                self.assertEqual(answer["debt_kind"], "ineligible-review")
+
+
 class CapabilityTest(unittest.TestCase):
     def test_a_known_default_effort_is_judgeable_without_a_reasoning_effort_order(self):
         answer = routing.assess_review(ROOT, "small-model-class#default", ["small-model-class#default"])
@@ -79,6 +115,11 @@ class CapabilityTest(unittest.TestCase):
 
 
 class DatedAssessmentTest(unittest.TestCase):
+    def test_legacy_sol_reconstruction_keeps_top_review_rank_separate_from_author_floor(self):
+        answer = routing.assess_review(ROOT, "gpt-6.1-sol#xhigh", ["gpt-6.1-sol#high"],
+                                       as_of="2026-10-07T05:00:00Z")
+        self.assertEqual((answer["reviewer"]["review_tier"], answer["floor"]), (3, 2))
+
     def test_as_of_does_not_borrow_a_model_from_a_later_roster(self):
         args = ("assess", "--reviewer", "gpt-6.1-terra#medium", "--author", "opus-5.5#high", "--json")
         self.assertTrue(json.loads(cli(*args).stdout)["clears"])

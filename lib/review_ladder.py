@@ -46,6 +46,8 @@ def historical_manifest(root: pathlib.Path, revision: str, name: str) -> dict:
 
 def capability(model: str, effort: str) -> int:
     """The sourced reconstruction judgments for tiers without numeric capability."""
+    if model == "gpt-6.1-sol":
+        return 3 if effort in {"high", "xhigh", "max"} else 1
     if model == "gpt-6-astra":
         return 3 if effort in {"high", "xhigh", "max"} else 2
     if model in {"opus-5.5", "fable-5.1", "sonnet-5.5"}:
@@ -61,6 +63,13 @@ def capability(model: str, effort: str) -> int:
     if model == "kimi-k3":
         return 2
     return 1
+
+
+def author_floor(model: str, effort: str) -> int:
+    """The least reviewer rank for authored work, independent of reviewer strength."""
+    if model == "gpt-6.1-sol" and effort in {"high", "xhigh", "max"}:
+        return 2
+    return capability(model, effort)
 
 
 def canonical_efforts(model: dict) -> list[dict]:
@@ -107,10 +116,16 @@ def project(manifest: dict, profiles: dict, *, historical: bool = False) -> list
         for tier in canonical_efforts(model) if historical else model.get("effort", []):
             effort = tier["effort"]
             if historical:
+                for field in ("review_tier", "author_floor"):
+                    if field in tier and (type(tier[field]) is not int or tier[field] < 1):
+                        raise ValueError(f"{model_id}#{effort}: legacy {field} rank/floor must be a positive integer")
                 # Legacy 4 expressed an unreachable seat, not measured capability.
-                recorded = tier.get("review_tier", tier.get("author_floor"))
-                rank = recorded if type(recorded) is int and recorded < 4 else capability(model_id, effort)
-                floor = rank
+                recorded_rank = tier.get("review_tier")
+                recorded_floor = tier.get("author_floor", recorded_rank)
+                rank = recorded_rank if recorded_rank is not None and recorded_rank < 4 else capability(model_id, effort)
+                floor = recorded_floor if recorded_floor is not None and recorded_floor < 4 else author_floor(model_id, effort)
+                if model_id == "gpt-6.1-sol":
+                    rank, floor = capability(model_id, effort), author_floor(model_id, effort)
             else:
                 rank, floor = tier.get("rank"), tier.get("floor")
             efforts.append({"effort": effort, "rank": rank, "floor": floor})

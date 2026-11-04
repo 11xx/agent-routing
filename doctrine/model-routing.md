@@ -193,8 +193,10 @@ free.
 ### Routing rules
 
 Every known model/effort has a capability `rank` and author `floor` in
-`models.toml`: 1 bounded work, 2 a working technical peer, 3 deliberate deep
-review. Capability is independent of routing seats, model size and retirement.
+`models.toml`: 1 bounded work, 2 a working technical peer, 3 the top review
+band. Rank measures reviewer strength; floor is the least rank for authored
+work and need not equal it. Capability is independent of routing seats, model
+size and retirement.
 Every floor must be met by another family's rank; lint rejects missing values
 and an exclusive top. The evidence is in
 [the capability ladder](../eras/2026-11-04-capability-ladder.md).

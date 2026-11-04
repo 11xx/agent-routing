@@ -140,7 +140,7 @@ class AssessmentTwoAnswersTest(unittest.TestCase):
 
     def test_a_read_below_the_floor_unseated_or_against_an_unknown_floor_does_not_find(self):
         # Rejects: findings eligibility granted without an established tier comparison.
-        self.assertEqual(self.assess("gpt-6.1-sol#xhigh", "opus-5.5#max")["findings"], "ineligible")
+        self.assertEqual(self.assess("gpt-6-astra#medium", "opus-5.5#max")["findings"], "ineligible")
         self.assertEqual(self.assess("sonnet-5.5#high", "gpt-6.1-sol#low")["findings"], "eligible")
         root = fixture_root(self)
         path = root / "routing" / "models.toml"

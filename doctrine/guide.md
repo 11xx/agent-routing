@@ -98,8 +98,9 @@ ASSESS A REVIEW
     [--purpose findings|clearance] [--as-of <RFC3339>] [--schema 1|2] [--json]
 
   Every known tier has a capability rank and author floor: 1 bounded work,
-  2 a working technical peer, 3 deliberate deep review. Capability is
-  independent of seats, model size, price and retirement. Lint requires both
+  2 a working technical peer, 3 the top review band. Capability is
+  independent of seats, model size, price and retirement. Rank measures the
+  reviewer; floor is the least rank for authored work and can be lower. Lint requires both
   values and a rank in another family that meets every floor. No exclusive
   top is valid. Pool-local seat_rank orders selections, not capability.
 

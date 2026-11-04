@@ -1291,7 +1291,7 @@ class ReviewAuthorTest(unittest.TestCase):
         self.assertEqual(result["qualifiers"], ["same-family", "below-floor", "below-clearance"])
 
     def test_assessment_names_a_cross_family_read_below_the_floor_alone(self):
-        result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5#max")
+        result = self.assess("gpt-6-astra#medium", "opus-5.5#max")
         self.assertEqual(result["qualifiers"], ["below-floor"])
 
     def test_assessment_of_an_unseated_reviewer_is_not_below_floor(self):
@@ -1302,7 +1302,7 @@ class ReviewAuthorTest(unittest.TestCase):
     def test_assessment_unions_qualifiers_across_authors(self):
         result = self.assess("opus-5.5#xhigh", "opus-5.5#xhigh", "sonnet-5.5#high")
         self.assertEqual(result["qualifiers"], ["same-model", "same-family"])
-        result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5#xhigh", "opus-5.5#max")
+        result = self.assess("gpt-6-astra#medium", "opus-5.5#xhigh", "opus-5.5#max")
         self.assertEqual((result["floor"], result["qualifiers"]), (3, ["below-floor"]))
 
     def test_assessment_names_every_identity_routing_accepts_for_each_model(self):
@@ -1558,6 +1558,9 @@ class ReviewAuthorTest(unittest.TestCase):
         anchor = '  effort = "xhigh"\n  rank = 2\n  floor = 2\n  seat_rank = { "anthropic" = 5 }'
         self.assertIn(anchor, text)
         path.write_text(text.replace(anchor, anchor.replace('floor = 2', 'floor = 3'), 1))
+        path.write_text(path.read_text().replace(
+            'rank = 3\n  floor = 2\n  seat_rank = { "openai-codex" = 3 }',
+            'rank = 2\n  floor = 2\n  seat_rank = { "openai-codex" = 3 }', 1))
         route = resolve(root, "review", "codex", author="opus-5.5#xhigh")
         self.assertEqual(route["profile"], "review:high-stakes")
         with self.assertRaises(RouteRefusal):
@@ -1646,15 +1649,20 @@ class ReviewFrontierTest(unittest.TestCase):
         self.assertEqual(answer["author"]["model"], "opus-5.5")
         self.assertEqual(answer["author"]["floor"], 2)
         self.assertEqual(answer["frontier"]["review_tier"], 3)
-        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
+        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex"),
+                                        ("gpt-6.1-sol", "xhigh", "codex", "openai-codex")])
         self.assertEqual(answer["reads"], [])
 
     def test_every_seat_at_the_frontier_tier_is_listed_per_backend_and_pool(self):
         root = self.fixture_root()
         path = root / "routing" / "models.toml"
-        # Seat a second tier-3 reviewer on the same scale.
-        path.write_text(path.read_text().replace('rank = 2\n  floor = 2\n  seat_rank = { "openai-codex" = 3 }',
-                                                 'rank = 3\n  floor = 2\n  seat_rank = { "openai-codex" = 3 }', 1))
+        original = path.read_text()
+        anchor = 'rank = 3\n  floor = 2\n  seat_rank = { "openai-codex" = 3 }'
+        self.assertIn(anchor, original)
+        path.write_text(original.replace(anchor, anchor.replace('rank = 3', 'rank = 2'), 1))
+        below = frontier_review(root, "opus-5.5#xhigh")
+        self.assertEqual(self.seats(below), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
+        path.write_text(original)
         answer = frontier_review(root, "opus-5.5#xhigh")
         self.assertEqual(answer["frontier"]["review_tier"], 3)
         self.assertEqual(self.seats(answer), [
@@ -1702,14 +1710,14 @@ class ReviewFrontierTest(unittest.TestCase):
                     self.assertEqual(assessed["reviewer"]["review_tier"], answer["frontier"]["review_tier"])
 
     def test_a_read_below_the_frontier_is_marked_below_and_one_at_it_is_marked_at(self):
-        answer = frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6.1-sol#xhigh", "gpt-6-astra#xhigh"])
+        answer = frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6-astra#medium", "gpt-6.1-sol#xhigh"])
         below, at = answer["reads"]
         self.assertEqual((below["standing"], at["standing"]), ("below", "at"))
         for read in answer["reads"]:
             self.assertEqual(read["assessment"]["schema"], "agent-routing-assessment/1")
             self.assertEqual(read["assessment"]["route_version"], answer["route_version"])
             self.assertEqual(read["assessment"]["independence"], "eligible")
-        self.assertEqual(below["assessment"]["reviewer"]["model"], "gpt-6.1-sol")
+        self.assertEqual(below["assessment"]["reviewer"]["model"], "gpt-6-astra")
 
     def test_standing_compares_tiers_and_leaves_eligibility_to_the_assessment(self):
         read, = frontier_review(ROOT, "gpt-6.1-sol#xhigh", ["gpt-6-astra#xhigh"])["reads"]
@@ -1755,6 +1763,9 @@ class ReviewFrontierTest(unittest.TestCase):
         # A pool rank above every other seat on its pool must not lift a tier-2 seat.
         path.write_text(text[:start] + text[start:].replace('seat_rank = { "openai-codex" = 3 }',
                                                             'seat_rank = { "openai-codex" = 99 }', 1))
+        path.write_text(path.read_text()[:start] + path.read_text()[start:].replace(
+            'rank = 3\n  floor = 2\n  seat_rank = { "openai-codex" = 99 }',
+            'rank = 2\n  floor = 2\n  seat_rank = { "openai-codex" = 99 }', 1))
         answer = frontier_review(root, "opus-5.5#xhigh")
         self.assertEqual(answer["frontier"]["review_tier"], 3)
         self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
@@ -1770,7 +1781,8 @@ class ReviewFrontierTest(unittest.TestCase):
         self.assertIn("rank = 5", path.read_text())
         answer = frontier_review(root, "opus-5.5#xhigh")
         self.assertEqual(answer["frontier"]["review_tier"], 3)
-        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
+        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex"),
+                                        ("gpt-6.1-sol", "xhigh", "codex", "openai-codex")])
 
     def test_only_stable_pool_valid_routes_seat_the_frontier(self):
         root = self.fixture_root()
@@ -1781,22 +1793,22 @@ class ReviewFrontierTest(unittest.TestCase):
             text = text[:start] + text[start:].replace('stability = "stable"', 'stability = "experimental"', 1)
         path.write_text(text)
         answer = frontier_review(root, "opus-5.5#xhigh")
-        self.assertEqual(answer["frontier"]["review_tier"], 2)
+        self.assertEqual(answer["frontier"]["review_tier"], 3)
 
     def run_cli(self, *args):
         return subprocess.run([ROOT / "bin" / "agent-routing", "frontier", *args], capture_output=True, text=True)
 
     def test_cli_emits_the_frontier_json_with_reads(self):
-        result = self.run_cli("--author", "opus-5.5#xhigh", "--reads", "gpt-6.1-sol#xhigh", "gpt-6-astra#xhigh",
+        result = self.run_cli("--author", "opus-5.5#xhigh", "--reads", "gpt-6-astra#medium", "gpt-6.1-sol#xhigh",
                               "--json")
         self.assertEqual(result.returncode, 0, result.stderr)
         answer = json.loads(result.stdout)
         self.assertEqual(answer["schema"], "agent-routing-frontier/1")
         self.assertEqual([read["standing"] for read in answer["reads"]], ["below", "at"])
-        self.assertEqual(answer, frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6.1-sol#xhigh", "gpt-6-astra#xhigh"]))
+        self.assertEqual(answer, frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6-astra#medium", "gpt-6.1-sol#xhigh"]))
 
     def test_cli_prints_a_readable_answer_without_json(self):
-        result = self.run_cli("--author", "opus-5.5#xhigh", "--reads", "gpt-6.1-sol#xhigh")
+        result = self.run_cli("--author", "opus-5.5#xhigh", "--reads", "gpt-6-astra#medium")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("frontier tier 3", result.stdout)
         self.assertIn("gpt-6-astra#xhigh", result.stdout)
@@ -1931,7 +1943,7 @@ class FableAuthorFloorTest(unittest.TestCase):
                 author = f"fable-5.1#{effort}"
                 assessment = assess_review(ROOT, "gpt-6.1-sol#xhigh", [author])
                 self.assertEqual(assessment["floor"], floor)
-                self.assertEqual(assessment["qualifiers"], ["below-floor"] if floor == 3 else [])
+                self.assertEqual(assessment["qualifiers"], [])
                 self.assertEqual(resolve(ROOT, "review", "codex", author=author)["review"]["author_tier"], floor)
                 self.assertIn("reviewer-unseated", assess_review(ROOT, author, ["gpt-6-luna#max"])["qualifiers"])
                 with self.assertRaises(RouteRefusal):

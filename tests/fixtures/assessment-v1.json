@@ -52,11 +52,11 @@
         "effort": "xhigh",
         "family": "openai",
         "model": "gpt-6.1-sol",
-        "review_tier": 2
+        "review_tier": 3
       },
       "schema": "agent-routing-assessment/1"
     },
-    "text": "ineligible: reviewer gpt-6.1-sol#xhigh (tier 2) against gpt-6.1-sol#low (floor 1); qualifiers same-model,same-family\n"
+    "text": "ineligible: reviewer gpt-6.1-sol#xhigh (tier 3) against gpt-6.1-sol#low (floor 1); qualifiers same-model,same-family\n"
   },
   {
     "reviewer": "opus-5.5#xhigh",
@@ -161,21 +161,19 @@
           "model": "opus-5.5"
         }
       ],
-      "debt_kind": "ineligible-review",
+      "debt_kind": null,
       "floor": 3,
-      "independence": "ineligible",
-      "qualifiers": [
-        "below-floor"
-      ],
+      "independence": "eligible",
+      "qualifiers": [],
       "reviewer": {
         "effort": "xhigh",
         "family": "openai",
         "model": "gpt-6.1-sol",
-        "review_tier": 2
+        "review_tier": 3
       },
       "schema": "agent-routing-assessment/1"
     },
-    "text": "ineligible: reviewer gpt-6.1-sol#xhigh (tier 2) against opus-5.5#max (floor 3); qualifiers below-floor\n"
+    "text": "eligible: reviewer gpt-6.1-sol#xhigh (tier 3) against opus-5.5#max (floor 3); qualifiers none\n"
   },
   {
     "reviewer": "sonnet-5.5#high",
