@@ -130,6 +130,9 @@ ASSESS A REVIEW
   are refused. Dated reads validate the complete accepted capability history
   as ladder --history does. Non-increasing version dates refuse with
   effective_from must increase and name the offending version.
+  Each exported version takes effect at its effective_from instant. Dated
+  reads select commits before the next capability version; an earlier-dated
+  neutral descendant cannot make that next table take effect sooner.
 
   --json emits agent-routing-assessment/2 with the route version, purpose,
   clearance, reviewer, authors, floor, independence, qualifiers, findings,

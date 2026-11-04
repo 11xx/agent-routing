@@ -138,6 +138,47 @@ floor = 2
         self.assertEqual(answer.returncode, 0, answer.stderr)
         self.assertEqual(json.loads(answer.stdout)["reviewer"]["review_tier"], 1)
 
+    def assert_cli_matches_exported_intervals(self, version, instants):
+        exported = self.cli("ladder", "--json", "--history", "--accepted", "master")
+        self.assertEqual(exported.returncode, 0, exported.stderr)
+        versions = json.loads(exported.stdout)["version"]
+        self.assertEqual([row["id"] for row in versions],
+                         ["gap-2026-08-01", f"v-{self.base}", f"v-{version}"])
+        self.assertEqual(versions[-1]["effective_from"], "2026-10-10T00:00:00Z")
+        for instant in instants:
+            with self.subTest(instant=instant):
+                active = [row for row in versions
+                          if ladder.instant(row["effective_from"]) <= ladder.instant(instant)][-1]
+                reviewer = next(row for row in active["model"] if row["model"] == "fixture-reviewer")
+                rank = reviewer["efforts"][0]["rank"]
+                answer = self.cli("assess", "--reviewer", "fixture-reviewer#high",
+                                  "--author", "fixture-author#high", "--as-of", instant,
+                                  "--accepted", "master", "--json")
+                self.assertEqual(answer.returncode, 0, answer.stderr)
+                assessment = json.loads(answer.stdout)
+                self.assertEqual(assessment["reviewer"]["review_tier"], rank)
+                self.assertEqual(assessment["clears"], rank >= 2)
+
+    def test_dated_cli_matches_export_before_a_version_with_a_backdated_neutral_descendant(self):
+        self.models(1)
+        version = self.commit("2026-10-10T00:00:00Z", "test: accept a later table")
+        (self.root / "note.txt").write_text("Capability-neutral evidence.\n")
+        self.commit("2026-10-08T00:00:00Z", "test: record a backdated neutral descendant")
+        self.assert_cli_matches_exported_intervals(version, (
+            "2026-10-07T12:00:00Z", "2026-10-08T00:00:00Z", "2026-10-09T00:00:00Z",
+            "2026-10-09T23:59:59.999999Z", "2026-10-10T00:00:00Z", "2026-10-11T00:00:00Z",
+        ))
+
+    def test_dated_cli_matches_export_after_a_version_with_a_future_dated_neutral_parent(self):
+        (self.root / "note.txt").write_text("Capability-neutral evidence.\n")
+        self.commit("2026-10-12T00:00:00Z", "test: record future-dated neutral evidence")
+        self.models(1)
+        version = self.commit("2026-10-10T00:00:00Z", "test: accept a table after neutral evidence")
+        self.assert_cli_matches_exported_intervals(version, (
+            "2026-10-09T00:00:00Z", "2026-10-10T00:00:00Z", "2026-10-11T00:00:00Z",
+            "2026-10-12T00:00:00Z", "2026-10-13T00:00:00Z",
+        ))
+
     def test_branch_only_table_never_appears_in_default_accepted_history(self):
         proposal = self.branch_table()
         versions = ladder.export(self.root, history=True)["version"]
