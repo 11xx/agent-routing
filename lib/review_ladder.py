@@ -243,6 +243,7 @@ def read_at(root: pathlib.Path, as_of: str, accepted: str | None = None) -> tupl
     entries = commits(root, revision)
     if timestamp < instant(entries[0][1]):
         raise ValueError(f"ladder-gap: no numeric capability record at {as_of}")
+    export(root, history=True, accepted=revision)
     history = git(root, "log", "--first-parent", "--reverse", "--format=%H %cI",
                   f"{entries[0][0]}^..{revision}").splitlines()
     eligible = [(rev, date) for rev, date in (line.split() for line in history) if instant(date) <= timestamp]

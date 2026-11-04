@@ -127,7 +127,9 @@ ASSESS A REVIEW
   the era file at that dated revision (or its absence), and the projected
   capability table. Working-tree era edits do not change the witness. Dates
   before dc54196 refuse with ladder-gap; invalid or timezone-less instants
-  are refused.
+  are refused. Dated reads validate the complete accepted capability history
+  as ladder --history does. Non-increasing version dates refuse with
+  effective_from must increase and name the offending version.
 
   --json emits agent-routing-assessment/2 with the route version, purpose,
   clearance, reviewer, authors, floor, independence, qualifiers, findings,
@@ -170,7 +172,8 @@ EXPORT THE CAPABILITY LADDER
   gap=true version without a model table; no rank is invented for that span.
   The producer validates every version before emitting any bytes: positive
   integers, reachable cross-family floors, unique ids and identities,
-  nonempty efforts, and RFC 3339 instants. Failure names the version.
+  nonempty efforts, and strictly increasing RFC 3339 instants. Failure names
+  the version.
   Unavailable numeric-era history is refused by --history; current-only
   export can use a shallow accepted snapshot.
 
