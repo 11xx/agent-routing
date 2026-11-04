@@ -157,12 +157,12 @@
         {
           "effort": "max",
           "family": "claude",
-          "floor": 4,
+          "floor": 3,
           "model": "opus-5.5"
         }
       ],
       "debt_kind": "ineligible-review",
-      "floor": 4,
+      "floor": 3,
       "independence": "ineligible",
       "qualifiers": [
         "below-floor"
@@ -175,7 +175,7 @@
       },
       "schema": "agent-routing-assessment/1"
     },
-    "text": "ineligible: reviewer gpt-6.1-sol#xhigh (tier 2) against opus-5.5#max (floor 4); qualifiers below-floor\n"
+    "text": "ineligible: reviewer gpt-6.1-sol#xhigh (tier 2) against opus-5.5#max (floor 3); qualifiers below-floor\n"
   },
   {
     "reviewer": "sonnet-5.5#high",
@@ -191,9 +191,9 @@
           "model": "gpt-6.1-sol"
         }
       ],
-      "debt_kind": "ineligible-review",
+      "debt_kind": null,
       "floor": 2,
-      "independence": "ineligible",
+      "independence": "eligible",
       "qualifiers": [
         "reviewer-unseated"
       ],
@@ -201,11 +201,11 @@
         "effort": "high",
         "family": "claude",
         "model": "sonnet-5.5",
-        "review_tier": null
+        "review_tier": 2
       },
       "schema": "agent-routing-assessment/1"
     },
-    "text": "ineligible: reviewer sonnet-5.5#high (tier unseated) against gpt-6.1-sol#xhigh (floor 2); qualifiers reviewer-unseated\n"
+    "text": "eligible: reviewer sonnet-5.5#high (tier 2) against gpt-6.1-sol#xhigh (floor 2); qualifiers reviewer-unseated\n"
   },
   {
     "reviewer": "opus-5.5#xhigh",
@@ -255,16 +255,14 @@
         {
           "effort": null,
           "family": "claude",
-          "floor": 4,
+          "floor": 3,
           "model": "opus-5.5"
         }
       ],
-      "debt_kind": "ineligible-review",
-      "floor": 4,
-      "independence": "ineligible",
-      "qualifiers": [
-        "below-floor"
-      ],
+      "debt_kind": null,
+      "floor": 3,
+      "independence": "eligible",
+      "qualifiers": [],
       "reviewer": {
         "effort": "xhigh",
         "family": "openai",
@@ -273,7 +271,7 @@
       },
       "schema": "agent-routing-assessment/1"
     },
-    "text": "ineligible: reviewer gpt-6-astra#xhigh (tier 3) against opus-5.5 (floor 4); qualifiers below-floor\n"
+    "text": "eligible: reviewer gpt-6-astra#xhigh (tier 3) against opus-5.5 (floor 3); qualifiers none\n"
   },
   {
     "reviewer": "gpt-6-luna#max",

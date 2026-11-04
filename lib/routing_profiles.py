@@ -262,7 +262,7 @@ def _seated_tiers(profiles: list[dict], by_pool: dict[str, dict]) -> dict[tuple[
 def _tier_rank(models: list[dict], model_id: str, effort: str, pool: str) -> int | None:
     model = next((entry for entry in models if entry.get("id") == model_id), None)
     tier = next((entry for entry in (model or {}).get("effort", []) if entry.get("effort") == effort), None)
-    rank = (tier or {}).get("rank", {})
+    rank = (tier or {}).get("seat_rank", {})
     value = rank.get(pool) if isinstance(rank, dict) else None
     return value if isinstance(value, int) and not isinstance(value, bool) else None
 
@@ -290,33 +290,33 @@ def rank_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, d
                 problems.append(f"{label}: declared more than once")
             efforts_seen.add(effort)
             pools_seating = seated.get((model_id, effort), set())
-            rank = tier.get("rank")
+            rank = tier.get("seat_rank")
             if rank is None:
                 for pool in sorted(pools_seating):
-                    problems.append(f"{label}: seated on pool {pool!r} without a rank")
+                    problems.append(f"{label}: seated on pool {pool!r} without a seat_rank")
                 continue
             if not isinstance(rank, dict):
-                problems.append(f"{label}: rank must map pools to positive integers")
+                problems.append(f"{label}: seat_rank must map pools to positive integers")
                 continue
             if not pools_seating:
-                problems.append(f"{label}: rank on a tier no stable route seats")
+                problems.append(f"{label}: seat_rank on a tier no stable route seats")
             for pool, value in sorted(rank.items()):
                 if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-                    problems.append(f"{label}: rank for pool {pool!r} must be a positive integer, not {value!r}")
+                    problems.append(f"{label}: seat_rank for pool {pool!r} must be a positive integer, not {value!r}")
                     continue
                 if pool not in pools_seating:
-                    problems.append(f"{label}: rank for pool {pool!r}, which does not seat this tier")
+                    problems.append(f"{label}: seat_rank for pool {pool!r}, which does not seat this tier")
                 if effort in EFFORT_ORDER:
                     by_pool.setdefault(pool, []).append((EFFORT_ORDER.index(effort), value, effort))
                 ranked.setdefault(pool, []).append((value, model_id, effort, tier.get("pass_at_1")))
             for pool in sorted(pools_seating - set(rank)):
-                problems.append(f"{label}: seated on pool {pool!r} without a rank")
+                problems.append(f"{label}: seated on pool {pool!r} without a seat_rank")
         for pool, entries in by_pool.items():
             entries.sort()
             for (_, lower_rank, lower), (_, higher_rank, higher) in zip(entries, entries[1:]):
                 if higher_rank < lower_rank:
                     problems.append(
-                        f"model {model_id!r} pool {pool!r}: rank falls from {lower} ({lower_rank}) to {higher} ({higher_rank})"
+                        f"model {model_id!r} pool {pool!r}: seat_rank falls from {lower} ({lower_rank}) to {higher} ({higher_rank})"
                     )
     for pool, entries in ranked.items():
         scored = [entry for entry in entries if isinstance(entry[3], (int, float)) and not isinstance(entry[3], bool)]
@@ -422,12 +422,12 @@ def clearance_problem(review: object) -> str | None:
     if not isinstance(review, dict) or set(review) != {"clearance"}:
         return "[review] must declare exactly one clearance floor"
     if type(review["clearance"]) is not int or review["clearance"] < 1:
-        return "[review].clearance must be a positive integer review_tier"
+        return "[review].clearance must be a positive integer capability rank"
     return None
 
 
 def clearance_floor(root: pathlib.Path) -> int:
-    """The ``review_tier`` a read must reach to clear review debt.
+    """The capability rank a read must reach to clear review debt.
 
     A manifest without a usable floor refuses rather than letting every read
     clear.
@@ -439,35 +439,11 @@ def clearance_floor(root: pathlib.Path) -> int:
     return review["clearance"]
 
 
-def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict]) -> list[str]:
-    by_model = {model["id"]: model for model in models}
-    seated = _seated_tiers(profiles, by_pool)
-    problems: list[str] = []
-    for model in models:
-        for tier in model.get("effort", []):
-            label = f"model {model['id']!r} effort {tier['effort']!r}"
-            for field in ("review_tier", "author_floor"):
-                if field in tier and (type(tier[field]) is not int or tier[field] < 1):
-                    problems.append(f"{label}: {field} must be a positive integer")
-            if (model["id"], tier["effort"]) in seated:
-                if "review_tier" not in tier:
-                    problems.append(f"{label}: seated tier has no review_tier")
-                if "author_floor" in tier:
-                    problems.append(f"{label}: author_floor on a seated tier")
-            elif "review_tier" in tier:
-                problems.append(f"{label}: review_tier on a tier no stable route seats")
-    for profile in profiles:
-        for route in [profile, *profile.get("variant", [])]:
-            label = profile["id"] if route is profile else f"{profile['id']}:{route['id']}"
-            if profile["id"] != "review":
-                continue
-            model = by_model.get(route.get("model"))
-            if model is None:
-                continue
-            tier = next((tier for tier in model.get("effort", []) if tier.get("effort") == route.get("effort")), {})
-            if "review_tier" not in tier:
-                problems.append(f"{label}: reviewer model/effort has no review_tier")
-    return problems
+def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict], families: list | None = None) -> list[str]:
+    """Every known tier has capability, and another family can meet its floor."""
+    from review_ladder import project, table_problems
+
+    return table_problems(project({"model": models, "family": families or []}, {"profile": profiles}))
 
 
 def structural_problems(root: pathlib.Path) -> list[str]:
@@ -650,12 +626,15 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                         problems.append(refusal.message)
     problems.extend(rank_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
     problems.extend(escalation_source_problems(profiles))
-    problems.extend(review_policy_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
     model_manifest = load_toml(root / "routing" / "models.toml")
+    families = model_manifest.get("family", [])
+    family_errors = family_problems(models, families)
+    if not family_errors:
+        problems.extend(review_policy_problems(models, profiles, {}, families))
     problem = clearance_problem(model_manifest.get("review"))
     if problem:
         problems.append(problem)
-    problems.extend(family_problems(models, model_manifest.get("family", [])))
+    problems.extend(family_errors)
     for profile in profiles:
         rules = profile.get("fallback", [])
         if not isinstance(rules, list):
@@ -987,9 +966,9 @@ def caller_confirmation(root: pathlib.Path, route: dict, canonical_model: str,
         raise RouteRefusal("invalid-caller", "caller provider does not serve the observed model",
                            caller=caller, provider=caller_provider, providers=providers)
     provider = route["provider"]
-    caller_rank = coordinate["tier"].get("rank", {}).get(caller_provider)
+    caller_rank = coordinate["tier"].get("seat_rank", {}).get(caller_provider)
     selected = model_effort_facts(root, canonical_model, route["effort"])["tier"]
-    selected_rank = selected.get("rank", {}).get(provider)
+    selected_rank = selected.get("seat_rank", {}).get(provider)
     comparison = "unranked"
     if provider == caller_provider and caller_rank is not None and selected_rank is not None:
         comparison = "above" if selected_rank > caller_rank else "below" if selected_rank < caller_rank else "same"
@@ -1234,14 +1213,9 @@ def validate_selection(
 
 
 def _floors(model: dict, effort_tier: dict | None) -> list[int | None]:
-    """One floor per effort an author coordinate may stand for.
-
-    A tier carries its floor as ``review_tier`` when seated or ``author_floor``
-    when not. A coordinate without an effort stands for every declared tier;
-    a tier with neither field contributes ``None`` and is never inferred.
-    """
+    """Each declared author floor, including every effort when none is named."""
     tiers = [effort_tier] if effort_tier is not None else model.get("effort", [])
-    return [tier.get("review_tier", tier.get("author_floor")) for tier in tiers]
+    return [tier.get("floor") for tier in tiers]
 
 
 def _review_author(
@@ -1338,6 +1312,9 @@ def _assessed_coordinate(root: pathlib.Path, coordinate: str, role: str, *, effo
         "identities": model_identities(root, facts["model_id"]),
         "tier": facts["tier"] if separator else None,
         "floors": _floors(model, facts["tier"] if separator else None),
+        "rank": min(tier["rank"] for tier in ([facts["tier"]] if separator else model["effort"])),
+        "seated": (facts["model_id"], effort) in _seated_tiers(
+            load_toml(root / "routing" / "profiles.toml").get("profile", []), pools(root)),
     }
 
 
@@ -1372,12 +1349,13 @@ def _assessment(
     both read it, so no second independence rule can disagree with it.
 
     ``independence`` is eligible exactly when no qualifier but
-    ``below-clearance`` holds; a read clears exactly when none holds.
+    ``below-clearance`` or the informational ``reviewer-unseated`` holds.
+    Clearance ignores seating and requires family independence and both floors.
     ``findings`` asks only that the reviewer's tier reach each author's floor,
-    strictly above it for an author of its own family. Schema 1 carries the
+    rejecting its own model at a lower effort. Schema 1 carries the
     independence answer alone.
     """
-    review_tier = (reader["tier"] or {}).get("review_tier")
+    review_tier = reader["rank"]
     author_rows, floor, floors_known = _author_rows(written)
 
     qualifiers = []
@@ -1391,10 +1369,10 @@ def _assessment(
         qualifiers.append("below-clearance")
     if not floors_known:
         qualifiers.append("floor-unknown")
-    if review_tier is None:
+    if not reader["seated"]:
         qualifiers.append("reviewer-unseated")
-    independent = not [qualifier for qualifier in qualifiers if qualifier != "below-clearance"]
-    clears = not qualifiers
+    independent = not [qualifier for qualifier in qualifiers if qualifier not in {"below-clearance", "reviewer-unseated"}]
+    clears = not [q for q in qualifiers if q != "reviewer-unseated"]
 
     assessment = {
         "schema": ASSESSMENT_SCHEMAS[schema],
@@ -1414,7 +1392,11 @@ def _assessment(
     }
     if schema > 1:
         findings = review_tier is not None and floors_known and all(
-            review_tier > row["floor"] if row["family"] in reader["family_values"] else review_tier >= row["floor"]
+            review_tier >= row["floor"] and not (
+                row["model"] == reader["model"] and reader["effort"] is not None
+                and row["effort"] is not None
+                and EFFORT_ORDER.index(reader["effort"]) < EFFORT_ORDER.index(row["effort"])
+            )
             for row in author_rows
         )
         assessment.update(purpose=purpose, clearance=clearance,
@@ -1437,12 +1419,13 @@ def assess_review(
     *,
     purpose: str | None = None,
     schema: int = 2,
+    as_of: str | None = None,
 ) -> dict[str, object]:
     """Assess one reviewer against the authors of the diff it read.
 
     Pure policy over the roster: any reviewer can be assessed, seated by a
     profile or not. The qualifiers are a closed set; the read clears exactly
-    when none holds. Both answers are given whatever the purpose; the purpose
+    when no blocking qualifier holds. Both answers are given whatever the purpose; the purpose
     records which question the caller asked. Schema 1 answers independence
     alone, so it refuses a findings purpose.
     """
@@ -1454,12 +1437,56 @@ def assess_review(
             "--purpose findings needs schema 2: agent-routing-assessment/1 answers clearance only",
         )
     purpose = _purpose(purpose)
+    if as_of is not None:
+        return _assessment_at(root, reviewer, authors, as_of, purpose=purpose, schema=schema)
     clearance = clearance_floor(root)
     if not authors:
         raise RouteRefusal("unknown-coordinate", "no author given", role="author")
-    reader = _assessed_coordinate(root, reviewer, "reviewer", effort_required=True)
+    reader = _assessed_coordinate(root, reviewer, "reviewer", effort_required=False)
     written = [_assessed_coordinate(root, author, "author", effort_required=False) for author in authors]
     return _assessment(reader, written, route_version(root), clearance, schema=schema, purpose=purpose)
+
+
+def _assessment_at(root: pathlib.Path, reviewer: str, authors: list[str], as_of: str, *, purpose: str, schema: int) -> dict:
+    from review_ladder import EVIDENCE, legacy, project, read_at, table_problems
+
+    try:
+        revision, texts = read_at(root, as_of)
+        manifest, profiles, delegation = (tomllib.loads(texts[name]) for name in ("models", "profiles", "delegation"))
+        models = project(manifest, profiles, historical=legacy(manifest))
+        problems = table_problems(models)
+        if problems:
+            raise ValueError(f"version v-{revision}: {'; '.join(problems)}")
+    except ValueError as error:
+        raise RouteRefusal("historical-ladder", str(error)) from error
+    seated = _seated_tiers(profiles.get("profile", []), {row["provider"]: row for row in delegation.get("pool", [])})
+
+    def coordinate(value: str, role: str) -> dict:
+        name, separator, effort = value.partition("#")
+        model = next((row for row in models if name in row["identities"]), None)
+        tiers = [row for row in model["efforts"] if not separator or row["effort"] == effort] if model else []
+        if not model or not tiers:
+            raise RouteRefusal("unknown-coordinate", f"unknown {role} coordinate {value!r} at {as_of}",
+                               role=role, coordinate=value)
+        return {"model": model["model"], "effort": effort if separator else None,
+                "family": model["family"], "family_values": [model["family"]],
+                "identities": model["identities"], "rank": min(row["rank"] for row in tiers),
+                "floors": [row["floor"] for row in tiers],
+                "seated": (model["model"], effort) in seated}
+
+    if not authors:
+        raise RouteRefusal("unknown-coordinate", "no author given", role="author")
+    review = manifest.get("review", {"clearance": 2})
+    problem = clearance_problem(review)
+    if problem:
+        raise RouteRefusal("manifest-invalid", problem)
+    digest = hashlib.sha256()
+    for name in ("models", "profiles", "delegation"):
+        digest.update(f"routing/{name}.toml".encode() + b"\0" + texts[name].encode() + b"\0")
+    # The witness includes the reconstruction policy as well as the original table.
+    digest.update((root / EVIDENCE).read_bytes())
+    return _assessment(coordinate(reviewer, "reviewer"), [coordinate(author, "author") for author in authors],
+                       digest.hexdigest()[:12], review["clearance"], schema=schema, purpose=purpose)
 
 
 FRONTIER_SCHEMA = "agent-routing-frontier/1"
@@ -1539,17 +1566,24 @@ def _review_constraints(root: pathlib.Path, selected: dict) -> dict:
     facts = model_effort_facts(root, selected["model"], selected["effort"])
     return {
         "excluded_author_families": _family_values(family_relation(root), facts["model"]),
-        "reviewer_tier": facts["tier"]["review_tier"],
+        "reviewer_tier": facts["tier"]["rank"],
     }
 
 
-def _seat_answers(author: dict, constraints: dict, clearance: int) -> dict[str, bool]:
+def _lower_same_model(reviewer: str, author: str) -> bool:
+    model, _, effort = reviewer.partition("#")
+    author_model, separator, author_effort = author.partition("#")
+    return (model == author_model and bool(separator)
+            and EFFORT_ORDER.index(effort) < EFFORT_ORDER.index(author_effort))
+
+
+def _seat_answers(author: dict, constraints: dict, clearance: int, reviewer: str) -> dict[str, bool]:
     """A review seat's answers for one author, by the route's family exclusions.
 
     Independent: outside the author's excluded families and at or above the
     author's tier. Clears: independent and at or above the clearance floor.
-    Findings: at or above the author's tier, strictly above it from an
-    excluded family.
+    Findings: at or above the author's tier, except the same model at a
+    lower effort.
     """
     tier, floor = constraints["reviewer_tier"], author["tier"]
     excluded = author["family"] in constraints["excluded_author_families"]
@@ -1557,7 +1591,7 @@ def _seat_answers(author: dict, constraints: dict, clearance: int) -> dict[str, 
     independent = reaches and not excluded
     return {
         "independent": independent,
-        "findings": reaches and (not excluded or tier > floor),
+        "findings": reaches and not _lower_same_model(reviewer, author["coordinate"]),
         "clears": independent and tier >= clearance,
         "excluded": excluded,
     }
@@ -1704,7 +1738,7 @@ def resolve(
                 if pool_refusal(pools(root), profile_id, candidate["provider"], candidate["model"]) and not allow_cross_pool:
                     continue
                 seats.append(candidate)
-                answers = _seat_answers(author_facts, constraints, clearance)
+                answers = _seat_answers(author_facts, constraints, clearance, f"{candidate["model"]}#{candidate["effort"]}")
                 # An excluded-family seat is never a fallback: a findings read
                 # from the author's own family comes only from the route the
                 # caller resolved, so a cost-gated variant is reached by name.
@@ -1742,7 +1776,7 @@ def resolve(
             assessment = assess_review(
                 root, f"{selected['model']}#{selected['effort']}", [author_facts["coordinate"]], purpose=purpose
             )
-            answers = _seat_answers(author_facts, constraints, clearance)
+            answers = _seat_answers(author_facts, constraints, clearance, f"{selected["model"]}#{selected["effort"]}")
             review = {
                 "author": author_facts["coordinate"],
                 "author_tier": author_facts["tier"],

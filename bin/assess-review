@@ -44,7 +44,8 @@ def main() -> int:
         prog="agent-routing assess",
         description="Assess whether a reviewer's read can report findings on, and clear, the authors of a diff.",
     )
-    parser.add_argument("--reviewer", required=True, metavar="MODEL#EFFORT")
+    parser.add_argument("--reviewer", required=True, metavar="MODEL[#EFFORT]")
+    parser.add_argument("--as-of", help="read the committed capability table at an RFC 3339 instant")
     parser.add_argument(
         "--author",
         action="append",
@@ -68,7 +69,7 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="emit the agent-routing-assessment contract")
     args = parser.parse_args()
     try:
-        assessment = assess_review(ROOT, args.reviewer, args.author, purpose=args.purpose, schema=args.schema)
+        assessment = assess_review(ROOT, args.reviewer, args.author, purpose=args.purpose, schema=args.schema, as_of=args.as_of)
     except RouteRefusal as refusal:
         print(f"agent-routing: cannot assess reviewer {args.reviewer!r}: {refusal}", file=sys.stderr)
         print(dumps(refusal.payload()), file=sys.stderr)

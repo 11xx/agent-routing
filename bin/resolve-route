@@ -24,13 +24,13 @@ def main() -> int:
                         help="normalized account-window JSON from agent-status usage; only configured fallbacks may change the backend")
     parser.add_argument(
         "--author",
-        help="diff author model[#effort]; review routes only; requires a nonblank family and review_tier or unseated author_floor",
+        help="diff author model[#effort]; review routes only; requires a nonblank family and capability rank and floor",
     )
     parser.add_argument(
         "--purpose",
         choices=("findings", "clearance"),
         help="with --author, the read's purpose: clearance of review debt (the default) needs an independent seat "
-        "at the clearance floor; findings accepts any seat at the author's tier, its own family only strictly "
+        "at the clearance floor; findings accepts any seat at the author's tier, its own model never below its author's effort "
         "above it and only on the resolved route",
     )
     parser.add_argument(
