@@ -59,9 +59,11 @@ prevents clearance. Sol xhigh meets that floor and clears from another family.
 
 ## Historical reconstruction
 
-The numeric record begins at dc54196, committed 2026-10-07T04:51:04Z.
+The numeric record begins at dc54196 on the accepted first-parent history,
+2026-10-07T04:51:04Z. `--accepted <ref>` defaults to the repository's default
+branch, independently of the current checkout.
 Earlier reads, from 2026-08-01, fall in a gap. No rank is supplied for that
-span. Within the numeric era, each commit's model roster, efforts, identities,
+span. Within the numeric era, each accepted commit's model roster, efforts, identities,
 family relation and retirement state are retained. Its `review_tier` supplies
 the reviewer band and `author_floor` the author floor, falling back to
 `review_tier` for the latter. Missing values use the separate judgments above.
@@ -71,13 +73,23 @@ reviewer capability. Effort-less predecessor rows
 use their recorded effort sets. Legacy level 4 was an unreachable seat
 requirement: the documented capability judgment supplies its rank and floor,
 including Sol max at rank 3 / floor 2 and the deep Claude and Astra tiers at
-rank 3 / floor 3. Native rank/floor declarations remain committed snapshots;
-a later ordinary version does not rewrite an earlier native table.
+rank 3 / floor 3. Native rank/floor declarations remain accepted snapshots;
+a later ordinary version does not rewrite an earlier accepted table.
 
 These are reconstructed tables, not a claim that unranked tiers already had
 numeric capability declarations. A source names both the original commit and
-this reconstruction evidence. Consecutive equal capability tables produce one
-version, so prices and seating changes alone do not change a version.
+this reconstruction evidence. Legacy answers follow the current reconstruction;
+this does not claim that the reconstruction code existed at a legacy revision.
+A dated assessment witnesses the manifests and era file at its pinned revision
+(or the era file's absence) and the projected table, without reading working
+era text.
+
+Consecutive equal capability tables produce one version, so prices and seating
+changes alone do not change a version. Its effective time is the committer
+time of the accepted first-parent commit that changes the table. A no-ff merge
+records acceptance time while excluding internal topic commits; a single commit
+directly on the accepted branch also records one accepted table. A fast-forward
+of a topic series cannot establish when each internal table was accepted.
 
 Model family names identify labs: Claude is Anthropic; GPT-5.5, GPT-5.6 and
 GPT-6 are OpenAI. Historical harness spellings belong in identities. Retired

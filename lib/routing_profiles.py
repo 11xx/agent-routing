@@ -1421,6 +1421,7 @@ def assess_review(
     purpose: str | None = None,
     schema: int = 2,
     as_of: str | None = None,
+    accepted: str | None = None,
 ) -> dict[str, object]:
     """Assess one reviewer against the authors of the diff it read.
 
@@ -1439,7 +1440,9 @@ def assess_review(
         )
     purpose = _purpose(purpose)
     if as_of is not None:
-        return _assessment_at(root, reviewer, authors, as_of, purpose=purpose, schema=schema)
+        return _assessment_at(root, reviewer, authors, as_of, purpose=purpose, schema=schema, accepted=accepted)
+    if accepted is not None:
+        raise RouteRefusal("invalid-accepted", "--accepted needs --as-of for a dated assessment")
     clearance = clearance_floor(root)
     if not authors:
         raise RouteRefusal("unknown-coordinate", "no author given", role="author")
@@ -1448,11 +1451,13 @@ def assess_review(
     return _assessment(reader, written, route_version(root), clearance, schema=schema, purpose=purpose)
 
 
-def _assessment_at(root: pathlib.Path, reviewer: str, authors: list[str], as_of: str, *, purpose: str, schema: int) -> dict:
-    from review_ladder import EVIDENCE, legacy, project, read_at, table_problems
+def _assessment_at(root: pathlib.Path, reviewer: str, authors: list[str], as_of: str, *,
+                   purpose: str, schema: int, accepted: str | None = None) -> dict:
+    from review_ladder import EVIDENCE, evidence_at, legacy, project, read_at, table_problems
 
     try:
-        revision, texts = read_at(root, as_of)
+        revision, texts = read_at(root, as_of, accepted)
+        evidence = evidence_at(root, revision)
         manifest, profiles, delegation = (tomllib.loads(texts[name]) for name in ("models", "profiles", "delegation"))
         models = project(manifest, profiles, historical=legacy(manifest))
         problems = table_problems(models)
@@ -1484,8 +1489,9 @@ def _assessment_at(root: pathlib.Path, reviewer: str, authors: list[str], as_of:
     digest = hashlib.sha256()
     for name in ("models", "profiles", "delegation"):
         digest.update(f"routing/{name}.toml".encode() + b"\0" + texts[name].encode() + b"\0")
-    # The witness includes the reconstruction policy as well as the original table.
-    digest.update((root / EVIDENCE).read_bytes())
+    digest.update(EVIDENCE.encode() + b"\0")
+    digest.update(b"absent\0" if evidence is None else b"present\0" + evidence.encode())
+    digest.update(dumps({"model": models}).encode())
     return _assessment(coordinate(reviewer, "reviewer"), [coordinate(author, "author") for author in authors],
                        digest.hexdigest()[:12], review["clearance"], schema=schema, purpose=purpose)
 

@@ -210,13 +210,24 @@ floor and rejects the same model at a lower effort, but may share a family.
 remain judgeable without becoming routes. Pool-local `seat_rank` orders
 selections only within their providers.
 
-`agent-routing assess --as-of <RFC3339>` reads the committed table in force
-at the instant and keeps assessment /2's shape. `agent-routing ladder --json`
-exports one current `arc-review-ladder/1` version; adding `--history` exports
-each distinct capability table from dc54196 onward, with commit times and
-source evidence. The preceding span from 2026-08-01 is one gap with no model
-table. Export validates every version and names an invalid version rather
-than emitting a partial history. A missing author leaves
+`agent-routing assess --as-of <RFC3339> [--accepted <ref>]` reads the accepted
+branch's first-parent history at the instant and keeps assessment /2's shape.
+`--accepted` defaults to the repository's default branch, never the checkout's
+HEAD. `agent-routing ladder --json [--history] [--accepted <ref>]` exports
+`arc-review-ladder/1` from that same history: the current accepted table alone,
+or each distinct table from dc54196 onward. A version's `effective_from` is
+the committer time of the accepted first-parent commit whose table differs
+from its parent's. Capability changes land as no-ff merges or single commits
+directly on the accepted branch; fast-forwarding topic series loses acceptance
+time. A merge's intermediate topic tables are never versions.
+
+Native dated answers use the pinned rank/floor declarations. Legacy answers
+follow the current documented reconstruction. The witness hashes the manifests
+and era file at the dated revision, with explicit absence when the era file
+was not recorded, plus the projected table. It never reads working-tree era
+text. The preceding span from 2026-08-01 is one gap with no model table.
+Export validates every version and names an invalid version rather than
+emitting a partial history. A missing author leaves
 `review.independence` unverified; no eligible route recommends debt.
 Route eligibility does not establish an actor's independence or discharge
 review. Ordinary lead coverage of delegated work remains valid without that

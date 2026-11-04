@@ -40,10 +40,10 @@ Run `agent-routing` with no verb for the routing guide.
   admit-review --author <model>[#effort] --usage-file <file> --base <base> --head <head> --json
                       select quota-admitted independent review or typed review debt
   assess --reviewer <model>#<effort> --author <model>[#<effort>] [--author ...]
-         [--purpose findings|clearance] [--as-of <RFC3339>] [--schema 1|2] [--json]
+         [--purpose findings|clearance] [--as-of <RFC3339> [--accepted <ref>]] [--schema 1|2] [--json]
                       assess any reviewer against the authors of a diff: whether
                       its findings can be trusted and whether it clears debt
-  ladder --json [--history]
+  ladder --json [--history] [--accepted <ref>]
                       export the dated capability ladder for Arc
   frontier --author <model>[#<effort>] [--reads <model>#<effort>...] [--json]
                       the strongest eligible review seat for an author, by
@@ -65,9 +65,11 @@ every floor must be met by another family. Lint enforces both declarations.
 Pool ordering uses seat_rank. assess compares rank against author floors and
 [review].clearance; reviewer-unseated is informational. Same-family reads can
 find but never clear; the same model at a lower effort cannot find.
-assess --as-of reads the dated git table. ladder --json exports the committed
-current table; --history adds distinct reconstructed tables and the pre-numeric
-gap, in arc-review-ladder/1. Run the guide for the complete contracts.
+assess --as-of and ladder read the accepted first-parent history; --accepted
+selects its ref, defaulting to the repository default branch rather than HEAD.
+Tables land as no-ff merges or single accepted commits. Legacy answers follow
+the current reconstruction; dated witnesses use pinned era text. Run the guide
+for the complete contracts.
 EOF
 }
 

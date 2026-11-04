@@ -13,9 +13,10 @@ from review_ladder import export
 parser = argparse.ArgumentParser(prog="agent-routing ladder")
 parser.add_argument("--json", action="store_true", required=True, help="emit arc-review-ladder/1")
 parser.add_argument("--history", action="store_true", help="include the numeric-era history and preceding gap")
+parser.add_argument("--accepted", metavar="REF", help="accepted history ref; defaults to the repository default branch")
 args = parser.parse_args()
 try:
-    result = export(ROOT, history=args.history)
+    result = export(ROOT, history=args.history, accepted=args.accepted)
 except (ValueError, KeyError, TypeError) as error:
     print(f"agent-routing: cannot export ladder: {error}", file=sys.stderr)
     raise SystemExit(1)

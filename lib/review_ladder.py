@@ -211,27 +211,89 @@ def validate(ladder: dict) -> None:
             raise ValueError(f"version {label!r}: {error}") from error
 
 
-def commits(root: pathlib.Path) -> list[tuple[str, str]]:
+def accepted_revision(root: pathlib.Path, accepted: str | None = None) -> str:
+    """Pin the accepted ref without using the checkout's HEAD as a default."""
+    if accepted is None:
+        remote = git(root, "for-each-ref", "--format=%(symref)", "refs/remotes/origin/HEAD").strip()
+        if remote:
+            local = "refs/heads/" + remote.removeprefix("refs/remotes/origin/")
+            accepted = local if git(root, "for-each-ref", "--format=%(refname)", local).strip() else remote
+        else:
+            candidates = git(root, "for-each-ref", "--format=%(refname)",
+                             "refs/heads/master", "refs/heads/main").splitlines()
+            if len(candidates) != 1:
+                raise ValueError("cannot establish the default accepted branch; pass --accepted <ref>")
+            accepted = candidates[0]
+    return git(root, "rev-parse", "--verify", "--end-of-options", f"{accepted}^{{commit}}").strip()
+
+
+def commits(root: pathlib.Path, accepted: str | None = None) -> list[tuple[str, str]]:
+    revision = accepted_revision(root, accepted)
     start = git(root, "rev-parse", NUMERIC_START).strip()
     entries = git(root, "log", "--first-parent", "--reverse", "--format=%H %cI",
-                  f"{start}^..HEAD", "--", "routing/models.toml").splitlines()
+                  f"{start}^..{revision}", "--", "routing/models.toml", "routing/profiles.toml").splitlines()
     if not entries or entries[0].split()[0] != start:
-        raise ValueError(f"numeric capability history from {NUMERIC_START} is unavailable")
+        raise ValueError(f"numeric capability history from {NUMERIC_START} is unavailable on the accepted ref")
     return [(rev, utc(date)) for rev, date in (line.split() for line in entries)]
 
 
-def read_at(root: pathlib.Path, as_of: str) -> tuple[str, dict[str, str]]:
+def read_at(root: pathlib.Path, as_of: str, accepted: str | None = None) -> tuple[str, dict[str, str]]:
     timestamp = instant(as_of)
-    entries = commits(root)
+    revision = accepted_revision(root, accepted)
+    entries = commits(root, revision)
     if timestamp < instant(entries[0][1]):
         raise ValueError(f"ladder-gap: no numeric capability record at {as_of}")
-    history = git(root, "log", "--first-parent", "--format=%H %cI", f"{entries[0][0]}^..HEAD").splitlines()
+    history = git(root, "log", "--first-parent", "--reverse", "--format=%H %cI",
+                  f"{entries[0][0]}^..{revision}").splitlines()
     eligible = [(rev, date) for rev, date in (line.split() for line in history) if instant(date) <= timestamp]
     if not eligible:
         raise ValueError(f"ladder-gap: no numeric capability record at {as_of}")
-    rev, _ = max(eligible, key=lambda entry: instant(entry[1]))
+    rev, _ = eligible[-1]
     return rev, {name: git(root, "show", f"{rev}:routing/{name}.toml")
                  for name in ("models", "profiles", "delegation")}
+
+
+def evidence_at(root: pathlib.Path, revision: str) -> str | None:
+    """The dated era file, or its explicit absence, without a worktree fallback."""
+    if not git(root, "ls-tree", "--name-only", revision, "--", EVIDENCE).strip():
+        return None
+    return git(root, "show", f"{revision}:{EVIDENCE}")
+
+
+def version_at(root: pathlib.Path, revision: str, date: str) -> dict:
+    try:
+        manifest = historical_manifest(root, revision, "models")
+        profiles = historical_manifest(root, revision, "profiles")
+        if legacy(manifest) and not any(
+            "review_tier" in tier or "author_floor" in tier
+            for model in manifest.get("model", []) for tier in model.get("effort", [])
+        ):
+            raise ValueError("ladder-gap: the accepted revision predates the numeric capability record")
+        table = project(manifest, profiles, historical=legacy(manifest))
+    except (ValueError, KeyError, TypeError) as error:
+        raise ValueError(f"version v-{revision}: {error}") from error
+    version = {"id": f"v-{revision}", "effective_from": date, "source": source(root, revision),
+               "gap": False, "model": table}
+    validate({"schema": SCHEMA, "version": [version]})
+    return version
+
+
+def current_version(root: pathlib.Path, accepted: str) -> dict:
+    """The first accepted commit of the current table, including shallow snapshots."""
+    entries = git(root, "log", "--first-parent", "--format=%H %cI", accepted, "--",
+                  "routing/models.toml", "routing/profiles.toml").splitlines()
+    current = None
+    for entry in entries:
+        revision, date = entry.split()
+        version = version_at(root, revision, utc(date))
+        if current is not None and version["model"] != current["model"]:
+            break
+        current = version
+        if revision.startswith(NUMERIC_START):
+            break
+    if current is None:
+        raise ValueError("the accepted ref has no capability table")
+    return current
 
 
 def source(root: pathlib.Path, rev: str) -> str:
@@ -242,42 +304,18 @@ def source(root: pathlib.Path, rev: str) -> str:
     return f"agent-routing routing/models.toml at {rev}; reconstruction: {EVIDENCE}; era evidence: " + ", ".join(eras)
 
 
-def export(root: pathlib.Path, *, history: bool = False) -> dict:
-    if history:
-        entries = commits(root)
-    else:
-        rev, date = git(root, "log", "-1", "--format=%H %cI", "--", "routing/models.toml").split()
-        entries = [(rev, utc(date))]
-    versions = []
-    if history:
-        versions.append({"id": "gap-2026-08-01", "effective_from": GAP_START, "gap": True,
-                         "source": f"No numeric capability record before routing/models.toml at {NUMERIC_START}; {EVIDENCE}"})
-        for rev, date in entries:
-            try:
-                manifest = historical_manifest(root, rev, "models")
-                profiles = historical_manifest(root, rev, "profiles")
-                table = project(manifest, profiles, historical=legacy(manifest))
-            except (ValueError, KeyError, TypeError) as error:
-                raise ValueError(f"version v-{rev}: {error}") from error
-            version = {"id": f"v-{rev}", "effective_from": date, "source": source(root, rev),
-                       "gap": False, "model": table}
-            validate({"schema": SCHEMA, "version": [version]})
-            if len(versions) == 1 or versions[-1]["model"] != table:
-                versions.append(version)
-    manifest = tomllib.loads((root / "routing/models.toml").read_text())
-    profiles = tomllib.loads((root / "routing/profiles.toml").read_text())
-    table = project(manifest, profiles)
-    last_rev, date = entries[-1]
-    current = {"id": f"v-{last_rev}", "effective_from": date, "source": source(root, last_rev),
-               "gap": False, "model": table}
-    validate({"schema": SCHEMA, "version": [current]})
-    committed_manifest = historical_manifest(root, last_rev, "models")
-    committed = project(committed_manifest, historical_manifest(root, last_rev, "profiles"),
-                        historical=legacy(committed_manifest))
-    if not history or table != versions[-1]["model"]:
-        if table != committed:
-            raise ValueError("current capability table is uncommitted; commit routing/models.toml before exporting")
-        versions.append(current)
+def export(root: pathlib.Path, *, history: bool = False, accepted: str | None = None) -> dict:
+    revision = accepted_revision(root, accepted)
+    if not history:
+        ladder = {"schema": SCHEMA, "version": [current_version(root, revision)]}
+        validate(ladder)
+        return ladder
+    versions = [{"id": "gap-2026-08-01", "effective_from": GAP_START, "gap": True,
+                 "source": f"No numeric capability record before routing/models.toml at {NUMERIC_START}; {EVIDENCE}"}]
+    for rev, date in commits(root, revision):
+        version = version_at(root, rev, date)
+        if len(versions) == 1 or versions[-1]["model"] != version["model"]:
+            versions.append(version)
     ladder = {"schema": SCHEMA, "version": versions}
     validate(ladder)
     return ladder

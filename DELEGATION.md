@@ -44,6 +44,11 @@ Delegation prompts set `ARC_ROLE` explicitly: `implementer` for executor
 sessions and `reviewer` for review-only sessions. Do not rely on the unset
 backward-compatible behavior for delegated work.
 
+Capability table changes land as a no-ff merge or a single commit directly on
+the accepted branch. A fast-forward of a topic series exposes intermediate
+tables without recording their acceptance time. Dated ladder readers walk the
+accepted branch's first-parent history, selected by `--accepted <ref>`.
+
 ## Reviewer line
 
 The verdict never claims independence from the model that authored the diff,
