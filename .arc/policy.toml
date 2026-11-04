@@ -1,0 +1,3 @@
+# Agents commit under the operator's identity; the ledger records who acted.
+[provenance]
+git_identity = "shared"
