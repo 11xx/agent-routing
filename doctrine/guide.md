@@ -21,14 +21,14 @@ RESOLVE A ROUTE
   author's recorded coordinate, and --purpose for what the read is for.
   --purpose clearance, the default, asks for a read that may clear review
   debt: a stable seat outside the author's excluded families, at or above
-  both the author's review_tier (or author_floor for an unseated tier) and the
+  both the author's capability floor and the
   clearance floor in models.toml [review]. --purpose findings asks only for a
   read whose findings can be trusted: a seat at or above the author's tier,
-  and one from an excluded family only strictly above it and only on the
+  including its own family except the same model at a lower effort, only on the
   route resolved (the backend default or the named --variant), never as a
   fallback. A route's excluded families are its reviewer's family: the
   lineages models.toml [[family]] groups with the reviewer's own, the same
-  relation assess reads for same-family. An author_floor grants no reviewer
+  relation assess reads for same-family. Capability grants no routing
   seat. A default that does not serve the purpose may select a variant that
   does on the same backend; --variant confines the choice. No such route
   means a refusal recommending Arc review debt, not a weaker reviewer.
@@ -93,52 +93,86 @@ QUOTA ADMISSION BEFORE DISPATCH
   not change `frontier`, which describes the strongest rostered coverage.
 
 ASSESS A REVIEW
-  agent-routing assess --reviewer <model>#<effort>
+  agent-routing assess --reviewer <model>[#<effort>]
     --author <model>[#<effort>] [--author ...]
-    [--purpose findings|clearance] [--schema 1|2] [--json]
+    [--purpose findings|clearance] [--as-of <RFC3339> [--accepted <ref>]]
+    [--schema 1|2] [--json]
 
-  assess judges any reviewer against the authors of the diff it read: a seated
-  route, an operator-directed selection, or a model no profile seats. It
-  answers two questions about the read:
-    findings  "eligible" when the reviewer's review_tier reaches every
-              author's floor, and strictly exceeds the floor of each author
-              of its own family; the findings can be trusted, but the read
-              does not by that alone clear review debt
-    clears    true when the reviewer is family-independent of every author
-              and its review_tier is at or above both the highest author
-              floor and the clearance floor, models.toml [review] clearance;
-              only a clearing read discharges review debt
-  --purpose names the question asked, clearance by default. Both answers are
-  always given; the purpose is recorded and leads the text line.
+  Every known tier has a capability rank and author floor: 1 bounded work,
+  2 a working technical peer, 3 the top review band. Capability is
+  independent of seats, model size, price and retirement. Rank measures the
+  reviewer; floor is the least rank for authored work and can be lower. Lint requires both
+  values and a rank in another family that meets every floor. No exclusive
+  top is valid. Pool-local seat_rank orders selections, not capability.
 
-  --json emits agent-routing-assessment/2: the route version, the purpose, the
-  clearance floor, the reviewer with its review_tier (null when its tier is
-  unseated), each author with its floor, the highest known floor, findings,
-  clears, independence, the qualifiers, and debt_kind "ineligible-review" when
-  the read does not clear. independence is "eligible" exactly when no
-  qualifier other than below-clearance holds. The reviewer and each author
-  carry identities: the sorted roster id, aliases, and routed backend_model
-  and model strings that routing resolves to that model, so a caller holding a
-  harness-reported name can match it without routing data. --schema 1 emits
-  agent-routing-assessment/1, the independence answer alone, without
-  below-clearance, purpose, clearance, findings or clears; it refuses
-  --purpose findings. Without --json it prints one line.
+  assess judges any known pair, including retired models and unseated tiers:
+    findings  eligible when rank reaches every author's floor, except the
+              same model at an effort lower than its author's
+    clears    true when findings are eligible, the reviewer is independent
+              of every author's family, and rank reaches [review].clearance
+  Equal-rank same-family reads can find but never clear. An effort-less
+  reviewer uses its minimum rank; an effort-less author its maximum floor.
+  --purpose records the question asked and leads the text; both answers are
+  always given. --as-of reads the accepted branch's first-parent history at
+  the instant; --accepted <ref> selects that history explicitly. The default
+  is the repository's default branch, never the checkout's HEAD. Remote
+  origin/HEAD identifies the local default branch when available; a sole
+  local master or main is the fallback. Ambiguous or unavailable defaults
+  require --accepted. Without --as-of, assess uses the current routing files
+  and refuses --accepted.
 
-  A read clears exactly when no qualifier holds. The qualifiers are a closed
-  set:
+  Native tables use the pinned revision's rank and floor. Legacy numeric-era
+  answers follow the current documented reconstruction, so a reconstruction
+  update can change a legacy answer. route_version binds the pinned manifests,
+  the era file at that dated revision (or its absence), and the projected
+  capability table. Working-tree era edits do not change the witness. Dates
+  before dc54196 refuse with ladder-gap; invalid or timezone-less instants
+  are refused.
+
+  --json emits agent-routing-assessment/2 with the route version, purpose,
+  clearance, reviewer, authors, floor, independence, qualifiers, findings,
+  clears and debt_kind. The reviewer's review_tier field carries its capability
+  rank; authors carry floor. Each coordinate includes its known identities.
+  The shape is independent of --as-of. --schema 1 emits the independence
+  answer without purpose, clearance, findings, clears or below-clearance;
+  it refuses --purpose findings. Without --json the answer is one line.
+
+  Qualifiers are a closed set:
     same-model         the reviewer is an author's model, at any effort
-    same-family        the reviewer shares a family with an author, by the
-                       models.toml [[family]] relation; always present with
-                       same-model
-    below-floor        the reviewer's review_tier is under the highest author
-                       floor
-    below-clearance    the reviewer's review_tier is under the clearance floor
+    same-family        a shared family under models.toml [[family]]
+    below-floor        rank is below the highest author's floor
+    below-clearance    rank is below [review].clearance
     floor-unknown      an author's floor is unestablished
-    reviewer-unseated  the reviewer's tier has no review_tier
-  Floors follow the resolve rules: review_tier, else author_floor; an author
-  without #effort uses the highest declared floor; a missing floor is never
-  inferred. Models resolve through the roster's ids and aliases, and an unknown
-  model or effort is refused, never guessed.
+    reviewer-unseated  no stable route seats the reviewer's tier; a routing
+                       note that does not refuse findings or clearance
+  Independence ignores below-clearance and reviewer-unseated. Clearance
+  ignores only reviewer-unseated. Unknown models or efforts are refused.
+
+EXPORT THE CAPABILITY LADDER
+  agent-routing ladder --json [--history] [--accepted <ref>]
+
+  Emit arc-review-ladder/1, the same structure Arc imports as JSON or TOML.
+  Both modes read the accepted ref, resolved once to a commit, with the same
+  default-branch selection as assess --as-of. They ignore the checkout's
+  branch and working files. Plain output contains the current accepted
+  capability table alone; --history reconstructs each distinct table from
+  dc54196 onward. Commits changing only prices or seats do not create versions.
+
+  A version's effective_from is the committer time of the accepted ref's
+  first-parent commit whose table differs from its parent's. Land table
+  changes as a no-ff merge, or as a single commit directly on the accepted
+  branch. A no-ff merge records acceptance time and excludes topic-internal
+  tables. Fast-forwarding a series of topic commits does not record when
+  those tables were accepted and must not be used for capability changes.
+
+  Each version has a stable id and sources naming its accepted commit and
+  era evidence. From 2026-08-01 until the numeric record begins there is one
+  gap=true version without a model table; no rank is invented for that span.
+  The producer validates every version before emitting any bytes: positive
+  integers, reachable cross-family floors, unique ids and identities,
+  nonempty efforts, and RFC 3339 instants. Failure names the version.
+  Unavailable numeric-era history is refused by --history; current-only
+  export can use a shallow accepted snapshot.
 
 FIND THE REVIEW FRONTIER
   agent-routing frontier --author <model>[#<effort>]
@@ -163,7 +197,7 @@ FIND THE REVIEW FRONTIER
     status "no-eligible-seat"  the floor is known and no seat reaches it
   Each --reads coordinate carries its agent-routing-assessment/1 under the
   answered route version, and a standing against the frontier's tier: "below", "at" or
-  "above", or "unranked" when the read's tier is unseated or there is no
+  "above", or "unranked" when there is no
   frontier. Standing compares tiers only; the read's own independence is in
   its assessment. Without --json it prints one line for the author and one per
   read.
@@ -284,7 +318,8 @@ READ THE POLICY IN FULL
 KEEP CONSUMERS HONEST
   agent-routing lint             compare the doctrine table's pass@1 and cost
                                  cells against the manifest, check model
-                                 coverage, and validate route structure and
+                                 coverage, and validate capability rank/floor,
+                                 cross-family reachability, route structure and
                                  API prices: known category keys, a read
                                  date on every price, and a long-context
                                  surcharge with its threshold, its boundary

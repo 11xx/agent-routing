@@ -40,9 +40,11 @@ Run `agent-routing` with no verb for the routing guide.
   admit-review --author <model>[#effort] --usage-file <file> --base <base> --head <head> --json
                       select quota-admitted independent review or typed review debt
   assess --reviewer <model>#<effort> --author <model>[#<effort>] [--author ...]
-         [--purpose findings|clearance] [--schema 1|2] [--json]
+         [--purpose findings|clearance] [--as-of <RFC3339> [--accepted <ref>]] [--schema 1|2] [--json]
                       assess any reviewer against the authors of a diff: whether
                       its findings can be trusted and whether it clears debt
+  ladder --json [--history] [--accepted <ref>]
+                      export the dated capability ladder for Arc
   frontier --author <model>[#<effort>] [--reads <model>#<effort>...] [--json]
                       the strongest eligible review seat for an author, by
                       review_tier and regardless of quota, and where each read
@@ -57,21 +59,17 @@ that recorded choice to the current provider, model, and effort. `validate`
 keeps the profile as an execution shape while validating an explicit model
 selection. Both enforce declared backend/model effort support; opt-ins cannot
 waive it. `check` remains limited to the prohibition list.
-Review author requirements use a seated tier's review_tier or an unseated
-tier's author_floor; an author_floor grants no reviewer seat. Superseded
-authors with shipped diffs retain floors at least as high as their successors.
-`assess` applies the same floors to any reviewer, seated or not, answers
-whether its read finds and whether it clears, and names why it falls short. A
-read clears only from outside the authors' families at or above both their
-floors and the clearance floor in models.toml [review]. A family is the
-lineages models.toml [[family]] groups; assess and resolve read that one
-relation. `resolve review
---purpose clearance`, the default, seats only a clearing reviewer; `--purpose
-findings` accepts any seat at the author's floor, its own family only strictly
-above it. `resolve --accept-ineligible` returns the strongest seat with its
-answers when none serves the purpose. `frontier` keeps the seats `assess`
-calls independent for an author and answers the highest review_tier among
-them; pool availability never moves it.
+Every known tier has capability rank and floor, independent of routing seats.
+The scale is 1 bounded work, 2 working technical peer, 3 deliberate deep review;
+every floor must be met by another family. Lint enforces both declarations.
+Pool ordering uses seat_rank. assess compares rank against author floors and
+[review].clearance; reviewer-unseated is informational. Same-family reads can
+find but never clear; the same model at a lower effort cannot find.
+assess --as-of and ladder read the accepted first-parent history; --accepted
+selects its ref, defaulting to the repository default branch rather than HEAD.
+Tables land as no-ff merges or single accepted commits. Legacy answers follow
+the current reconstruction; dated witnesses use pinned era text. Run the guide
+for the complete contracts.
 EOF
 }
 
@@ -100,6 +98,7 @@ case "${1:-}" in
   all)        cat "$routing_dir/models.toml"; echo; cat "$routing_dir/profiles.toml"; echo; cat "$routing_dir/delegation.toml" ;;
   check)      shift; check "$@" ;;
   assess)     shift; exec "$root/bin/assess-review" "$@" ;;
+  ladder)     shift; exec "$root/bin/review-ladder" "$@" ;;
   frontier)   shift; exec "$root/bin/frontier-review" "$@" ;;
   resolve)    shift; exec "$root/bin/resolve-route" "$@" ;;
   validate)   shift; exec "$root/bin/validate-selection" "$@" ;;

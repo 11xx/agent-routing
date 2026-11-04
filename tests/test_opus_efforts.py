@@ -42,7 +42,7 @@ class OpusEffortsTest(unittest.TestCase):
                 tier = tiers[effort]
                 self.assertNotIn("status", tier)
                 self.assertFalse(tier["use"].startswith("prohibited"))
-                self.assertIn("review_tier", tier)
+                self.assertIn("rank", tier)
                 self.assertIn(effort, seated)
                 checked = subprocess.run([ROOT / "bin/agent-routing", "check", "claude-opus-5-5", effort],
                                          capture_output=True, text=True)
@@ -52,9 +52,9 @@ class OpusEffortsTest(unittest.TestCase):
     def test_review_tiers_never_fall_as_effort_rises(self):
         # Rejects an ordering where a deeper tier could be reviewed below a shallower one.
         tiers = opus_tiers()
-        ladder = [tiers[effort]["review_tier"] for effort in STABLE_TIERS]
+        ladder = [tiers[effort]["rank"] for effort in STABLE_TIERS]
         self.assertEqual(ladder, sorted(ladder))
-        self.assertGreaterEqual(tiers["max"]["author_floor"], ladder[-1])
+        self.assertGreaterEqual(tiers["max"]["floor"], ladder[-1])
 
     def test_check_refuses_max_under_every_name(self):
         # Rejects max answering as explicit-only, which would let a direct request reach it.

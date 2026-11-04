@@ -5,7 +5,7 @@ strong enough to be trusted with the defects it reports; `clears` asks whether
 its approval may discharge review debt. A clearing read is family-independent
 of every author and at or above both the author's floor and the manifest's
 single clearance floor. A findings read reaches the author's floor, and a
-same-family one only from strictly above it.
+same-model one never from a lower effort.
 """
 
 import json
@@ -113,12 +113,12 @@ class AssessmentTwoAnswersTest(unittest.TestCase):
             "independence": "ineligible", "findings": "eligible", "clears": False,
             "qualifiers": ["same-model", "same-family"]})
 
-    def test_a_same_family_read_at_the_author_floor_does_not_find(self):
-        # Rejects: same-family findings eligibility at merely equal tier.
+    def test_a_same_family_read_at_the_floor_does_not_find(self):
+        # Rejects: denying findings to an equal-rank same-family reviewer.
         result = self.assess("gpt-6.1-sol#xhigh", "gpt-6.1-sol#high", purpose="findings")
-        self.assertEqual((result["findings"], result["clears"]), ("ineligible", False))
+        self.assertEqual((result["findings"], result["clears"]), ("eligible", False))
         result = self.assess("opus-5.5#xhigh", "sonnet-5.5#high", purpose="findings")
-        self.assertEqual((result["findings"], result["clears"]), ("ineligible", False))
+        self.assertEqual((result["findings"], result["clears"]), ("eligible", False))
 
     def test_a_frontier_cross_family_read_clears(self):
         # Rejects: a clearing seat failing the new floor or losing its eligibility.
@@ -140,22 +140,22 @@ class AssessmentTwoAnswersTest(unittest.TestCase):
 
     def test_a_read_below_the_floor_unseated_or_against_an_unknown_floor_does_not_find(self):
         # Rejects: findings eligibility granted without an established tier comparison.
-        self.assertEqual(self.assess("gpt-6.1-sol#xhigh", "opus-5.5#max")["findings"], "ineligible")
-        self.assertEqual(self.assess("sonnet-5.5#high", "gpt-6.1-sol#low")["findings"], "ineligible")
+        self.assertEqual(self.assess("gpt-6-astra#medium", "opus-5.5#max")["findings"], "ineligible")
+        self.assertEqual(self.assess("sonnet-5.5#high", "gpt-6.1-sol#low")["findings"], "eligible")
         root = fixture_root(self)
         path = root / "routing" / "models.toml"
-        path.write_text(path.read_text().replace("  author_floor = 4\n", "", 1))
+        path.write_text(path.read_text().replace("  floor = 3\n", "", 1))
         result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5", root=root)
         self.assertEqual((result["findings"], result["clears"], result["qualifiers"]),
                          ("ineligible", False, ["floor-unknown"]))
 
-    def test_every_same_family_author_must_sit_strictly_below_the_reader(self):
+    def test_same_family_authors_may_reach_the_readers_rank(self):
         # Rejects: the strict rule applied to the highest floor alone rather
         # than to each same-family author.
         result = self.assess("gpt-6-astra#xhigh", "gpt-6.1-sol#xhigh", "opus-5.5#low")
         self.assertEqual((result["findings"], result["clears"]), ("eligible", False))
         result = self.assess("gpt-6.1-sol#xhigh", "gpt-6.1-sol#low", "gpt-6.1-sol#high")
-        self.assertEqual((result["findings"], result["clears"]), ("ineligible", False))
+        self.assertEqual((result["findings"], result["clears"]), ("eligible", False))
 
     def test_frontier_reads_keep_the_version_one_assessment(self):
         # Rejects: agent-routing-frontier/1 changing shape under its version.
@@ -257,12 +257,10 @@ class ResolveReviewPurposeTest(unittest.TestCase):
         self.assertEqual((route["review"]["clears"], route["review"]["recommendation"], route["review"]["debt_kind"]),
                          (False, "record-debt", "ineligible-review"))
 
-    def test_findings_never_falls_through_to_a_cost_gated_same_family_seat(self):
-        # Rejects: a findings resolve reaching Astra as a fallback default.
-        with self.assertRaises(RouteRefusal) as caught:
-            resolve(ROOT, "review", "codex", author="gpt-6.1-sol#high", purpose="findings")
-        self.assertIn("no stable review route for findings", caught.exception.payload()["message"])
-        self.assertNotIn("independent", caught.exception.payload()["message"])
+    def test_equal_rank_same_family_findings_use_the_selected_seat(self):
+        # Rejects: a same-family findings read that silently buys a deeper variant.
+        route = resolve(ROOT, "review", "codex", author="gpt-6.1-sol#high", purpose="findings")
+        self.assertEqual((route["model"], route["review"]["findings"]), ("gpt-6.1-sol", "eligible"))
         route = resolve(ROOT, "review", "codex", variant_id="high-stakes", author="gpt-6.1-sol#high",
                         purpose="findings")
         self.assertEqual((route["model"], route["review"]["findings"], route["review"]["clears"]),

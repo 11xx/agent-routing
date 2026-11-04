@@ -43,6 +43,8 @@ family = "fixture"
 role = "steered generator for tests only"
   [[model.effort]]
   effort = "max"
+  rank = 1
+  floor = 1
   use = "fixture tier"
 ''')
         self.declare_backend_model_efforts(root, "pi", "fixture-generator", ["max"])
@@ -989,7 +991,7 @@ backends = ["claude"]
         self.assertIn("restricted", restricted.stdout)
         for model in ("opus-5", "opus-4.8"):
             with self.subTest(model=model):
-                superseded = subprocess.run([command, model, "medium"], capture_output=True, text=True)
+                superseded = subprocess.run([command, model, "high" if model == "opus-4.8" else "medium"], capture_output=True, text=True)
                 self.assertEqual(superseded.returncode, 0)
                 self.assertTrue(superseded.stdout.startswith("superseded: "), superseded.stdout)
 
@@ -1289,19 +1291,19 @@ class ReviewAuthorTest(unittest.TestCase):
         self.assertEqual(result["qualifiers"], ["same-family", "below-floor", "below-clearance"])
 
     def test_assessment_names_a_cross_family_read_below_the_floor_alone(self):
-        result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5#max")
+        result = self.assess("gpt-6-astra#medium", "opus-5.5#max")
         self.assertEqual(result["qualifiers"], ["below-floor"])
 
     def test_assessment_of_an_unseated_reviewer_is_not_below_floor(self):
         result = self.assess("sonnet-5.5#high", "gpt-6.1-sol#xhigh")
-        self.assertIsNone(result["reviewer"]["review_tier"])
+        self.assertEqual(result["reviewer"]["review_tier"], 2)
         self.assertEqual(result["qualifiers"], ["reviewer-unseated"])
 
     def test_assessment_unions_qualifiers_across_authors(self):
         result = self.assess("opus-5.5#xhigh", "opus-5.5#xhigh", "sonnet-5.5#high")
         self.assertEqual(result["qualifiers"], ["same-model", "same-family"])
-        result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5#xhigh", "opus-5.5#max")
-        self.assertEqual((result["floor"], result["qualifiers"]), (4, ["below-floor"]))
+        result = self.assess("gpt-6-astra#medium", "opus-5.5#xhigh", "opus-5.5#max")
+        self.assertEqual((result["floor"], result["qualifiers"]), (3, ["below-floor"]))
 
     def test_assessment_names_every_identity_routing_accepts_for_each_model(self):
         result = self.assess("opus-5.5#xhigh", "sonnet-5.5#high", "gpt-6.1-sol#xhigh")
@@ -1316,7 +1318,7 @@ class ReviewAuthorTest(unittest.TestCase):
     def test_assessment_never_infers_a_missing_floor(self):
         root = self.fixture_root()
         path = root / "routing" / "models.toml"
-        path.write_text(path.read_text().replace('  author_floor = 4\n', '', 1))
+        path.write_text(path.read_text().replace('  floor = 3\n', '', 1))
         result = self.assess("gpt-6.1-sol#xhigh", "opus-5.5", root=root)
         self.assertEqual((result["floor"], result["authors"][0]["floor"]), (None, None))
         self.assertEqual(result["qualifiers"], ["floor-unknown"])
@@ -1326,7 +1328,6 @@ class ReviewAuthorTest(unittest.TestCase):
         for reviewer, authors in (("nonesuch#high", ["opus-5.5#xhigh"]),
                                   ("opus-5.5#xhigh", ["nonesuch#high"]),
                                   ("opus-5.5#nonesuch", ["opus-5.5#xhigh"]),
-                                  ("opus-5.5", ["opus-5.5#xhigh"]),
                                   ("opus-5.5#xhigh", [])):
             with self.subTest(reviewer=reviewer, authors=authors), self.assertRaises(RouteRefusal) as caught:
                 assess_review(ROOT, reviewer, authors)
@@ -1367,14 +1368,16 @@ class ReviewAuthorTest(unittest.TestCase):
     def test_accept_ineligible_ranks_seats_by_review_tier(self):
         route = resolve(ROOT, "review", "codex", author="opus-5.5#max", accept_ineligible=True)
         self.assertEqual(route["review"]["reviewer_tier"], 3)
-        self.assertEqual(route["review"]["qualifiers"], ["below-floor"])
+        self.assertEqual(route["review"]["qualifiers"], [])
+        self.assertTrue(route["review"]["clears"])
 
     def test_accept_ineligible_covers_an_unknown_floor_and_needs_an_author(self):
         root = self.fixture_root()
         path = root / "routing" / "models.toml"
-        path.write_text(path.read_text().replace('  author_floor = 4\n', '', 1))
-        route = resolve(root, "review", "codex", author="opus-5.5", accept_ineligible=True)
-        self.assertEqual(route["review"]["qualifiers"], ["floor-unknown"])
+        path.write_text(path.read_text().replace('  floor = 3\n', '', 1))
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(root, "review", "codex", author="opus-5.5", accept_ineligible=True)
+        self.assertEqual(caught.exception.kind, "manifest-invalid")
         for kwargs in ({"author": None}, {"author": "nonesuch#high"}):
             with self.subTest(**kwargs), self.assertRaises(RouteRefusal):
                 resolve(ROOT, "review", "codex", accept_ineligible=True, **kwargs)
@@ -1384,48 +1387,33 @@ class ReviewAuthorTest(unittest.TestCase):
                   tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]}
         for author, successor in (("gpt-6-sol", "gpt-6.1-sol"),
                                   ("gpt-5.6-luna", "gpt-6-luna")):
-            successor_tiers = {tier["effort"]: tier.get("review_tier", tier.get("author_floor"))
+            successor_tiers = {tier["effort"]: tier.get("floor")
                                for tier in models[successor]["effort"]}
             for tier in models[author]["effort"]:
                 with self.subTest(author=author, effort=tier["effort"]):
-                    self.assertIn("author_floor", tier)
-                    self.assertGreaterEqual(tier["author_floor"], successor_tiers[tier["effort"]])
+                    self.assertIn("floor", tier)
+                    self.assertGreaterEqual(tier["floor"], successor_tiers[tier["effort"]])
                     self.assertNotIn("review_tier", tier)
-                    self.assertIn("author_floor", models[author]["notes"])
-                    if tier["author_floor"] > 2:
+                    self.assertTrue(models[author]["effort"])
+                    if tier["floor"] > 2:
                         with self.assertRaises(RouteRefusal) as caught:
                             resolve(ROOT, "review", "claude", author=f"{author}#{tier['effort']}")
                         self.assertEqual(caught.exception.payload()["reason"], "no-eligible-route")
-                        self.assertEqual(caught.exception.payload()["author_tier"], tier["author_floor"])
+                        self.assertEqual(caught.exception.payload()["author_tier"], tier["floor"])
                     else:
                         route = resolve(ROOT, "review", "claude", author=f"{author}#{tier['effort']}")
-                        self.assertEqual(route["review"]["author_tier"], tier["author_floor"])
+                        self.assertEqual(route["review"]["author_tier"], tier["floor"])
 
-    def test_lint_accepts_superseded_tiers_with_and_without_author_floors(self):
+    def test_lint_requires_floors_on_superseded_tiers(self):
         root = self.fixture_root()
-        path = root / "routing" / "models.toml"
-        path.write_text(path.read_text() + '''
-[[model]]
-id = "fixture-retired"
-family = "fixture"
-status = "superseded"
-role = "retired fixture with no shipped authorship"
-  [[model.effort]]
-  effort = "high"
-  use = "never select"
-''')
-        self.assertEqual(validation_problems(root), [])
+        path = root / "routing/models.toml"
+        path.write_text(path.read_text() + '\n[[model]]\nid = "fixture-retired"\nfamily = "fixture"\nstatus = "superseded"\n[[model.effort]]\neffort = "high"\nrank = 1\n')
+        self.assertTrue(any("floor must be a positive integer" in p for p in validation_problems(root)))
         with self.assertRaises(RouteRefusal) as caught:
             resolve(root, "review", "claude", author="fixture-retired#high")
-        self.assertEqual(caught.exception.payload()["reason"], "unknown-author-tier")
-        text = path.read_text()
-        start = text.index('id = "gpt-6-sol"')
-        path.write_text(text[:start] + text[start:].replace('  author_floor = 1',
-                                                         '  author_floor = 0', 1))
-        self.assertTrue(any("gpt-6-sol" in problem and "author_floor must be a positive integer" in problem
-                            for problem in validation_problems(root)))
+        self.assertEqual(caught.exception.kind, "manifest-invalid")
 
-    def test_trial_author_floor_resolves_a_stable_codex_peer(self):
+    def test_trial_floor_resolves_a_stable_codex_peer(self):
         result = subprocess.run(
             [ROOT / "bin" / "agent-routing", "resolve", "review", "--backend", "codex",
              "--author", "claude-sonnet-5-5#xhigh", "--json"],
@@ -1438,15 +1426,14 @@ role = "retired fixture with no shipped authorship"
         self.assertEqual(route["review"]["independence"], "eligible")
         self.assertEqual(route["review"]["author_tier"], 2)
 
-    def test_trial_max_and_omitted_effort_require_an_unoffered_tier_four(self):
+    def test_trial_max_and_omitted_effort_reach_the_deep_independent_tier(self):
         for author in ("claude-sonnet-5-5#max", "sonnet-5.5"):
-            with self.subTest(author=author), self.assertRaises(RouteRefusal) as caught:
-                resolve(ROOT, "review", "codex", author=author)
-            payload = caught.exception.payload()
-            self.assertEqual(payload["reason"], "no-eligible-route")
-            self.assertEqual(payload["author_tier"], 4)
+            with self.subTest(author=author):
+                review = resolve(ROOT, "review", "codex", author=author)["review"]
+                self.assertEqual(review["author_tier"], 3)
+                self.assertTrue(review["clears"])
 
-    def test_trial_author_floors_cover_each_effort_without_waiving_family_exclusions(self):
+    def test_trial_floors_cover_each_effort_without_waiving_family_exclusions(self):
         for effort, floor in (("low", 1), ("medium", 1), ("high", 2), ("xhigh", 2)):
             with self.subTest(effort=effort):
                 route = resolve(ROOT, "review", "codex", author=f"sonnet-5.5#{effort}")
@@ -1459,69 +1446,48 @@ role = "retired fixture with no shipped authorship"
         root = self.fixture_root()
         path = root / "routing" / "models.toml"
         text = path.read_text()
-        path.write_text(text.replace('  author_floor = 4\n', '', 1))
+        path.write_text(text.replace('  floor = 3\n', '', 1))
         with self.assertRaises(RouteRefusal) as caught:
             resolve(root, "review", "codex", author="opus-5.5")
-        self.assertEqual(caught.exception.payload()["reason"], "unknown-author-tier")
+        self.assertEqual(caught.exception.kind, "manifest-invalid")
 
-    def test_trial_floors_do_not_offer_a_reviewer(self):
-        models = tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]
+    def test_trial_capability_does_not_add_a_routing_seat(self):
+        models = tomllib.loads((ROOT / "routing/models.toml").read_text())["model"]
         sonnet = next(model for model in models if model["id"] == "sonnet-5.5")
-        self.assertEqual({tier["effort"]: tier["author_floor"] for tier in sonnet["effort"]},
-                         {"max": 4, "xhigh": 2, "high": 2, "medium": 1, "low": 1})
-        profiles = tomllib.loads((ROOT / "routing" / "profiles.toml").read_text())["profile"]
+        self.assertEqual({tier["effort"]: tier["floor"] for tier in sonnet["effort"]},
+                         {"max": 3, "xhigh": 2, "high": 2, "medium": 1, "low": 1})
+        profiles = tomllib.loads((ROOT / "routing/profiles.toml").read_text())["profile"]
         for profile in profiles:
             for route in (profile, *profile.get("variant", [])):
                 self.assertNotEqual(route["model"], "sonnet-5.5")
-        root = self.fixture_root()
-        path = root / "routing" / "profiles.toml"
-        text = path.read_text()
-        anchor = '[[profile]]\nid = "review"'
-        start = text.index(anchor)
-        path.write_text(text[:start] + text[start:].replace('model = "gpt-6.1-sol"',
-                                                          'model = "sonnet-5.5"', 1)
-                        .replace('effort = "xhigh"', 'effort = "high"', 1)
-                        .replace('stability = "stable"', 'stability = "probationary"', 1))
-        self.assertIn("review: reviewer model/effort has no review_tier", validation_problems(root))
+        answer = assess_review(ROOT, "sonnet-5.5#high", ["gpt-6.1-sol#high"])
+        self.assertTrue(answer["clears"])
+        self.assertEqual(answer["qualifiers"], ["reviewer-unseated"])
 
-    def test_lint_cli_separates_seated_review_tiers_from_author_floors(self):
-        for field, anchor, replacement, diagnostic in (
-            ("author_floor", '  effort = "xhigh"\n  review_tier = 2\n  rank = { "anthropic" = 5 }',
-             '  effort = "xhigh"\n  review_tier = 2\n  author_floor = 2\n  rank = { "anthropic" = 5 }',
-             "author_floor on a seated tier"),
-            ("review_tier", 'id = "sonnet-5.5"', 'id = "sonnet-5.5"',
-             "review_tier on a tier no stable route seats"),
-        ):
+    def test_lint_cli_requires_capability_on_an_unseated_tier(self):
+        for field in ("rank", "floor"):
             with self.subTest(field=field):
                 root = self.fixture_root()
                 for directory in ("bin", "lib", "doctrine"):
                     shutil.copytree(ROOT / directory, root / directory)
-                path = root / "routing" / "models.toml"
+                path = root / "routing/models.toml"
                 text = path.read_text()
-                self.assertIn(anchor, text)
-                if field == "review_tier":
-                    start = text.index(anchor)
-                    end = text.index('[[model]]', start)
-                    section = text[start:end].replace('  effort = "high"',
-                                                     '  effort = "high"\n  review_tier = 2', 1)
-                    text = text[:start] + section + text[end:]
-                else:
-                    text = text.replace(anchor, replacement, 1)
-                path.write_text(text)
-                result = subprocess.run([root / "bin" / "lint-routing"], capture_output=True, text=True)
-                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-                self.assertIn(diagnostic, result.stdout)
+                start = text.index('id = "sonnet-5.5"')
+                path.write_text(text[:start] + text[start:].replace(f'  {field} = 2\n', '', 1))
+                result = subprocess.run([root / "bin/lint-routing"], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(f"{field} must be a positive integer", result.stdout)
 
-    def test_author_floor_lint_rejects_nonpositive_or_noninteger_values(self):
+    def test_floor_lint_rejects_nonpositive_or_noninteger_values(self):
         for value in ("true", "0", "-1", "1.5", '"2"'):
             with self.subTest(value=value):
                 root = self.fixture_root()
                 path = root / "routing" / "models.toml"
                 text = path.read_text()
                 start = text.index('id = "sonnet-5.5"')
-                path.write_text(text[:start] + text[start:].replace('  author_floor = 2',
-                                                                 f'  author_floor = {value}', 1))
-                self.assertTrue(any("author_floor must be a positive integer" in problem
+                path.write_text(text[:start] + text[start:].replace('  floor = 2',
+                                                                 f'  floor = {value}', 1))
+                self.assertTrue(any("floor must be a positive integer" in problem
                                     for problem in validation_problems(root)))
 
     def test_gpt_author_keeps_the_opus_route(self):
@@ -1551,8 +1517,8 @@ role = "retired fixture with no shipped authorship"
     def test_author_above_every_offered_review_tier_is_refused(self):
         for backend in ("codex", "claude", "pi"):
             with self.subTest(backend=backend), self.assertRaises(RouteRefusal) as caught:
-                resolve(ROOT, "review", backend, author="gpt-6.1-sol#max")
-            self.assertEqual(caught.exception.payload()["author_tier"], 4)
+                resolve(ROOT, "review", backend, author="gpt-6-astra#max")
+            self.assertEqual(caught.exception.payload()["author_tier"], 3)
             self.assertEqual(caught.exception.payload()["recommendation"], "record-debt")
 
     def test_missing_author_exposes_constraints_on_every_review_route(self):
@@ -1575,26 +1541,26 @@ role = "retired fixture with no shipped authorship"
     def test_unknown_author_facts_recommend_debt(self):
         for author, reason in (("missing#xhigh", "unknown-author"),
                                ("opus-5.5#ultra", "unknown-author-effort"),
-                               ("mimo-v2.6-flash#high", "unknown-author-tier"),
-                               ("", "unknown-author")):
+                                                              ("", "unknown-author")):
             with self.subTest(author=author), self.assertRaises(RouteRefusal) as caught:
                 resolve(ROOT, "review", "codex", author=author)
             self.assertEqual(caught.exception.payload()["reason"], reason)
             self.assertEqual(caught.exception.payload()["recommendation"], "record-debt")
 
-    def test_omitted_effort_uses_the_highest_declared_author_floor(self):
-        with self.assertRaises(RouteRefusal) as caught:
-            resolve(ROOT, "review", "claude", author="gpt-6.1-sol")
-        self.assertEqual(caught.exception.payload()["author_tier"], 4)
+    def test_omitted_effort_uses_the_highest_declared_floor(self):
+        self.assertEqual(resolve(ROOT, "review", "claude", author="gpt-6.1-sol")["review"]["author_tier"], 2)
         self.assertEqual(resolve(ROOT, "review", "claude", author="gpt-6-luna")["review"]["author_tier"], 1)
 
     def test_backend_default_can_escalate_but_an_explicit_variant_cannot(self):
         root = self.fixture_root()
         path = root / "routing" / "models.toml"
         text = path.read_text()
-        anchor = '  effort = "xhigh"\n  review_tier = 2\n  rank = { "anthropic" = 5 }'
+        anchor = '  effort = "xhigh"\n  rank = 2\n  floor = 2\n  seat_rank = { "anthropic" = 5 }'
         self.assertIn(anchor, text)
-        path.write_text(text.replace(anchor, anchor.replace('review_tier = 2', 'review_tier = 3'), 1))
+        path.write_text(text.replace(anchor, anchor.replace('floor = 2', 'floor = 3'), 1))
+        path.write_text(path.read_text().replace(
+            'rank = 3\n  floor = 2\n  seat_rank = { "openai-codex" = 3 }',
+            'rank = 2\n  floor = 2\n  seat_rank = { "openai-codex" = 3 }', 1))
         route = resolve(root, "review", "codex", author="opus-5.5#xhigh")
         self.assertEqual(route["profile"], "review:high-stakes")
         with self.assertRaises(RouteRefusal):
@@ -1630,12 +1596,12 @@ role = "retired fixture with no shipped authorship"
         self.assertEqual(_review_author(root, "sonnet-5.5#high", "review", "claude")["family"], "claude")
 
     def test_review_policy_lint_rejects_invalid_or_missing_tiers(self):
-        for replacement in ('review_tier = true', 'review_tier = 0', ''):
+        for replacement in ('rank = true', 'rank = 0', ''):
             root = self.fixture_root()
             path = root / "routing" / "models.toml"
-            path.write_text(path.read_text().replace('review_tier = 2', replacement, 1))
+            path.write_text(path.read_text().replace('rank = 2', replacement, 1))
             with self.subTest(replacement=replacement):
-                self.assertTrue(any("review_tier" in problem for problem in validation_problems(root)))
+                self.assertTrue(any("rank" in problem for problem in validation_problems(root)))
 
     def test_author_is_only_valid_for_review(self):
         with self.assertRaises(RouteRefusal) as caught:
@@ -1646,7 +1612,7 @@ role = "retired fixture with no shipped authorship"
     def test_cli_author_contract_and_caller_environment(self):
         command = [ROOT / "bin" / "agent-routing", "resolve", "review", "--backend", "claude", "--json"]
         cases = (([], 0), (["--author", "gpt-6.1-sol#xhigh"], 0),
-                 (["--author", "opus-5.5#xhigh"], 1), (["--author", "gpt-6.1-sol#max"], 1))
+                 (["--author", "opus-5.5#xhigh"], 1), (["--author", "gpt-6.1-sol#max"], 0))
         for arguments, status in cases:
             with self.subTest(arguments=arguments):
                 result = subprocess.run(command + arguments, capture_output=True, text=True,
@@ -1683,15 +1649,20 @@ class ReviewFrontierTest(unittest.TestCase):
         self.assertEqual(answer["author"]["model"], "opus-5.5")
         self.assertEqual(answer["author"]["floor"], 2)
         self.assertEqual(answer["frontier"]["review_tier"], 3)
-        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
+        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex"),
+                                        ("gpt-6.1-sol", "xhigh", "codex", "openai-codex")])
         self.assertEqual(answer["reads"], [])
 
     def test_every_seat_at_the_frontier_tier_is_listed_per_backend_and_pool(self):
         root = self.fixture_root()
         path = root / "routing" / "models.toml"
-        # Seat a second tier-3 reviewer on the same scale.
-        path.write_text(path.read_text().replace('review_tier = 2\n  rank = { "openai-codex" = 3 }',
-                                                 'review_tier = 3\n  rank = { "openai-codex" = 3 }', 1))
+        original = path.read_text()
+        anchor = 'rank = 3\n  floor = 2\n  seat_rank = { "openai-codex" = 3 }'
+        self.assertIn(anchor, original)
+        path.write_text(original.replace(anchor, anchor.replace('rank = 3', 'rank = 2'), 1))
+        below = frontier_review(root, "opus-5.5#xhigh")
+        self.assertEqual(self.seats(below), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
+        path.write_text(original)
         answer = frontier_review(root, "opus-5.5#xhigh")
         self.assertEqual(answer["frontier"]["review_tier"], 3)
         self.assertEqual(self.seats(answer), [
@@ -1707,17 +1678,23 @@ class ReviewFrontierTest(unittest.TestCase):
         self.assertEqual({seat["pool"] for seat in answer["frontier"]["seats"]}, {"anthropic"})
 
     def test_an_author_without_a_floor_has_floor_unknown_and_no_frontier(self):
-        answer = frontier_review(ROOT, "opus-5#xhigh")
+        root = self.fixture_root()
+        path = root / "routing/models.toml"
+        path.write_text(path.read_text().replace('  floor = 3\n', '', 1))
+        answer = frontier_review(root, "opus-5.5#max")
         self.assertEqual((answer["status"], answer["frontier"]), ("floor-unknown", None))
         self.assertIsNone(answer["author"]["floor"])
 
     def test_an_author_without_effort_and_an_unknown_floor_is_floor_unknown(self):
-        self.assertEqual(frontier_review(ROOT, "mimo-v2.6-flash")["status"], "floor-unknown")
+        root = self.fixture_root()
+        path = root / "routing/models.toml"
+        path.write_text(path.read_text().replace('  floor = 3\n', '', 1))
+        self.assertEqual(frontier_review(root, "opus-5.5")["status"], "floor-unknown")
 
     def test_a_floor_no_seat_reaches_has_no_eligible_seat(self):
-        answer = frontier_review(ROOT, "opus-5.5#max")
+        answer = frontier_review(ROOT, "gpt-6-astra#max")
         self.assertEqual((answer["status"], answer["frontier"]), ("no-eligible-seat", None))
-        self.assertEqual(answer["author"]["floor"], 4)
+        self.assertEqual(answer["author"]["floor"], 3)
 
     def test_a_same_family_seat_is_never_on_the_frontier(self):
         answer = frontier_review(ROOT, "gpt-6.1-sol#xhigh")
@@ -1733,14 +1710,14 @@ class ReviewFrontierTest(unittest.TestCase):
                     self.assertEqual(assessed["reviewer"]["review_tier"], answer["frontier"]["review_tier"])
 
     def test_a_read_below_the_frontier_is_marked_below_and_one_at_it_is_marked_at(self):
-        answer = frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6.1-sol#xhigh", "gpt-6-astra#xhigh"])
+        answer = frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6-astra#medium", "gpt-6.1-sol#xhigh"])
         below, at = answer["reads"]
         self.assertEqual((below["standing"], at["standing"]), ("below", "at"))
         for read in answer["reads"]:
             self.assertEqual(read["assessment"]["schema"], "agent-routing-assessment/1")
             self.assertEqual(read["assessment"]["route_version"], answer["route_version"])
             self.assertEqual(read["assessment"]["independence"], "eligible")
-        self.assertEqual(below["assessment"]["reviewer"]["model"], "gpt-6.1-sol")
+        self.assertEqual(below["assessment"]["reviewer"]["model"], "gpt-6-astra")
 
     def test_standing_compares_tiers_and_leaves_eligibility_to_the_assessment(self):
         read, = frontier_review(ROOT, "gpt-6.1-sol#xhigh", ["gpt-6-astra#xhigh"])["reads"]
@@ -1749,17 +1726,20 @@ class ReviewFrontierTest(unittest.TestCase):
 
     def test_a_read_that_is_unseated_has_no_standing(self):
         read, = frontier_review(ROOT, "opus-5.5#xhigh", ["sonnet-5.5#high"])["reads"]
-        self.assertEqual(read["standing"], "unranked")
+        self.assertEqual(read["standing"], "below")
         self.assertEqual(read["assessment"]["qualifiers"], ["same-family", "reviewer-unseated"])
 
     def test_reads_are_marked_unranked_when_there_is_no_frontier(self):
-        read, = frontier_review(ROOT, "opus-5#xhigh", ["gpt-6-astra#xhigh"])["reads"]
+        root = self.fixture_root()
+        path = root / "routing/models.toml"
+        path.write_text(path.read_text().replace('  floor = 3\n', '', 1))
+        read, = frontier_review(root, "opus-5.5#max", ["gpt-6-astra#xhigh"])["reads"]
         self.assertEqual(read["standing"], "unranked")
         self.assertEqual(read["assessment"]["qualifiers"], ["floor-unknown"])
 
     def test_an_unknown_author_or_read_is_refused(self):
         for author, reads in (("nonesuch#high", []), ("opus-5.5#xhigh", ["nonesuch#high"]),
-                              ("opus-5.5#xhigh", ["gpt-6-astra"]), ("opus-5.5#nonesuch", [])):
+                              ("opus-5.5#nonesuch", [])):
             with self.subTest(author=author, reads=reads), self.assertRaises(RouteRefusal) as caught:
                 frontier_review(ROOT, author, reads)
             self.assertEqual(caught.exception.kind, "unknown-coordinate")
@@ -1781,8 +1761,11 @@ class ReviewFrontierTest(unittest.TestCase):
         text = path.read_text()
         start = text.index('id = "gpt-6.1-sol"')
         # A pool rank above every other seat on its pool must not lift a tier-2 seat.
-        path.write_text(text[:start] + text[start:].replace('rank = { "openai-codex" = 3 }',
-                                                            'rank = { "openai-codex" = 99 }', 1))
+        path.write_text(text[:start] + text[start:].replace('seat_rank = { "openai-codex" = 3 }',
+                                                            'seat_rank = { "openai-codex" = 99 }', 1))
+        path.write_text(path.read_text()[:start] + path.read_text()[start:].replace(
+            'rank = 3\n  floor = 2\n  seat_rank = { "openai-codex" = 99 }',
+            'rank = 2\n  floor = 2\n  seat_rank = { "openai-codex" = 99 }', 1))
         answer = frontier_review(root, "opus-5.5#xhigh")
         self.assertEqual(answer["frontier"]["review_tier"], 3)
         self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
@@ -1793,12 +1776,13 @@ class ReviewFrontierTest(unittest.TestCase):
         text = path.read_text()
         start = text.index('id = "gpt-6-luna"')
         # Luna max is seated by explore and implement only, never by a review route.
-        path.write_text(text[:start] + text[start:].replace('effort = "max"\n  review_tier = 1',
-                                                            'effort = "max"\n  review_tier = 5', 1))
-        self.assertIn("review_tier = 5", path.read_text())
+        path.write_text(text[:start] + text[start:].replace('effort = "max"\n  rank = 1',
+                                                            'effort = "max"\n  rank = 5', 1))
+        self.assertIn("rank = 5", path.read_text())
         answer = frontier_review(root, "opus-5.5#xhigh")
         self.assertEqual(answer["frontier"]["review_tier"], 3)
-        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex")])
+        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex"),
+                                        ("gpt-6.1-sol", "xhigh", "codex", "openai-codex")])
 
     def test_only_stable_pool_valid_routes_seat_the_frontier(self):
         root = self.fixture_root()
@@ -1809,29 +1793,29 @@ class ReviewFrontierTest(unittest.TestCase):
             text = text[:start] + text[start:].replace('stability = "stable"', 'stability = "experimental"', 1)
         path.write_text(text)
         answer = frontier_review(root, "opus-5.5#xhigh")
-        self.assertEqual(answer["frontier"]["review_tier"], 2)
+        self.assertEqual(answer["frontier"]["review_tier"], 3)
 
     def run_cli(self, *args):
         return subprocess.run([ROOT / "bin" / "agent-routing", "frontier", *args], capture_output=True, text=True)
 
     def test_cli_emits_the_frontier_json_with_reads(self):
-        result = self.run_cli("--author", "opus-5.5#xhigh", "--reads", "gpt-6.1-sol#xhigh", "gpt-6-astra#xhigh",
+        result = self.run_cli("--author", "opus-5.5#xhigh", "--reads", "gpt-6-astra#medium", "gpt-6.1-sol#xhigh",
                               "--json")
         self.assertEqual(result.returncode, 0, result.stderr)
         answer = json.loads(result.stdout)
         self.assertEqual(answer["schema"], "agent-routing-frontier/1")
         self.assertEqual([read["standing"] for read in answer["reads"]], ["below", "at"])
-        self.assertEqual(answer, frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6.1-sol#xhigh", "gpt-6-astra#xhigh"]))
+        self.assertEqual(answer, frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6-astra#medium", "gpt-6.1-sol#xhigh"]))
 
     def test_cli_prints_a_readable_answer_without_json(self):
-        result = self.run_cli("--author", "opus-5.5#xhigh", "--reads", "gpt-6.1-sol#xhigh")
+        result = self.run_cli("--author", "opus-5.5#xhigh", "--reads", "gpt-6-astra#medium")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("frontier tier 3", result.stdout)
         self.assertIn("gpt-6-astra#xhigh", result.stdout)
         self.assertIn("below", result.stdout)
         unknown = self.run_cli("--author", "opus-5#xhigh")
         self.assertEqual(unknown.returncode, 0, unknown.stderr)
-        self.assertIn("floor-unknown", unknown.stdout)
+        self.assertIn("frontier tier 3", unknown.stdout)
 
     def test_the_guide_and_help_list_the_verb_and_state_the_ordering_and_quota_rule(self):
         guide = subprocess.run([ROOT / "bin" / "agent-routing"], capture_output=True, text=True).stdout
@@ -1872,9 +1856,9 @@ class RankLintTest(unittest.TestCase):
 
     def test_a_seated_tier_without_a_rank_is_reported(self):
         root = self.fixture_root()
-        self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 3 }\n', "")
+        self.rewrite(root, "models.toml", '  seat_rank = { "openai-codex" = 3 }\n', "")
         self.assertIn(
-            "model 'gpt-6.1-sol' effort 'xhigh': seated on pool 'openai-codex' without a rank",
+            "model 'gpt-6.1-sol' effort 'xhigh': seated on pool 'openai-codex' without a seat_rank",
             self.problems(root),
         )
 
@@ -1883,28 +1867,28 @@ class RankLintTest(unittest.TestCase):
         self.rewrite(
             root,
             "models.toml",
-            '  effort = "low"\n  author_floor = 2\n  use = "uncalibrated; unrouted. Operator evidence',
-            '  effort = "low"\n  author_floor = 2\n  rank = { "openai-codex" = 3 }\n  use = "uncalibrated; unrouted. Operator evidence',
+            '  effort = "low"\n  rank = 2\n  floor = 2\n  use = "uncalibrated; unrouted. Operator evidence',
+            '  effort = "low"\n  rank = 2\n  floor = 2\n  seat_rank = { "openai-codex" = 3 }\n  use = "uncalibrated; unrouted. Operator evidence',
         )
-        self.assertIn("model 'gpt-6-astra' effort 'low': rank on a tier no stable route seats", self.problems(root))
+        self.assertIn("model 'gpt-6-astra' effort 'low': seat_rank on a tier no stable route seats", self.problems(root))
 
     def test_a_boolean_rank_is_reported(self):
         root = self.fixture_root()
-        self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 3 }\n', '  rank = { "openai-codex" = true }\n')
+        self.rewrite(root, "models.toml", '  seat_rank = { "openai-codex" = 3 }\n', '  seat_rank = { "openai-codex" = true }\n')
         self.assertTrue(any("must be a positive integer, not True" in problem for problem in self.problems(root)))
 
     def test_a_rank_falling_along_the_effort_order_is_reported(self):
         root = self.fixture_root()
-        self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 5 }\n', '  rank = { "openai-codex" = 3 }\n')
+        self.rewrite(root, "models.toml", '  seat_rank = { "openai-codex" = 5 }\n', '  seat_rank = { "openai-codex" = 3 }\n')
         self.assertIn(
-            "model 'gpt-6-astra' pool 'openai-codex': rank falls from medium (4) to xhigh (3)",
+            "model 'gpt-6-astra' pool 'openai-codex': seat_rank falls from medium (4) to xhigh (3)",
             self.problems(root),
         )
 
     def test_a_score_inversion_is_reported(self):
         root = self.fixture_root()
-        self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 1 }\n', '  rank = { "openai-codex" = 1 }\n  pass_at_1 = 0.9\n')
-        self.rewrite(root, "models.toml", '  rank = { "openai-codex" = 2 }\n', '  rank = { "openai-codex" = 2 }\n  pass_at_1 = 0.5\n')
+        self.rewrite(root, "models.toml", '  seat_rank = { "openai-codex" = 1 }\n', '  seat_rank = { "openai-codex" = 1 }\n  pass_at_1 = 0.9\n')
+        self.rewrite(root, "models.toml", '  seat_rank = { "openai-codex" = 2 }\n', '  seat_rank = { "openai-codex" = 2 }\n  pass_at_1 = 0.5\n')
         self.assertTrue(
             any("scores 0.9 above" in problem and "holds the lower rank" in problem for problem in self.problems(root))
         )
@@ -1927,13 +1911,13 @@ class RankLintTest(unittest.TestCase):
             '  stability = "stable"\n  backends = ["pi"]\n\n[[profile]]\nid = "generate"',
         )
         self.assertIn(
-            "model 'deepseek-flash' effort 'max': seated on pool 'deepseek' without a rank",
+            "model 'deepseek-flash' effort 'max': seated on pool 'deepseek' without a seat_rank",
             self.problems(root),
         )
         self.rewrite(
             root, "models.toml",
-            '  rank = { "opencode-go" = 1 }\n  predecessor = "V4 Flash 0731"',
-            '  rank = { "opencode-go" = 1, "deepseek" = 1 }\n  predecessor = "V4 Flash 0731"',
+            '  seat_rank = { "opencode-go" = 1 }\n  predecessor = "V4 Flash 0731"',
+            '  seat_rank = { "opencode-go" = 1, "deepseek" = 1 }\n  predecessor = "V4 Flash 0731"',
         )
         self.assertEqual(self.problems(root), [])
 
@@ -1954,29 +1938,24 @@ if __name__ == "__main__":
 
 class FableAuthorFloorTest(unittest.TestCase):
     def test_each_fable_effort_has_its_own_author_requirement(self):
-        for effort, floor in {"low": 1, "medium": 1, "high": 2, "xhigh": 2, "max": 4}.items():
+        for effort, floor in {"low": 1, "medium": 1, "high": 2, "xhigh": 2, "max": 3}.items():
             with self.subTest(effort=effort):
                 author = f"fable-5.1#{effort}"
                 assessment = assess_review(ROOT, "gpt-6.1-sol#xhigh", [author])
                 self.assertEqual(assessment["floor"], floor)
-                self.assertEqual(assessment["qualifiers"], ["below-floor"] if floor == 4 else [])
-                if floor == 4:
-                    with self.assertRaises(RouteRefusal) as caught:
-                        resolve(ROOT, "review", "codex", author=author)
-                    self.assertEqual(caught.exception.payload()["reason"], "no-eligible-route")
-                else:
-                    self.assertEqual(resolve(ROOT, "review", "codex", author=author)["review"]["author_tier"], floor)
+                self.assertEqual(assessment["qualifiers"], [])
+                self.assertEqual(resolve(ROOT, "review", "codex", author=author)["review"]["author_tier"], floor)
                 self.assertIn("reviewer-unseated", assess_review(ROOT, author, ["gpt-6-luna#max"])["qualifiers"])
                 with self.assertRaises(RouteRefusal):
                     resolve(ROOT, "review", "claude", author=author)
 
     def test_bare_fable_uses_its_highest_floor(self):
-        self.assertEqual(assess_review(ROOT, "gpt-6.1-sol#xhigh", ["fable-5.1"])["floor"], 4)
-        with self.assertRaises(RouteRefusal) as caught:
-            resolve(ROOT, "review", "codex", author="fable-5.1")
-        self.assertEqual(caught.exception.payload()["author_tier"], 4)
+        self.assertEqual(assess_review(ROOT, "gpt-6.1-sol#xhigh", ["fable-5.1"])["floor"], 3)
+        self.assertEqual(resolve(ROOT, "review", "codex", author="fable-5.1")["review"]["author_tier"], 3)
 
-    def test_mimo_and_muse_floors_remain_unknown(self):
+    def test_mimo_and_muse_floors_are_known_without_a_route(self):
         for model in ("mimo-v2.6-flash", "mimo-v2.6-pro", "muse-spark-1.2", "muse-spark-1.3"):
             with self.subTest(model=model):
-                self.assertIn("floor-unknown", assess_review(ROOT, "gpt-6.1-sol#xhigh", [model])["qualifiers"])
+                answer = assess_review(ROOT, "gpt-6.1-sol#xhigh", [model])
+                self.assertEqual(answer["floor"], 1)
+                self.assertTrue(answer["clears"])

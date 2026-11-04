@@ -44,6 +44,11 @@ Delegation prompts set `ARC_ROLE` explicitly: `implementer` for executor
 sessions and `reviewer` for review-only sessions. Do not rely on the unset
 backward-compatible behavior for delegated work.
 
+Capability table changes land as a no-ff merge or a single commit directly on
+the accepted branch. A fast-forward of a topic series exposes intermediate
+tables without recording their acceptance time. Dated ladder readers walk the
+accepted branch's first-parent history, selected by `--accepted <ref>`.
+
 ## Reviewer line
 
 The verdict never claims independence from the model that authored the diff,
@@ -63,7 +68,7 @@ A result without the author reports `unverified`; it is not evidence of
 independence. The resolver refuses when no stable route outside the author's
 family meets both its review floor and the clearance floor, and recommends Arc
 debt. A findings read (`--purpose findings`) may come from below the clearance
-floor or, strictly above the author's tier, from its own family; its
+floor or from its own family, except its own model at a lower effort; its
 `clears: false` keeps the debt owed. `ARC_MODEL` identifies
 the caller and is not an author fallback. Operator-directed selections require
 their own independence check. Sol low never reviews under

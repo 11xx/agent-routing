@@ -192,23 +192,46 @@ free.
 
 ### Routing rules
 
-Independent-review dispatch resolves `review` with `--author '<model>#<effort>'`
-from the diff's recorded authorship. The `[[family]]` relation, cross-family
-`review_tier` floors on seated tiers and `author_floor` values on unseated
-tiers in `models.toml` require a stable route outside the author's family at
-or above its tier. A read clears review debt only when
-it also reaches the single clearance floor in `models.toml` `[review]`; that is
-what `--purpose clearance`, the default, resolves. A read below the floor, or
-from the author's family strictly above the author's tier, can still report
-findings: `--purpose findings` resolves it and `agent-routing assess` labels it
-`findings: eligible` with `clears: false`, so its approval leaves the debt
-owed. Superseded authors of shipped diffs
-retain floors at least as high as their successors at each declared effort;
-rows without shipped authorship need no floor. Pool-local escalation ranks do not
-compare across providers. A missing author leaves `review.independence`
-`unverified`; no eligible route returns a debt recommendation. Route eligibility
-does not establish an actor's independence or discharge review. Ordinary lead
-coverage of delegated work remains valid without that claim.
+Every known model/effort has a capability `rank` and author `floor` in
+`models.toml`: 1 bounded work, 2 a working technical peer, 3 the top review
+band. Rank measures reviewer strength; floor is the least rank for authored
+work and need not equal it. Capability is independent of routing seats, model
+size and retirement.
+Every floor must be met by another family's rank; lint rejects missing values
+and an exclusive top. The evidence is in
+[the capability ladder](../eras/2026-11-04-capability-ladder.md).
+
+Independent-review dispatch resolves `review` with the recorded author.
+A clearing read is outside every author's family and its rank reaches both
+every author's floor and `[review].clearance`. A findings read reaches every
+floor and rejects the same model at a lower effort, but may share a family.
+`--purpose findings` resolves that question; `assess` reports both answers.
+`reviewer-unseated` is informational. Retired rows, marked `superseded = true`,
+remain judgeable without becoming routes. Pool-local `seat_rank` orders
+selections only within their providers.
+
+`agent-routing assess --as-of <RFC3339> [--accepted <ref>]` reads the accepted
+branch's first-parent history at the instant and keeps assessment /2's shape.
+`--accepted` defaults to the repository's default branch, never the checkout's
+HEAD. `agent-routing ladder --json [--history] [--accepted <ref>]` exports
+`arc-review-ladder/1` from that same history: the current accepted table alone,
+or each distinct table from dc54196 onward. A version's `effective_from` is
+the committer time of the accepted first-parent commit whose table differs
+from its parent's. Capability changes land as no-ff merges or single commits
+directly on the accepted branch; fast-forwarding topic series loses acceptance
+time. A merge's intermediate topic tables are never versions.
+
+Native dated answers use the pinned rank/floor declarations. Legacy answers
+follow the current documented reconstruction. The witness hashes the manifests
+and era file at the dated revision, with explicit absence when the era file
+was not recorded, plus the projected table. It never reads working-tree era
+text. The preceding span from 2026-08-01 is one gap with no model table.
+Export validates every version and names an invalid version rather than
+emitting a partial history. A missing author leaves
+`review.independence` unverified; no eligible route recommends debt.
+Route eligibility does not establish an actor's independence or discharge
+review. Ordinary lead coverage of delegated work remains valid without that
+claim.
 
 - **Choose a task shape, then resolve it:** delegation callers choose `extract`, `explore`, `implement`, `execute`, `review`, `design`, `generate`, or `computer-use` according to the work; Arc owns implementation planning and bounded briefs rather than a separate plan skill; `interactive` owns Pi's parent-session default. `generate` is the one profile whose output is raw material rather than a deliverable — nothing resolved there is the last model to touch shipped work. `agent-routing resolve <profile> --backend <backend> --json` supplies the current provider, model, effort, stability, and route version. The resolver never classifies prompt text. Probationary and experimental routes require explicit opt-in, a whole profile as much as a variant. Consumer skills and Pi agent definitions keep backend or role behavior and do not pin the roster.
 - **Head model and technical peer:** the active head seat leads at its standing tier, below its routing ceiling; the current roster records which model and effort hold that default. The lead's axis is planning, orchestration, taste, ambiguous intent, novel UX/copy, API and architectural ergonomics, simplification, and landing-quality review — and synthesizes delegated work into the final answer. If the current lead effort misses, decompose, add context, or take a sideways second opinion instead of raising effort automatically. The technical peer seat covers correctness, feasibility, failure modes, detailed instruction-following, and long-running coding arcs. The current harness owns the answer regardless of who was consulted.
