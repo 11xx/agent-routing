@@ -391,6 +391,18 @@ backends = ["codex"]
   stability = "stable"
   backends = ["codex"]
 
+  # Security-sensitive review on the Daybreak configuration of GPT-5.6 Sol, whose
+  # safeguards are tuned for authorized defensive work. Selected only by name;
+  # the profile's default never resolves to it.
+  [[profile.variant]]
+  id = "cyber"
+  provider = "openai-codex"
+  model = "gpt-daybreak-blue"
+  backend_model = "gpt-daybreak-blue-latest"
+  effort = "xhigh"
+  stability = "stable"
+  backends = ["codex"]
+
 [[profile]]
 id = "design"
 purpose = "read-only judgment on UX, copy, API ergonomics, or architectural simplicity"

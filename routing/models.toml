@@ -346,6 +346,49 @@ weaknesses = ["overbuild: state scope ceilings and 'no tests/refactors beyond th
   use = "prohibited: never select, including by explicit request"
 
 [[model]]
+id = "gpt-daybreak-blue"
+family = "gpt-5.6"
+aliases = ["gpt-daybreak-blue-latest"]
+role = "the cyber review seat, selected only by name as `review:cyber`: security-sensitive read-only review where the standing Sol seat refuses on a cybersecurity flag or its safeguards stand in the way of defensive work (credential handling, sockets, sandboxes, browser cookie code, process control). Nothing resolves to it by default"
+character = "Daybreak Blue is OpenAI's Trusted Access for Cyber configuration of GPT-5.6 Sol: the same model, with safeguards tuned for authorized defensive security work. Amazon Bedrock's model card (read 2026-11-05) titles it 'Daybreak Blue: GPT-5.6 Sol', model ID openai.gpt-daybreak-blue-5.6-sol, launched 2026-08-12. Codex's own model list (models_cache.json, read 2026-11-05) gives gpt-daybreak-blue-latest GPT-5.6 Sol's configuration: the same 272k context, default effort and instruction template, with the cyber access program daybreak_blue alone. Its effort ranks are GPT-5.6 Sol's measured rows. A raw codex exec at xhigh (2026-10-25) completed a review that GPT-6.1 Sol had refused on the cyber flag"
+notes = "The Codex alias carries -latest and may move to a newer model; re-read the Codex model list before relying on the GPT-5.6 Sol lineage. The CLI ignores -c access_programs.cyber, so the tier is reached by choosing this model. Bedrock lists $4.40 input and $22.00 output per million in-region, including its 10% fee; OpenAI's own rate for the alias and its Codex credit weight are unmeasured, so the row carries no price"
+weaknesses = ["two generations behind the standing GPT-6.1 Sol on general capability: it is GPT-5.6 Sol, superseded on every ordinary seat on 2026-09-23", "Codex's per-response hardware-key gate can withhold a reply on security output ('You're approved for Daybreak Blue, but this response cannot be shown as this session was not authenticated with one of your authorized hardware keys'); a run that ends on it is its own outcome, and its work up to that point is in the run log", "requires the account's Daybreak approval, and its quota weight on the shared Codex window is unmeasured"]
+  [[model.effort]]
+  effort = "low"
+  rank = 1
+  floor = 1
+  status = "explicit-only"
+  use = "explicit selection only"
+  [[model.effort]]
+  effort = "medium"
+  rank = 1
+  floor = 1
+  status = "explicit-only"
+  use = "explicit selection only"
+  [[model.effort]]
+  effort = "high"
+  rank = 2
+  floor = 2
+  status = "explicit-only"
+  use = "explicit selection only; GPT-5.6 Sol's measured working ceiling"
+  [[model.effort]]
+  effort = "xhigh"
+  rank = 2
+  floor = 2
+  seat_rank = { "openai-codex" = 2 }
+  use = "the `review:cyber` seat"
+  [[model.effort]]
+  effort = "max"
+  rank = 2
+  floor = 2
+  use = "prohibited: GPT-5.6 Sol's max measured +2 points over xhigh for +78% cost; revisit only on a measured cyber task"
+  [[model.effort]]
+  effort = "ultra"
+  rank = 2
+  floor = 2
+  use = "prohibited: never select, including by explicit request"
+
+[[model]]
 id = "gpt-5.6-terra"
 family = "gpt-5.6"
 status = "superseded"

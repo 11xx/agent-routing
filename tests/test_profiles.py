@@ -1959,3 +1959,31 @@ class FableAuthorFloorTest(unittest.TestCase):
                 answer = assess_review(ROOT, "gpt-6.1-sol#xhigh", [model])
                 self.assertEqual(answer["floor"], 1)
                 self.assertTrue(answer["clears"])
+
+
+class CyberReviewSeatTests(unittest.TestCase):
+    """The cyber review seat is reachable by name only."""
+
+    def test_the_cyber_variant_routes_to_daybreak_blue(self):
+        """Claim: `review:cyber` on codex calls Daybreak Blue at xhigh through its
+        Codex alias. Rejects a missing variant or a route naming the roster id
+        the Codex CLI does not accept."""
+        route = resolve(ROOT, "review", "codex", variant_id="cyber")
+        self.assertEqual(route["profile"], "review:cyber")
+        self.assertEqual(route["model"], "gpt-daybreak-blue-latest")
+        self.assertEqual(route["effort"], "xhigh")
+
+    def test_the_review_default_never_resolves_to_daybreak(self):
+        """Claim: every backend's default review route stays off the cyber
+        seat. Rejects a change that makes Daybreak Blue the default."""
+        for backend in ("codex", "claude", "pi"):
+            with self.subTest(backend=backend):
+                self.assertNotIn("daybreak", resolve(ROOT, "review", backend)["model"])
+
+    def test_check_knows_the_codex_alias_and_prohibits_max(self):
+        """Claim: the Codex alias maps to the roster row, xhigh is allowed and
+        max is prohibited. Rejects an unknown-model answer for the alias."""
+        allowed = model_effort_facts(ROOT, "gpt-daybreak-blue-latest", "xhigh")
+        self.assertEqual(allowed["model"]["id"], "gpt-daybreak-blue")
+        with self.assertRaises(RouteRefusal):
+            validate_selection(ROOT, "review", "codex", "gpt-daybreak-blue-latest", "max", "openai-codex", "operator named it")
