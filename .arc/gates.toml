@@ -1,11 +1,7 @@
-# Routing's integration gates. The consumer lint reads the sibling repositories
-# under AGENT_CODE_ROOT, so it catches a roster pin that lands in a consumer
-# as well as one that lands here.
-[gates.test]
-command = "python3 -m pytest -q"
-
-[gates.lint]
-command = "bin/lint-routing"
-
-[gates.consumers]
-command = "AGENT_CODE_ROOT=${AGENT_CODE_ROOT:-$HOME/code} bin/lint-consumers"
+# The change gate: it compiles the candidate, runs the fixed invariants in
+# checks/invariants.toml (read from the change's base) and the witnesses the
+# change's commits name, within a 20-second budget. The consumer lint is one
+# of those invariants and reads the sibling repositories under
+# AGENT_CODE_ROOT, so a roster pin that lands in a consumer fails here too.
+[gates.check-change]
+command = "bin/check-change"

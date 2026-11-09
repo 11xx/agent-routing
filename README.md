@@ -427,6 +427,43 @@ it is the head model's job, and a CLI that guesses becomes a stale oracle.
 harness that ignores this data is not stopped by it; the data only makes the
 decision legible and the prohibitions unambiguous.
 
+## Checking a change
+
+`bin/check-change` is the gate. It checks the committed head of a clean
+checkout against the change's base (`--base REV`, else the merge base with the
+target branch `arc show --json` names) in three phases:
+
+1. **Compile.** Every Python source under `lib/`, `bin/` and `tests/` compiles,
+   and every shell script in `bin/` passes `bash -n`.
+2. **Invariants.** The fixed list in `checks/invariants.toml`, `lint-routing`
+   and `lint-consumers`, sharing a 3-second limit. The list is read from the
+   base, with any entry the candidate adds under a new name, so a change
+   cannot drop the invariant that covers what it breaks. A roster edit is
+   checked here: the roster is its own truth, and the lint holds it to its
+   rules.
+3. **Witnesses.** The tests the change's commits name in their trailers, at
+   most three, each run once within 5 seconds. A failure, a skip or a run of
+   no test fails.
+
+A commit touching `lib/`, `bin/`, `templates/`, `tests/` or `checks/` names its
+witness in its final trailer block, or says why it has none:
+
+```text
+Witness: tests/test_check_change.py::CheckChangeTest.test_a_fourth_witness_is_refused
+Witness: none (renames a helper; no behaviour changes)
+```
+
+A commit touching only data or prose (`routing/`, `doctrine/`, `eras/`,
+Markdown) needs neither. The whole run fits 20 seconds on a warm checkout; an
+overrun fails and names its phase, and nothing raises the limit. Checks run
+with a private home, temporary and XDG directories, and every run writes a
+JSON receipt under `$XDG_CACHE_HOME/agent-routing/checks/`.
+
+The tests read the frozen roster in `tests/fixtures/roster`, never the live
+`routing/`, so editing the roster never breaks one. They are the pool a change
+draws its witnesses from; `python3 -m pytest -q` runs them all by hand, and
+no gate does.
+
 ## Adding or revising a model
 
 Rolling provider IDs keep a checkpoint-specific `build` on the roster. Field
