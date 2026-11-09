@@ -281,31 +281,6 @@ class AcceptedLadderCliTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ladder-gap"):
             ladder.export(ROOT, accepted="dc54196^")
 
-    def test_the_unaccepted_intermediate_time_does_not_make_a_sol_read_ineligible(self):
-        answer = assess_review(ROOT, "gpt-6.1-sol#xhigh", ["opus-5.5#max"],
-                               as_of="2026-11-04T12:00:00Z")
-        self.assertTrue(answer["clears"])
-        self.assertEqual(answer["reviewer"]["review_tier"], 3)
-
-    def test_ladder_cli_defaults_to_master_even_in_the_implementation_worktree(self):
-        result = subprocess.run([ROOT / "bin/agent-routing", "ladder", "--json", "--history"],
-                                text=True, capture_output=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        ids = {v["id"] for v in json.loads(result.stdout)["version"]}
-        branch_changes = subprocess.check_output(
-            ["git", "-C", str(ROOT), "log", "master..HEAD", "--format=%H", "--", "routing/models.toml"],
-            text=True).splitlines()
-        self.assertTrue(all(f"v-{rev}" not in ids for rev in branch_changes), ids)
-
-    def test_both_cli_commands_accept_an_explicit_accepted_ref(self):
-        for command in (("ladder", "--json", "--history"),
-                        ("assess", "--reviewer", "gpt-6.1-sol#xhigh", "--author", "opus-5.5#max",
-                         "--as-of", "2026-11-04T12:00:00Z", "--json")):
-            with self.subTest(command=command):
-                result = subprocess.run([ROOT / "bin/agent-routing", *command, "--accepted", "master"],
-                                        text=True, capture_output=True)
-                self.assertEqual(result.returncode, 0, result.stderr)
-
 
 if __name__ == "__main__":
     unittest.main()

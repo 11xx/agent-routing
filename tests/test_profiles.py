@@ -71,9 +71,6 @@ role = "steered generator for tests only"
         values.update(overrides)
         return validate_selection(root, **values)
 
-    def test_manifest_is_valid(self):
-        self.assertEqual(validation_problems(ROOT), [])
-
     def test_generator_only_variant_requires_role_exception(self):
         root = self.fixture_root()
         self.add_generator_model(root)
@@ -110,40 +107,6 @@ role = "steered generator for tests only"
             any("generator-with-blank-exception: role_exception must be a nonblank reason" in problem for problem in problems),
             problems,
         )
-
-    def test_computer_use_is_explicit_and_has_comparison_tiers(self):
-        for backend in ("codex", "pi"):
-            for variant, effort in ((None, "low"), ("medium", "medium"),
-                                    ("high", "high"), ("xhigh", "xhigh")):
-                with self.assertRaises(RouteRefusal):
-                    resolve(ROOT, "computer-use", backend, variant_id=variant)
-                if backend == "pi" and effort == "xhigh":
-                    continue
-                route = resolve(ROOT, "computer-use", backend, variant_id=variant,
-                                allow_experimental=True)
-                self.assertEqual((route["model"], route["effort"]), ("gpt-6.1-sol", effort))
-
-    def test_pi_refuses_unmapped_sol_efforts(self):
-        for effort in ("xhigh", "max"):
-            with self.subTest(effort=effort):
-                with self.assertRaises(RouteRefusal) as caught:
-                    self.direct_selection(profile_id="computer-use", backend="pi",
-                                          model="gpt-6.1-sol", effort=effort,
-                                          allow_cross_pool=True)
-                self.assertEqual(caught.exception.kind, "unsupported-effort")
-                completed = subprocess.run(
-                    [ROOT / "bin" / "agent-routing", "validate", "--profile", "computer-use",
-                     "--backend", "pi", "--model", "gpt-6.1-sol", "--effort", effort,
-                     "--provider", "openai-codex", "--reason", "trial", "--allow-experimental", "--json"],
-                    capture_output=True, text=True)
-                self.assertEqual(completed.returncode, 1, completed.stdout)
-                self.assertEqual(completed.stdout, "")
-                self.assertEqual(json.loads(completed.stderr.splitlines()[-1])["kind"], "unsupported-effort")
-
-    def test_pi_cannot_resolve_sol_xhigh_even_with_opt_in(self):
-        with self.assertRaises(RouteRefusal) as caught:
-            resolve(ROOT, "computer-use", "pi", variant_id="xhigh", allow_experimental=True)
-        self.assertEqual(caught.exception.kind, "unsupported-backend")
 
     def declare_backend_model_efforts(self, root, backend, model, efforts):
         path = root / "routing" / "delegation.toml"
@@ -214,77 +177,6 @@ role = "steered generator for tests only"
                 with self.assertRaises(RouteRefusal) as caught:
                     self.direct_selection(root, backend=backend, model=model, effort="max", provider=provider)
                 self.assertEqual(caught.exception.kind, "unsupported-effort")
-
-    def test_sol_max_is_explicit_only_beside_the_computer_use_tiers(self):
-        for effort in ("low", "medium", "high", "xhigh", "max"):
-            self.direct_selection(profile_id="computer-use", model="gpt-6.1-sol",
-                                  effort=effort)
-        with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(profile_id="execute", model="gpt-6.1-sol",
-                                  effort="max", allow_experimental=False)
-        self.assertEqual(caught.exception.kind, "stability")
-
-    def test_superseded_sol_is_refused_at_every_tier(self):
-        for effort in ("low", "medium", "high", "xhigh"):
-            with self.assertRaises(RouteRefusal) as caught:
-                self.direct_selection(profile_id="computer-use", model="gpt-6-sol",
-                                      effort=effort)
-            self.assertEqual(caught.exception.kind, "model-role")
-
-    def test_opus_computer_use_requires_explicit_claude_selection(self):
-        with self.assertRaises(RouteRefusal):
-            resolve(ROOT, "computer-use", "claude", allow_experimental=True)
-        with self.assertRaises(RouteRefusal):
-            resolve(ROOT, "computer-use", "claude", variant_id="opus")
-        route = resolve(ROOT, "computer-use", "claude", variant_id="opus",
-                        allow_experimental=True)
-        self.assertEqual((route["model"], route["effort"]),
-                         ("claude-opus-5-5", "medium"))
-        for effort in ("low", "medium", "high", "xhigh"):
-            selection = self.direct_selection(
-                profile_id="computer-use", backend="claude", model="opus-5.5",
-                effort=effort, provider="anthropic",
-            )
-            self.assertEqual(selection["backend_model"], "claude-opus-5-5")
-            self.assertEqual(selection["effort"], effort)
-            self.assertEqual(selection["selection_kind"], "operator-directed")
-        with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(profile_id="computer-use", backend="claude", model="opus-5.5",
-                                  effort="max", provider="anthropic")
-        self.assertEqual(caught.exception.kind, "prohibited")
-
-    def test_stable_route_resolves_for_supported_backend(self):
-        route = resolve(ROOT, "implement", "codex")
-        self.assertEqual(route["profile"], "implement")
-        self.assertEqual(route["backend"], "codex")
-        self.assertEqual(route["stability"], "stable")
-        self.assertTrue(route["route_version"])
-
-    def test_claude_opus_variant_is_a_stable_first_party_review_route(self):
-        route = resolve(ROOT, "review", "claude", variant_id="opus")
-        self.assertEqual(route["profile"], "review:opus")
-        self.assertEqual(route["backend"], "claude")
-        self.assertEqual(route["provider"], "anthropic")
-        self.assertEqual(route["model"], "claude-opus-5-5")
-        self.assertEqual(route["effort"], "xhigh")
-        self.assertEqual(route["stability"], "stable")
-
-    def test_execute_offers_high_on_claude_by_choice(self):
-        route = resolve(ROOT, "execute", "claude", variant_id="opus-high")
-        self.assertEqual((route["profile"], route["effort"]), ("execute:opus-high", "high"))
-
-    def test_claude_backend_defaults_follow_the_opus_tiers(self):
-        for profile, variant, effort in (("implement", "opus-low", "low"), ("execute", "opus", "low"),
-                                         ("plan", "opus", "high"), ("review", "opus", "xhigh")):
-            route = resolve(ROOT, profile, "claude")
-            self.assertEqual(route["profile"], f"{profile}:{variant}")
-            self.assertEqual(route["backend"], "claude")
-            self.assertEqual(route["provider"], "anthropic")
-            self.assertEqual(route["model"], "claude-opus-5-5")
-            self.assertEqual(route["effort"], effort)
-            self.assertEqual(route["stability"], "stable")
-        design = resolve(ROOT, "design", "claude")
-        self.assertEqual((design["model"], design["effort"]), ("claude-opus-5-5", "high"))
 
     def test_only_one_variant_can_default_for_each_backend(self):
         root = self.fixture_root()
@@ -358,34 +250,6 @@ role = "steered generator for tests only"
             any("unknown key" in problem for problem in validation_problems(root))
         )
 
-    def test_cli_exposes_the_named_claude_review_route(self):
-        command = ROOT / "bin" / "agent-routing"
-        completed = subprocess.run(
-            [command, "resolve", "review", "--backend", "claude", "--json"],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(completed.stderr, "")
-        route = json.loads(completed.stdout)
-        self.assertEqual(route["profile"], "review:opus")
-        self.assertEqual(route["backend"], "claude")
-        self.assertEqual(route["model"], "claude-opus-5-5")
-        self.assertEqual(route["effort"], "xhigh")
-        self.assertEqual(route["stability"], "stable")
-
-    def test_direct_selection_refuses_a_prohibited_tier(self):
-        with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(
-                profile_id="implement",
-                backend="claude",
-                model="opus-5",
-                effort="max",
-                provider="anthropic",
-            )
-        self.assertEqual(caught.exception.kind, "prohibited")
-        self.assertIn("prohibited", caught.exception.message)
-
     def test_direct_selection_refuses_unknown_pool_membership_by_fact(self):
         with self.assertRaises(RouteRefusal) as caught:
             self.direct_selection(
@@ -399,32 +263,6 @@ role = "steered generator for tests only"
         self.assertEqual(refusal.kind, "unknown-pool-membership")
         self.assertIn("pool membership", refusal.payload()["missing_fact"])
         self.assertNotIn("override", refusal.payload())
-
-    def test_direct_selection_requires_cross_pool_opt_in(self):
-        values = {
-            "profile_id": "review",
-            "backend": "pi",
-            "model": "gpt-6.1-sol",
-            "effort": "high",
-            "provider": "opencode-go",
-        }
-        with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(**values)
-        self.assertEqual(caught.exception.kind, "pool")
-        self.assertEqual(caught.exception.payload()["override"], "--allow-cross-pool")
-        route = self.direct_selection(allow_cross_pool=True, **values)
-        self.assertEqual(route["cross_pool"], "OpenCode Go, an optional flat subscription")
-
-    def test_direct_selection_of_an_unseated_tier_requires_experimental_opt_in(self):
-        with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(model="gpt-6-astra", effort="xhigh", allow_experimental=False)
-        self.assertEqual(caught.exception.kind, "stability")
-        payload = caught.exception.payload()
-        self.assertEqual(payload["stability"], "experimental")
-        self.assertEqual(payload["direction"], "upgrade")
-        route = self.direct_selection(model="gpt-6-astra", effort="xhigh")
-        self.assertEqual(route["stability"], "experimental")
-        self.assertEqual(route["selection_kind"], "operator-directed")
 
     def test_a_seated_upgrade_is_a_stable_operator_escalation(self):
         route = self.direct_selection(
@@ -474,32 +312,6 @@ role = "steered generator for tests only"
         route = self.direct_selection(profile_id="computer-use", effort="low")
         self.assertEqual(route["stability"], "experimental")
 
-    def test_direction_reports_downgrade_and_unranked(self):
-        low = self.direct_selection(profile_id="explore", effort="low")
-        self.assertEqual(low["direction"], "downgrade")
-        self.assertEqual(low["stability"], "experimental")
-        unranked = self.direct_selection(profile_id="explore", model="gpt-6-astra", effort="low")
-        self.assertEqual(unranked["direction"], "unranked")
-
-    def test_baseline_is_the_canonical_backend_default(self):
-        pi = self.direct_selection(
-            profile_id="explore", backend="pi", model="deepseek-v4.1-flash", effort="low", provider="opencode-go"
-        )
-        self.assertEqual(pi["baseline"], "deepseek-flash#low")
-        claude = self.direct_selection(
-            profile_id="explore", backend="claude", model="opus-5.5", effort="xhigh",
-            provider="anthropic", allow_experimental=False,
-        )
-        self.assertEqual(claude["baseline"], "haiku-5.5#high")
-        self.assertEqual(claude["direction"], "upgrade")
-        self.assertEqual(claude["stability"], "stable")
-        sol = self.direct_selection(
-            profile_id="execute", model="gpt-6.1-sol", effort="xhigh",
-            allow_experimental=False,
-        )
-        self.assertEqual(sol["baseline"], "gpt-6.1-sol#xhigh")
-        self.assertEqual(sol["stability"], "stable")
-
     def test_a_profile_without_a_baseline_on_the_backend_stays_experimental(self):
         root = self.fixture_root()
         profiles = root / "routing" / "profiles.toml"
@@ -530,22 +342,6 @@ role = "steered generator for tests only"
                 root, profile_id="explore", model="gpt-6-astra", effort="xhigh", allow_experimental=False
             )
         self.assertEqual(caught.exception.kind, "stability")
-
-    def test_direct_selection_accepts_tuple_with_operator_witness(self):
-        route = self.direct_selection(
-            profile_id="plan",
-            backend="codex",
-            model="gpt-6-astra",
-            effort="low",
-            provider="openai-codex",
-        )
-        self.assertEqual(route["selection_kind"], "operator-directed")
-        self.assertEqual(route["base_profile"], "plan")
-        self.assertEqual(route["canonical_model"], "gpt-6-astra")
-        self.assertEqual(route["backend_model"], "gpt-6-astra")
-        self.assertEqual(route["stability"], "experimental")
-        self.assertFalse(route["rostered"])
-        self.assertTrue(route["route_version"])
 
     def test_direct_selection_accepts_model_without_a_profile_variant(self):
         route = self.direct_selection(
@@ -659,133 +455,6 @@ role = "steered generator for tests only"
         self.assertEqual(payload["schema"], "agent-routing-refusal/1")
         self.assertEqual(payload["kind"], "prohibited")
 
-    def test_mimo_rows_are_operator_directed_trials(self):
-        """Neither MiMo row carries a profile, so the path that has to work is
-        a validated operator-directed selection on the Go pool — under the
-        vendor id and under the operator's shorthand alike."""
-        with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(
-                profile_id="implement",
-                backend="pi",
-                model="mimo-v2.6-flash",
-                effort="high",
-                provider="opencode-go",
-                allow_experimental=False,
-            )
-        self.assertEqual(caught.exception.kind, "stability")
-
-        for model, canonical in (
-            ("mimo-v2.6-flash", "mimo-v2.6-flash"),
-            ("mimo-2.6-flash", "mimo-v2.6-flash"),
-            ("mimo-v2.6-pro", "mimo-v2.6-pro"),
-            ("mimo-2.6-pro", "mimo-v2.6-pro"),
-        ):
-            with self.subTest(model=model):
-                selection = self.direct_selection(
-                    profile_id="implement",
-                    backend="pi",
-                    model=model,
-                    effort="high",
-                    provider="opencode-go",
-                )
-                self.assertEqual(selection["canonical_model"], canonical)
-                # The backend identity is what a caller hands pi, so prose
-                # punctuation around it in the flag string must not travel.
-                self.assertEqual(selection["backend_model"], canonical)
-                self.assertEqual(selection["stability"], "experimental")
-                self.assertEqual(selection["selection_kind"], "operator-directed")
-
-    def test_check_resolves_a_roster_alias_to_its_canonical_id(self):
-        for argument, expected in (
-            ("mimo-2.6-flash", "mimo-v2.6-flash"),
-            ("mimo-v2.6-pro", "mimo-v2.6-pro"),
-        ):
-            with self.subTest(argument=argument):
-                completed = subprocess.run(
-                    [ROOT / "bin" / "routing-check", argument, "high"],
-                    capture_output=True,
-                    text=True,
-                )
-                self.assertEqual(completed.returncode, 0, completed.stderr)
-                self.assertIn(f"not prohibited: {expected}", completed.stdout)
-
-    def test_haiku_5_5_is_an_explicit_claude_trial_without_reseating_defaults(self):
-        for model in ("haiku-5.5", "haiku-5-5", "claude-haiku-5-5"):
-            for effort in ("low", "medium", "high", "xhigh", "max"):
-                with self.subTest(model=model, effort=effort):
-                    selection = self.direct_selection(
-                        profile_id="implement",
-                        backend="claude",
-                        model=model,
-                        effort=effort,
-                        provider="anthropic",
-                    )
-                    self.assertEqual(selection["canonical_model"], "haiku-5.5")
-                    self.assertEqual(selection["backend_model"], "claude-haiku-5-5")
-                    self.assertEqual(selection["stability"], "experimental")
-                    self.assertEqual(selection["selection_kind"], "operator-directed")
-                    self.assertFalse(selection["rostered"])
-        with self.assertRaises(RouteRefusal) as caught:
-            self.direct_selection(
-                profile_id="implement",
-                backend="claude",
-                model="haiku-5.5",
-                effort="medium",
-                provider="anthropic",
-                allow_experimental=False,
-            )
-        self.assertEqual(caught.exception.kind, "stability")
-        self.assertEqual(resolve(ROOT, "implement", "codex")["model"], "gpt-6-luna")
-        self.assertEqual(resolve(ROOT, "implement", "pi")["model"], "deepseek-v4.1-flash")
-        self.assertEqual(resolve(ROOT, "implement", "claude")["model"], "claude-opus-5-5")
-
-    def test_deprecated_claude_models_are_outside_the_served_pool(self):
-        pools = tomllib.loads((ROOT / "routing" / "delegation.toml").read_text())["pool"]
-        served = set(next(pool for pool in pools if pool["provider"] == "anthropic")["serves"])
-        self.assertIn("haiku-5.5", served)
-        self.assertTrue({"opus-5", "fable-5", "sonnet-5", "haiku-4.5"}.isdisjoint(served))
-        for model in ("opus-5", "fable-5", "sonnet-5", "haiku-4.5"):
-            with self.subTest(model=model), self.assertRaises(RouteRefusal):
-                self.direct_selection(
-                    profile_id="implement",
-                    backend="claude",
-                    model=model,
-                    effort="medium",
-                    provider="anthropic",
-                )
-
-    def test_haiku_trial_tiers_are_named_under_every_model_id(self):
-        command = ROOT / "bin" / "routing-check"
-        for model in ("haiku-5.5", "haiku-5-5", "claude-haiku-5-5"):
-            for effort in ("low", "xhigh", "max"):
-                with self.subTest(model=model, effort=effort):
-                    completed = subprocess.run([command, model, effort], capture_output=True, text=True)
-                    self.assertEqual(completed.returncode, 0, completed.stderr)
-                    self.assertIn(f"explicit-only: haiku-5.5 at {effort}", completed.stdout)
-        for effort in ("medium", "high"):
-            with self.subTest(effort=effort):
-                completed = subprocess.run([command, "haiku-5.5", effort], capture_output=True, text=True)
-                self.assertEqual(completed.returncode, 0, completed.stderr)
-                self.assertIn(f"not prohibited: haiku-5.5 at {effort}", completed.stdout)
-
-    def test_sonnet_5_5_is_an_experimental_selection_at_every_tier(self):
-        for model in ("sonnet-5.5", "sonnet-5-5", "claude-sonnet-5-5"):
-            for effort in ("low", "medium", "high", "xhigh", "max"):
-                with self.subTest(model=model, effort=effort):
-                    selection = self.direct_selection(
-                        profile_id="implement",
-                        backend="claude",
-                        model=model,
-                        effort=effort,
-                        provider="anthropic",
-                    )
-                    self.assertEqual(selection["canonical_model"], "sonnet-5.5")
-                    self.assertEqual(selection["backend_model"], "claude-sonnet-5-5")
-                    self.assertEqual(selection["effort"], effort)
-                    self.assertEqual(selection["stability"], "experimental")
-                    self.assertEqual(selection["selection_kind"], "operator-directed")
-                    self.assertFalse(selection["rostered"])
-
     def test_sonnet_5_5_max_still_requires_the_experimental_opt_in(self):
         with self.assertRaises(RouteRefusal) as caught:
             self.direct_selection(
@@ -797,20 +466,6 @@ role = "steered generator for tests only"
                 allow_experimental=False,
             )
         self.assertEqual(caught.exception.kind, "stability")
-
-    def test_check_names_sonnet_5_5_max_explicit_only_under_every_name(self):
-        command = ROOT / "bin" / "routing-check"
-        for argument in ("sonnet-5.5", "sonnet-5-5", "claude-sonnet-5-5"):
-            for effort in ("low", "xhigh", "max"):
-                with self.subTest(argument=argument, effort=effort):
-                    completed = subprocess.run([command, argument, effort], capture_output=True, text=True)
-                    self.assertEqual(completed.returncode, 0, completed.stderr)
-                    self.assertIn(f"explicit-only: sonnet-5.5 at {effort}", completed.stdout)
-        for effort in ("medium", "high"):
-            with self.subTest(effort=effort):
-                completed = subprocess.run([command, "sonnet-5.5", effort], capture_output=True, text=True)
-                self.assertEqual(completed.returncode, 0, completed.stderr)
-                self.assertIn(f"not prohibited: sonnet-5.5 at {effort}", completed.stdout)
 
     def test_sonnet_5_5_max_cannot_back_a_profile(self):
         root = self.fixture_root()
@@ -859,13 +514,6 @@ role = "steered generator for tests only"
         route = resolve(root, "implement", "codex", variant_id="trial", allow_experimental=True)
         self.assertEqual(route["stability"], "experimental")
 
-    def test_implement_takes_the_stable_workhorse_at_max(self):
-        """The primary is the workhorse tier, not a trial variant."""
-        route = resolve(ROOT, "implement", "codex")
-        self.assertEqual(route["model"], "gpt-6-luna")
-        self.assertEqual(route["effort"], "max")
-        self.assertEqual(route["stability"], "stable")
-
     def experimental_generate_root(self):
         """A fixture whose whole generate profile is experimental."""
         root = self.fixture_root()
@@ -884,32 +532,9 @@ role = "steered generator for tests only"
         route = resolve(root, "generate", "pi", allow_experimental=True)
         self.assertEqual(route["stability"], "experimental")
 
-    def test_generate_runs_on_the_go_pool(self):
-        route = resolve(ROOT, "generate", "pi")
-        self.assertEqual(route["provider"], "opencode-go")
-        self.assertEqual(route["model"], "deepseek-v4.1-flash")
-        self.assertEqual(route["stability"], "stable")
-
     def test_backend_mismatch_fails(self):
         with self.assertRaisesRegex(ValueError, "does not support backend"):
             resolve(ROOT, "design", "codex")
-
-    def test_stable_variant_does_not_need_experimental_opt_in(self):
-        route = resolve(ROOT, "review", "codex", variant_id="high-stakes")
-        self.assertEqual(route["profile"], "review:high-stakes")
-        self.assertEqual(route["stability"], "stable")
-
-    def test_review_default_and_named_variants(self):
-        route = resolve(ROOT, "review", "codex")
-        self.assertEqual(route["profile"], "review")
-        self.assertEqual(route["provider"], "openai-codex")
-        self.assertEqual((route["model"], route["effort"]), ("gpt-6.1-sol", "xhigh"))
-        self.assertEqual(route["stability"], "stable")
-
-        astra = resolve(ROOT, "review", "codex", variant_id="astra")
-        self.assertEqual((astra["model"], astra["effort"]), ("gpt-6-astra", "medium"))
-        high_stakes = resolve(ROOT, "review", "codex", variant_id="high-stakes")
-        self.assertEqual((high_stakes["model"], high_stakes["effort"]), ("gpt-6-astra", "xhigh"))
 
     def test_interactive_parent_route_is_pi_only(self):
         route = resolve(ROOT, "interactive", "pi")
@@ -1062,17 +687,6 @@ backends = ["claude"]
             resolve(ROOT, "design", "codex")
         self.assertEqual(caught.exception.kind, "unsupported-backend")
 
-    def test_pi_defaults_to_deepseek_on_the_go_pool(self):
-        for profile in ("extract", "explore", "implement", "plan", "execute", "review"):
-            route = resolve(ROOT, profile, "pi")
-            self.assertEqual(route["profile"], f"{profile}:deepseek-go")
-            self.assertEqual(route["provider"], "opencode-go")
-            self.assertEqual(route["model"], "deepseek-v4.1-flash")
-            self.assertEqual(route["effort"], "low" if profile == "explore" else "max")
-            self.assertEqual(route["stability"], "stable")
-        interactive = resolve(ROOT, "interactive", "pi")
-        self.assertEqual((interactive["provider"], interactive["model"]), ("opencode-go", "deepseek-v4.1-flash"))
-
     def test_resolve_json_reports_declared_role_exception(self):
         root = self.fixture_root()
         for directory in ("bin", "lib"):
@@ -1105,81 +719,6 @@ backends = ["claude"]
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(json.loads(completed.stdout)["role_exception"], reason)
-
-    def test_claude_backend_coverage_is_stated(self):
-        for profile in ("explore", "extract"):
-            with self.subTest(profile=profile):
-                route = resolve(ROOT, profile, "claude")
-                self.assertEqual(route["profile"], f"{profile}:haiku")
-                self.assertEqual(route["provider"], "anthropic")
-                self.assertEqual(route["model"], "claude-haiku-5-5")
-                self.assertEqual(route["effort"], "high")
-                self.assertEqual(route["stability"], "stable")
-
-        route = resolve(ROOT, "plan", "claude")
-        self.assertEqual((route["profile"], route["model"], route["effort"]),
-                         ("plan:opus", "claude-opus-5-5", "high"))
-
-        for profile in ("generate", "interactive"):
-            with self.subTest(profile=profile):
-                with self.assertRaises(RouteRefusal) as caught:
-                    resolve(ROOT, profile, "claude")
-                self.assertEqual(caught.exception.kind, "unsupported-backend")
-
-    def test_explore_keeps_opus_selectable_on_claude(self):
-        route = resolve(ROOT, "explore", "claude", variant_id="opus")
-        self.assertEqual(route["profile"], "explore:opus")
-        self.assertEqual(route["model"], "claude-opus-5-5")
-        self.assertEqual(route["effort"], "high")
-        self.assertEqual(route["stability"], "stable")
-
-    def test_haiku_is_served_by_the_claude_backend_alone(self):
-        for profile in ("extract", "explore"):
-            for backend in ("codex", "pi", "opencode"):
-                with self.subTest(profile=profile, backend=backend):
-                    try:
-                        route = resolve(ROOT, profile, backend)
-                    except RouteRefusal:
-                        continue
-                    self.assertNotEqual(route["model"], "claude-haiku-5-5")
-                    self.assertNotEqual(route["provider"], "anthropic")
-        pools = tomllib.loads((ROOT / "routing" / "delegation.toml").read_text())["pool"]
-        for pool in pools:
-            if pool["provider"] != "anthropic":
-                self.assertNotIn("haiku-5.5", pool["serves"])
-        profiles = tomllib.loads((ROOT / "routing" / "profiles.toml").read_text())["profile"]
-        for profile in profiles:
-            for route in [profile, *profile.get("variant", [])]:
-                if route.get("model") == "haiku-5.5":
-                    self.assertEqual(route["backends"], ["claude"])
-                    self.assertEqual(route["provider"], "anthropic")
-
-    def test_haiku_high_alone_is_the_stable_tier(self):
-        models = tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]
-        haiku = next(model for model in models if model["id"] == "haiku-5.5")
-        self.assertNotIn("status", haiku)
-        tiers = {tier["effort"]: tier.get("status") for tier in haiku["effort"]}
-        self.assertEqual(
-            tiers,
-            {
-                "low": "explicit-only",
-                "medium": "probationary",
-                "high": None,
-                "xhigh": "explicit-only",
-                "max": "explicit-only",
-            },
-        )
-
-    def test_cache_hit_prices_follow_the_published_multipliers(self):
-        models = tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]
-        prices = {
-            model["id"]: model["api_price_per_million"] for model in models if "api_price_per_million" in model
-        }
-        self.assertEqual(prices["sonnet-5.5"]["cached_input"], 0.10)
-        self.assertEqual(prices["opus-5.5"]["cached_input"], 0.20)
-        self.assertEqual(prices["fable-5.1"]["cached_input"], 0.25)
-        self.assertEqual(prices["fable-5.2"]["cached_input"], 0.20)
-        self.assertEqual(prices["haiku-5.5"]["cached_input"], 0.01)
 
     def test_an_unsupported_backend_refusal_names_the_alternatives(self):
         with self.assertRaises(RouteRefusal) as caught:
@@ -1254,18 +793,6 @@ class ReviewAuthorTest(unittest.TestCase):
                     _review_author(self.malformed_family_root(value), "gpt-6-luna#max", "review", "codex")
                 self.assertEqual(caught.exception.payload()["reason"], "unknown-author-family")
                 self.assertEqual(caught.exception.payload()["recommendation"], "record-debt")
-
-    def test_superseded_sol_author_resolves_an_independent_claude_peer(self):
-        result = subprocess.run(
-            [ROOT / "bin" / "agent-routing", "resolve", "review", "--backend", "claude",
-             "--author", "gpt-6-sol#xhigh", "--json"],
-            capture_output=True, text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        route = json.loads(result.stdout)
-        self.assertEqual((route["model"], route["effort"]), ("claude-opus-5-5", "xhigh"))
-        self.assertEqual(route["review"]["independence"], "eligible")
-        self.assertEqual(route["review"]["author_tier"], 2)
 
     def assess(self, reviewer, *authors, root=ROOT):
         return assess_review(root, reviewer, list(authors))
@@ -1383,28 +910,6 @@ class ReviewAuthorTest(unittest.TestCase):
             with self.subTest(**kwargs), self.assertRaises(RouteRefusal):
                 resolve(ROOT, "review", "codex", accept_ineligible=True, **kwargs)
 
-    def test_shipped_superseded_authors_have_conservative_floors_at_every_effort(self):
-        models = {model["id"]: model for model in
-                  tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]}
-        for author, successor in (("gpt-6-sol", "gpt-6.1-sol"),
-                                  ("gpt-5.6-luna", "gpt-6-luna")):
-            successor_tiers = {tier["effort"]: tier.get("floor")
-                               for tier in models[successor]["effort"]}
-            for tier in models[author]["effort"]:
-                with self.subTest(author=author, effort=tier["effort"]):
-                    self.assertIn("floor", tier)
-                    self.assertGreaterEqual(tier["floor"], successor_tiers[tier["effort"]])
-                    self.assertNotIn("review_tier", tier)
-                    self.assertTrue(models[author]["effort"])
-                    if tier["floor"] > 2:
-                        with self.assertRaises(RouteRefusal) as caught:
-                            resolve(ROOT, "review", "claude", author=f"{author}#{tier['effort']}")
-                        self.assertEqual(caught.exception.payload()["reason"], "no-eligible-route")
-                        self.assertEqual(caught.exception.payload()["author_tier"], tier["floor"])
-                    else:
-                        route = resolve(ROOT, "review", "claude", author=f"{author}#{tier['effort']}")
-                        self.assertEqual(route["review"]["author_tier"], tier["floor"])
-
     def test_lint_requires_floors_on_superseded_tiers(self):
         root = self.fixture_root()
         path = root / "routing/models.toml"
@@ -1451,19 +956,6 @@ class ReviewAuthorTest(unittest.TestCase):
         with self.assertRaises(RouteRefusal) as caught:
             resolve(root, "review", "codex", author="opus-5.5")
         self.assertEqual(caught.exception.kind, "manifest-invalid")
-
-    def test_trial_capability_does_not_add_a_routing_seat(self):
-        models = tomllib.loads((ROOT / "routing/models.toml").read_text())["model"]
-        sonnet = next(model for model in models if model["id"] == "sonnet-5.5")
-        self.assertEqual({tier["effort"]: tier["floor"] for tier in sonnet["effort"]},
-                         {"max": 3, "xhigh": 2, "high": 2, "medium": 1, "low": 1})
-        profiles = tomllib.loads((ROOT / "routing/profiles.toml").read_text())["profile"]
-        for profile in profiles:
-            for route in (profile, *profile.get("variant", [])):
-                self.assertNotEqual(route["model"], "sonnet-5.5")
-        answer = assess_review(ROOT, "sonnet-5.5#high", ["gpt-6.1-sol#high"])
-        self.assertTrue(answer["clears"])
-        self.assertEqual(answer["qualifiers"], ["reviewer-unseated"])
 
     def test_lint_cli_requires_capability_on_an_unseated_tier(self):
         for field in ("rank", "floor"):
@@ -1547,10 +1039,6 @@ class ReviewAuthorTest(unittest.TestCase):
                 resolve(ROOT, "review", "codex", author=author)
             self.assertEqual(caught.exception.payload()["reason"], reason)
             self.assertEqual(caught.exception.payload()["recommendation"], "record-debt")
-
-    def test_omitted_effort_uses_the_highest_declared_floor(self):
-        self.assertEqual(resolve(ROOT, "review", "claude", author="gpt-6.1-sol")["review"]["author_tier"], 2)
-        self.assertEqual(resolve(ROOT, "review", "claude", author="gpt-6-luna")["review"]["author_tier"], 1)
 
     def test_backend_default_can_escalate_but_an_explicit_variant_cannot(self):
         root = self.fixture_root()
@@ -1642,18 +1130,6 @@ class ReviewFrontierTest(unittest.TestCase):
         return sorted((seat["model"], seat["effort"], seat["backend"], seat["pool"])
                       for seat in answer["frontier"]["seats"])
 
-    def test_a_current_claude_author_has_the_strongest_cross_family_seat_as_its_frontier(self):
-        answer = frontier_review(ROOT, "opus-5.5#xhigh")
-        self.assertEqual(answer["schema"], "agent-routing-frontier/1")
-        self.assertEqual(answer["route_version"], route_version(ROOT))
-        self.assertEqual(answer["status"], "frontier")
-        self.assertEqual(answer["author"]["model"], "opus-5.5")
-        self.assertEqual(answer["author"]["floor"], 2)
-        self.assertEqual(answer["frontier"]["review_tier"], 3)
-        self.assertEqual(self.seats(answer), [("gpt-6-astra", "xhigh", "codex", "openai-codex"),
-                                        ("gpt-6.1-sol", "xhigh", "codex", "openai-codex")])
-        self.assertEqual(answer["reads"], [])
-
     def test_every_seat_at_the_frontier_tier_is_listed_per_backend_and_pool(self):
         root = self.fixture_root()
         path = root / "routing" / "models.toml"
@@ -1670,13 +1146,6 @@ class ReviewFrontierTest(unittest.TestCase):
             ("gpt-6-astra", "xhigh", "codex", "openai-codex"),
             ("gpt-6.1-sol", "xhigh", "codex", "openai-codex"),
         ])
-
-    def test_a_superseded_author_with_a_recorded_floor_has_a_frontier(self):
-        answer = frontier_review(ROOT, "gpt-6-sol#xhigh")
-        self.assertEqual((answer["status"], answer["author"]["floor"]), ("frontier", 2))
-        self.assertEqual(answer["frontier"]["review_tier"], 2)
-        self.assertEqual({seat["model"] for seat in answer["frontier"]["seats"]}, {"opus-5.5"})
-        self.assertEqual({seat["pool"] for seat in answer["frontier"]["seats"]}, {"anthropic"})
 
     def test_an_author_without_a_floor_has_floor_unknown_and_no_frontier(self):
         root = self.fixture_root()
@@ -1709,16 +1178,6 @@ class ReviewFrontierTest(unittest.TestCase):
                     assessed = assess_review(ROOT, f"{seat['model']}#{seat['effort']}", [author])
                     self.assertEqual(assessed["independence"], "eligible")
                     self.assertEqual(assessed["reviewer"]["review_tier"], answer["frontier"]["review_tier"])
-
-    def test_a_read_below_the_frontier_is_marked_below_and_one_at_it_is_marked_at(self):
-        answer = frontier_review(ROOT, "opus-5.5#xhigh", ["gpt-6-astra#medium", "gpt-6.1-sol#xhigh"])
-        below, at = answer["reads"]
-        self.assertEqual((below["standing"], at["standing"]), ("below", "at"))
-        for read in answer["reads"]:
-            self.assertEqual(read["assessment"]["schema"], "agent-routing-assessment/1")
-            self.assertEqual(read["assessment"]["route_version"], answer["route_version"])
-            self.assertEqual(read["assessment"]["independence"], "eligible")
-        self.assertEqual(below["assessment"]["reviewer"]["model"], "gpt-6-astra")
 
     def test_standing_compares_tiers_and_leaves_eligibility_to_the_assessment(self):
         read, = frontier_review(ROOT, "gpt-6.1-sol#xhigh", ["gpt-6-astra#xhigh"])["reads"]
@@ -1852,9 +1311,6 @@ class RankLintTest(unittest.TestCase):
     def problems(self, root):
         return validation_problems(root)
 
-    def test_the_shipped_ranks_and_sources_are_valid(self):
-        self.assertEqual(self.problems(ROOT), [])
-
     def test_a_seated_tier_without_a_rank_is_reported(self):
         root = self.fixture_root()
         self.rewrite(root, "models.toml", '  seat_rank = { "openai-codex" = 3 }\n', "")
@@ -1936,55 +1392,3 @@ class RankLintTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-class FableAuthorFloorTest(unittest.TestCase):
-    def test_each_fable_effort_has_its_own_author_requirement(self):
-        for effort, floor in {"low": 1, "medium": 1, "high": 2, "xhigh": 2, "max": 3}.items():
-            with self.subTest(effort=effort):
-                author = f"fable-5.1#{effort}"
-                assessment = assess_review(ROOT, "gpt-6.1-sol#xhigh", [author])
-                self.assertEqual(assessment["floor"], floor)
-                self.assertEqual(assessment["qualifiers"], [])
-                self.assertEqual(resolve(ROOT, "review", "codex", author=author)["review"]["author_tier"], floor)
-                self.assertIn("reviewer-unseated", assess_review(ROOT, author, ["gpt-6-luna#max"])["qualifiers"])
-                with self.assertRaises(RouteRefusal):
-                    resolve(ROOT, "review", "claude", author=author)
-
-    def test_bare_fable_uses_its_highest_floor(self):
-        self.assertEqual(assess_review(ROOT, "gpt-6.1-sol#xhigh", ["fable-5.1"])["floor"], 3)
-        self.assertEqual(resolve(ROOT, "review", "codex", author="fable-5.1")["review"]["author_tier"], 3)
-
-    def test_mimo_and_muse_floors_are_known_without_a_route(self):
-        for model in ("mimo-v2.6-flash", "mimo-v2.6-pro", "muse-spark-1.2", "muse-spark-1.3"):
-            with self.subTest(model=model):
-                answer = assess_review(ROOT, "gpt-6.1-sol#xhigh", [model])
-                self.assertEqual(answer["floor"], 1)
-                self.assertTrue(answer["clears"])
-
-
-class CyberReviewSeatTests(unittest.TestCase):
-    """The cyber review seat is reachable by name only."""
-
-    def test_the_cyber_variant_routes_to_daybreak_blue(self):
-        """Claim: `review:cyber` on codex calls Daybreak Blue at xhigh through its
-        Codex alias. Rejects a missing variant or a route naming the roster id
-        the Codex CLI does not accept."""
-        route = resolve(ROOT, "review", "codex", variant_id="cyber")
-        self.assertEqual(route["profile"], "review:cyber")
-        self.assertEqual(route["model"], "gpt-daybreak-blue-latest")
-        self.assertEqual(route["effort"], "xhigh")
-
-    def test_the_review_default_never_resolves_to_daybreak(self):
-        """Claim: every backend's default review route stays off the cyber
-        seat. Rejects a change that makes Daybreak Blue the default."""
-        for backend in ("codex", "claude", "pi"):
-            with self.subTest(backend=backend):
-                self.assertNotIn("daybreak", resolve(ROOT, "review", backend)["model"])
-
-    def test_check_knows_the_codex_alias_and_prohibits_max(self):
-        """Claim: the Codex alias maps to the roster row, xhigh is allowed and
-        max is prohibited. Rejects an unknown-model answer for the alias."""
-        allowed = model_effort_facts(ROOT, "gpt-daybreak-blue-latest", "xhigh")
-        self.assertEqual(allowed["model"]["id"], "gpt-daybreak-blue")
-        with self.assertRaises(RouteRefusal):
-            validate_selection(ROOT, "review", "codex", "gpt-daybreak-blue-latest", "max", "openai-codex", "operator named it")

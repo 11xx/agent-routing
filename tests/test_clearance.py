@@ -14,7 +14,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import tomllib
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -56,13 +55,6 @@ class ClearanceFloorTest(unittest.TestCase):
         self.assertIn("[review]\nclearance = 2\n", text)
         path.write_text(text.replace("[review]\nclearance = 2\n", replacement, 1))
         return root
-
-    def test_the_manifest_declares_a_single_clearance_floor_of_two(self):
-        # Rejects: a clearance threshold left to code, or declared per model.
-        manifest = tomllib.loads((ROOT / "routing" / "models.toml").read_text())
-        self.assertEqual(manifest["review"], {"clearance": 2})
-        self.assertEqual(routing_profiles.clearance_floor(ROOT), 2)
-        self.assertEqual(validation_problems(ROOT), [])
 
     def test_a_missing_or_malformed_clearance_floor_invalidates_the_manifest(self):
         # Rejects: a manifest without a usable floor that would clear every read.

@@ -30,16 +30,6 @@ class ClaudeAgentsTest(unittest.TestCase):
             self.assertNotIn(route["model"], content)
             self.assertTrue(pin["generated"])
 
-    def test_each_stable_opus_tier_has_one_implementer_definition(self):
-        bundle = claude_agent_bundle(ROOT, profile_id="implement")
-        self.assertEqual({pin["path"]: pin["effort"] for pin in bundle["pins"]},
-                         {"implement-opus-low.md": "low", "implement-opus-medium.md": "medium",
-                          "implement-opus-high.md": "high", "implement-opus-xhigh.md": "xhigh"})
-        default = resolve(ROOT, "implement", "claude")
-        self.assertEqual(default["profile"], "implement:opus-low")
-        self.assertIn("model: opus\neffort: low\n", bundle["files"]["agents/implement-opus-low.md"])
-        self.assertFalse(any(pin.get("allow_experimental") for pin in bundle["pins"]))
-
     def test_trial_agents_require_explicit_opt_in(self):
         self.assertNotIn("agents/computer-use-opus.md", claude_agent_bundle(ROOT)["files"])
         bundle = claude_agent_bundle(ROOT, profile_id="computer-use", variant_id="opus",

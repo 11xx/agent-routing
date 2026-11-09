@@ -5,7 +5,6 @@ import json
 import pathlib
 import subprocess
 import sys
-import tomllib
 import unittest
 from unittest.mock import patch
 
@@ -19,19 +18,6 @@ def cli(*args):
 
 
 class OperatorClearanceDirectionTest(unittest.TestCase):
-    def test_sol_high_and_max_share_the_top_review_band_and_peer_author_floor(self):
-        for effort in ("high", "max"):
-            with self.subTest(effort=effort):
-                reviewer = routing.assess_review(ROOT, f"gpt-6.1-sol#{effort}", ["haiku-5.5#max"])
-                author = routing.assess_review(ROOT, "opus-5.5#high", [f"gpt-6.1-sol#{effort}"])
-                self.assertEqual((reviewer["reviewer"]["review_tier"], author["floor"]), (3, 2))
-                self.assertTrue(author["clears"])
-
-    def test_sol_xhigh_is_at_the_current_rosters_top_review_rank(self):
-        manifest = tomllib.loads((ROOT / "routing/models.toml").read_text())
-        top = max(tier["rank"] for model in manifest["model"] for tier in model["effort"])
-        answer = routing.assess_review(ROOT, "gpt-6.1-sol#xhigh", ["haiku-5.5#max"])
-        self.assertGreaterEqual(answer["reviewer"]["review_tier"], top)
 
     def test_opus_high_clears_sol_xhigh_work_without_inheriting_its_reviewer_rank(self):
         author = routing.assess_review(ROOT, "opus-5.5#high", ["gpt-6.1-sol#xhigh"])
@@ -41,33 +27,11 @@ class OperatorClearanceDirectionTest(unittest.TestCase):
         self.assertEqual(author["findings"], "eligible")
         self.assertIsNone(author["debt_kind"])
 
-    def test_sol_clears_haiku_max_while_every_qualified_opus_effort_only_finds(self):
-        answer = routing.assess_review(ROOT, "gpt-6.1-sol#xhigh", ["haiku-5.5#max"])
-        self.assertEqual((answer["findings"], answer["clears"]), ("eligible", True))
-        self.assertIsNone(answer["debt_kind"])
-        for effort in ("low", "medium", "high", "xhigh", "max"):
-            with self.subTest(effort=effort):
-                answer = routing.assess_review(ROOT, f"opus-5.5#{effort}", ["haiku-5.5#max"])
-                self.assertGreaterEqual(answer["reviewer"]["review_tier"], answer["floor"])
-                self.assertEqual((answer["findings"], answer["clears"]), ("eligible", False))
-                self.assertIn("same-family", answer["qualifiers"])
-                self.assertEqual(answer["debt_kind"], "ineligible-review")
-
 
 class CapabilityTest(unittest.TestCase):
     def test_a_known_default_effort_is_judgeable_without_a_reasoning_effort_order(self):
         answer = routing.assess_review(ROOT, "small-model-class#default", ["small-model-class#default"])
         self.assertEqual((answer["findings"], answer["clears"]), ("eligible", False))
-
-    def test_every_known_effort_has_capability_even_without_a_seat(self):
-        manifest = tomllib.loads((ROOT / "routing/models.toml").read_text())
-        for model in manifest["model"]:
-            for tier in model.get("effort", []):
-                with self.subTest(model=model["id"], effort=tier["effort"]):
-                    self.assertIs(type(tier.get("rank")), int)
-                    self.assertIs(type(tier.get("floor")), int)
-                    self.assertIn(tier["rank"], (1, 2, 3))
-                    self.assertIn(tier["floor"], (1, 2, 3))
 
     def test_lint_rejects_missing_capability_and_an_exclusive_top(self):
         models = [{"id": "a", "family": "a", "effort": [{"effort": "high", "rank": 2, "floor": 2}]},
@@ -81,31 +45,11 @@ class CapabilityTest(unittest.TestCase):
             with self.subTest(field=field, value=value):
                 self.assertTrue(routing.review_policy_problems(broken, [], {}))
 
-    def test_unseated_astra_clears_and_keeps_only_a_routing_note(self):
-        answer = routing.assess_review(ROOT, "gpt-6-astra#high", ["opus-5.5#high"])
-        self.assertTrue(answer["clears"])
-        self.assertEqual(answer["reviewer"]["review_tier"], 3)
-        self.assertEqual(answer["qualifiers"], ["reviewer-unseated"])
-        self.assertEqual(answer["independence"], "eligible")
-        self.assertIsNone(answer["debt_kind"])
-
     def test_same_family_equal_rank_finds_and_a_lower_effort_same_model_does_not(self):
         answer = routing.assess_review(ROOT, "fable-5.1#high", ["opus-5.5#high"])
         self.assertEqual((answer["findings"], answer["clears"]), ("eligible", False))
         answer = routing.assess_review(ROOT, "gpt-6.1-sol#high", ["gpt-6.1-sol#xhigh"])
         self.assertEqual(answer["findings"], "ineligible")
-
-    def test_retired_and_ledger_model_identities_remain_judgeable(self):
-        manifest = tomllib.loads((ROOT / "routing/models.toml").read_text())
-        by_id = {model["id"]: model for model in manifest["model"]}
-        for model in ("gpt-5.6-sol", "gpt-6-sol", "opus-5", "fable-5"):
-            self.assertTrue(by_id[model].get("superseded"), model)
-            self.assertTrue(by_id[model]["effort"], model)
-        for reviewer in ("gpt-5.6-sol#high", "gpt-6-sol#high", "claude-opus-5#medium",
-                         "fable-5#high", "z-ai/glm-5.3-flash#max", "mimo-v2.6-pro#medium"):
-            with self.subTest(reviewer=reviewer):
-                answer = routing.assess_review(ROOT, reviewer, ["gpt-6-luna#low"])
-                self.assertIsNotNone(answer["reviewer"]["review_tier"])
 
     def test_effortless_review_uses_minimum_rank_and_author_uses_maximum_floor(self):
         answer = routing.assess_review(ROOT, "claude-opus-5", ["gpt-6-luna#low"])

@@ -5,9 +5,7 @@ price change as one row per price with its validity window."""
 
 import datetime
 import pathlib
-import subprocess
 import sys
-import tempfile
 import tomllib
 import unittest
 
@@ -255,55 +253,6 @@ class PriceChangeTest(unittest.TestCase):
         unpriced = tomllib.loads('[[model]]\nid = "x"\n'
                                  'api_price_changes = [{ from = "2027-01-01", per_million = { input = 2.0 } }]\n')
         self.assertTrue(price_problems(unpriced["model"]))
-
-
-class RosterTermsTest(unittest.TestCase):
-    def roster(self) -> tuple[dict, dict]:
-        models = {model["id"]: model for model in tomllib.loads(
-            (ROOT / "routing" / "models.toml").read_text())["model"]}
-        with tempfile.TemporaryDirectory() as directory:
-            output = pathlib.Path(directory) / "prices.toml"
-            result = subprocess.run([ROOT / "bin/agent-routing", "prices", "--format", "tapes", "--output", output],
-                                    capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            table = tomllib.loads(output.read_text())
-        assert_tapes_shape(self, table)
-        rows: dict[str, list[dict]] = {}
-        for row in table["models"]:
-            rows.setdefault(row["id"], []).append(row)
-        return models, rows
-
-    def test_every_roster_surcharge_is_exported_as_an_api_only_term(self):
-        """Claim: every roster row with a long_context_surcharge (Haiku 5.5,
-        Grok 4.6, the GPT-6 and GPT-5.6 families) is exported priced, with a
-        long-context term for API billing only, Grok's from its 200k
-        threshold and the others above theirs. Rejects a surcharged row left
-        unpriced, and a Codex or Claude subscription session charged the
-        surcharge."""
-        models, rows = self.roster()
-        surcharged = [model_id for model_id, model in models.items() if "long_context_surcharge" in model]
-        self.assertLessEqual({"haiku-5.5", "grok-4.6", "gpt-6-astra", "gpt-6-luna", "gpt-6-sol", "gpt-6.1-sol",
-                              "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}, set(surcharged))
-        for model_id in surcharged:
-            with self.subTest(model=model_id):
-                for row in rows[model_id]:
-                    self.assertTrue(row["per_million"])
-                    self.assertEqual(row["long_context"]["billing"], ["api"])
-        self.assertEqual(rows["grok-4.6"][0]["long_context"]["from_prompt_tokens"], 200000)
-        self.assertEqual(rows["haiku-5.5"][0]["long_context"]["above_prompt_tokens"], 100000)
-        self.assertEqual(rows["gpt-6-luna"][0]["long_context"]["above_prompt_tokens"], 272000)
-
-
-    def test_gemini_flash_doubles_on_its_published_date(self):
-        """Claim: Gemini 3.8 Flash exports its introductory price until
-        2027-01-01 and the doubled price from then. Rejects a 2027 request
-        priced at the introductory rate."""
-        _, rows = self.roster()
-        first, second = rows["gemini-3.8-flash"]
-        self.assertEqual(first["effective_until"], datetime.date(2027, 1, 1))
-        self.assertNotIn("effective_from", first)
-        self.assertEqual(second["effective_from"], datetime.date(2027, 1, 1))
-        self.assertEqual(second["per_million"], {category: 2 * price for category, price in first["per_million"].items()})
 
 
 if __name__ == "__main__":

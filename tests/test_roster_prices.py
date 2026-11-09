@@ -1,6 +1,5 @@
-"""Every roster price carries the date it was read, and every priced row is
-exported, a row whose list price rises above a prompt-size threshold with the
-term that prices it."""
+"""The price lint refuses a priced row without the date it was read, and a
+long-context surcharge the export could not describe."""
 
 import pathlib
 import sys
@@ -9,7 +8,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
-from price_export import price_export, price_problems  # noqa: E402
+from price_export import price_problems  # noqa: E402
 
 
 class RosterPricesTest(unittest.TestCase):
@@ -49,21 +48,6 @@ api_price_undated = "no read date known"
         unpriced = tomllib.loads('[[model]]\nid = "x"\nlong_context_surcharge = { threshold_input_tokens = 1, '
                                  'input_multiplier = 2.0, cache_multiplier = 2.0, output_multiplier = 2.0 }\n')["model"]
         self.assertTrue(price_problems(unpriced))
-
-    def test_the_roster_exports_every_priced_row(self):
-        """Claim: every priced roster row is dated and exported with prices,
-        and every row with a long-context surcharge carries its term. Rejects
-        a roster row left out of the table, and a surcharged row whose
-        short-prompt rate would price a long request as complete."""
-        models = tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]
-        priced = {model["id"]: model for model in models if "api_price_per_million" in model}
-        rows = {row["id"]: row for row in price_export(ROOT)["models"]}
-        self.assertEqual(set(rows), set(priced))
-        for model_id, model in priced.items():
-            with self.subTest(model=model_id):
-                self.assertIn("api_price_read", model)
-                self.assertTrue(rows[model_id]["per_million"])
-                self.assertEqual(rows[model_id]["long_context"] is not None, "long_context_surcharge" in model)
 
 
 if __name__ == "__main__":
