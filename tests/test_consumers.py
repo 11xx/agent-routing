@@ -8,10 +8,10 @@ import tomllib
 import sys
 import unittest
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-
-
-sys.path.insert(0, str(ROOT / "lib"))
+REPOSITORY = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPOSITORY / "lib"))
+sys.path.insert(0, str(REPOSITORY / "tests"))
+from roster import ROOT  # noqa: E402
 from claude_agents import claude_agent_bundle
 
 
@@ -21,7 +21,9 @@ class ConsumerLintTest(unittest.TestCase):
             return tomllib.load(handle)
 
     def fixture_code_root(self):
-        temporary = tempfile.TemporaryDirectory(dir=pathlib.Path.home() / ".worktrees")
+        worktrees = pathlib.Path.home() / ".worktrees"
+        worktrees.mkdir(parents=True, exist_ok=True)
+        temporary = tempfile.TemporaryDirectory(dir=worktrees)
         self.addCleanup(temporary.cleanup)
         code = pathlib.Path(temporary.name)
         skills = self.config()["repository"]["skills"]

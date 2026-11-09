@@ -6,8 +6,8 @@ import sys
 import tomllib
 import unittest
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "lib"))
+REPOSITORY = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPOSITORY / "lib"))
 from price_export import price_problems  # noqa: E402
 
 

@@ -6,8 +6,10 @@ import sys
 import tomllib
 import unittest
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "lib"))
+REPOSITORY = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPOSITORY / "lib"))
+sys.path.insert(0, str(REPOSITORY / "tests"))
+from roster import ROOT  # noqa: E402
 from routing_profiles import resolve, route_version, seats_view
 
 class SeatViewTest(unittest.TestCase):

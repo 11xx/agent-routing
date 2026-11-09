@@ -12,7 +12,8 @@ import sys
 import tempfile
 import unittest
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from roster import ROOT  # noqa: E402
 
 
 class DoctrineLintTest(unittest.TestCase):

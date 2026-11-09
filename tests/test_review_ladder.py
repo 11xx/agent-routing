@@ -8,13 +8,15 @@ import sys
 import unittest
 from unittest.mock import patch
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "lib"))
+REPOSITORY = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPOSITORY / "lib"))
+sys.path.insert(0, str(REPOSITORY / "tests"))
+from roster import ROOT  # noqa: E402
 import routing_profiles as routing
 
 
-def cli(*args):
-    return subprocess.run([ROOT / "bin/agent-routing", *args], text=True, capture_output=True)
+def cli(*args, root=ROOT):
+    return subprocess.run([root / "bin/agent-routing", *args], text=True, capture_output=True)
 
 
 class OperatorClearanceDirectionTest(unittest.TestCase):
@@ -60,34 +62,34 @@ class CapabilityTest(unittest.TestCase):
 
 class DatedAssessmentTest(unittest.TestCase):
     def test_legacy_sol_reconstruction_keeps_top_review_rank_separate_from_author_floor(self):
-        answer = routing.assess_review(ROOT, "gpt-6.1-sol#xhigh", ["gpt-6.1-sol#high"],
+        answer = routing.assess_review(REPOSITORY, "gpt-6.1-sol#xhigh", ["gpt-6.1-sol#high"],
                                        as_of="2026-10-07T05:00:00Z")
         self.assertEqual((answer["reviewer"]["review_tier"], answer["floor"]), (3, 2))
 
     def test_as_of_does_not_borrow_a_model_from_a_later_roster(self):
         args = ("assess", "--reviewer", "gpt-6.1-terra#medium", "--author", "opus-5.5#high", "--json")
         self.assertTrue(json.loads(cli(*args).stdout)["clears"])
-        earlier = cli(*args, "--as-of", "2026-10-07T05:00:00Z")
+        earlier = cli(*args, "--as-of", "2026-10-07T05:00:00Z", root=REPOSITORY)
         self.assertNotEqual(earlier.returncode, 0)
         self.assertEqual(earlier.stdout, "")
         self.assertIn("unknown reviewer coordinate", earlier.stderr)
 
     def test_as_of_reads_the_committed_table_and_keeps_assessment_two_shape(self):
         args = ("assess", "--reviewer", "gpt-6.1-sol#xhigh", "--author", "opus-5.5#high", "--json")
-        old = cli(*args, "--as-of", "2026-10-07T05:00:00Z")
+        old = cli(*args, "--as-of", "2026-10-07T05:00:00Z", root=REPOSITORY)
         self.assertEqual(old.returncode, 0, old.stderr)
         answer = json.loads(old.stdout)
         self.assertEqual(answer["schema"], "agent-routing-assessment/2")
         self.assertTrue(answer["clears"])
         self.assertNotEqual(answer["route_version"], routing.route_version(ROOT))
-        same = cli(*args, "--as-of", "2026-10-07T02:00:00-03:00")
+        same = cli(*args, "--as-of", "2026-10-07T02:00:00-03:00", root=REPOSITORY)
         self.assertEqual(same.stdout, old.stdout)
 
     def test_as_of_refuses_a_gap_and_an_invalid_instant_without_output(self):
         for instant, reason in (("2026-09-01T00:00:00Z", "ladder-gap"),
                                 ("2026-10-07", "RFC 3339")):
             answer = cli("assess", "--reviewer", "gpt-6.1-sol#xhigh", "--author", "opus-5.5#high",
-                         "--as-of", instant, "--json")
+                         "--as-of", instant, "--json", root=REPOSITORY)
             self.assertNotEqual(answer.returncode, 0)
             self.assertEqual(answer.stdout, "")
             self.assertIn(reason, answer.stderr)
@@ -97,11 +99,11 @@ class LadderExportTest(unittest.TestCase):
     def test_current_export_does_not_require_the_numeric_era_history(self):
         import review_ladder
         with patch.object(review_ladder, "commits", side_effect=ValueError("history is unavailable")):
-            version, = review_ladder.export(ROOT)["version"]
+            version, = review_ladder.export(REPOSITORY)["version"]
         self.assertFalse(version["gap"])
 
     def test_current_export_has_one_complete_schema_fixed_version(self):
-        result = cli("ladder", "--json")
+        result = cli("ladder", "--json", root=REPOSITORY)
         self.assertEqual(result.returncode, 0, result.stderr)
         ladder = json.loads(result.stdout)
         self.assertEqual(ladder["schema"], "arc-review-ladder/1")
@@ -114,7 +116,7 @@ class LadderExportTest(unittest.TestCase):
                 self.assertEqual(set(effort), {"effort", "rank", "floor"})
 
     def test_history_starts_with_a_gap_and_deduplicates_capability_tables(self):
-        result = cli("ladder", "--json", "--history")
+        result = cli("ladder", "--json", "--history", root=REPOSITORY)
         self.assertEqual(result.returncode, 0, result.stderr)
         versions = json.loads(result.stdout)["version"]
         self.assertEqual(versions[0]["effective_from"], "2026-08-01T00:00:00Z")
@@ -173,7 +175,7 @@ class LadderValidationTest(unittest.TestCase):
              patch.object(review_ladder, "historical_manifest", side_effect=lambda root, rev, name: manifest if name == "models" else {}), \
              patch.object(review_ladder, "source", return_value="fixture evidence"):
             with self.assertRaisesRegex(ValueError, "v-bad-revision.*rank"):
-                review_ladder.export(ROOT, history=True)
+                review_ladder.export(REPOSITORY, history=True)
 
 
 if __name__ == "__main__":

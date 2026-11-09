@@ -10,8 +10,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "lib"))
+REPOSITORY = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPOSITORY / "lib"))
+sys.path.insert(0, str(REPOSITORY / "tests"))
+from roster import ROOT  # noqa: E402
 import review_ladder as ladder
 from routing_profiles import assess_review
 
@@ -279,7 +281,7 @@ floor = 2
 class AcceptedLadderCliTest(unittest.TestCase):
     def test_current_export_does_not_invent_a_table_for_a_pre_numeric_accepted_ref(self):
         with self.assertRaisesRegex(ValueError, "ladder-gap"):
-            ladder.export(ROOT, accepted="dc54196^")
+            ladder.export(REPOSITORY, accepted="dc54196^")
 
 
 if __name__ == "__main__":

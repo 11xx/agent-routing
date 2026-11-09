@@ -9,9 +9,9 @@ import sys
 import tomllib
 import unittest
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "lib"))
-sys.path.insert(0, str(ROOT / "tests"))
+REPOSITORY = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPOSITORY / "lib"))
+sys.path.insert(0, str(REPOSITORY / "tests"))
 from price_export import price_export, price_problems, readable_table, tapes_table  # noqa: E402
 from test_price_export import FixtureRoster  # noqa: E402
 
