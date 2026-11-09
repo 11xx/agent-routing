@@ -26,12 +26,20 @@ another in any hour of the week, and every `api_price_changes` entry is
 dated after the read date and the change before it and prices the same keys
 as the row.
 
+Three relations hold across every row. A model's review rank never falls as
+its effort rises, so a deeper tier is never reviewed below a shallower one.
+Every priced Claude row writes its cache at Anthropic's published multipliers
+of its input price: 1.25 times for five minutes and twice for an hour. Every
+Codex row with subscription credits charges 25 credits per API dollar of the
+same token class, the ratio the quota weighting converts on.
+
 Everything else is outside its reach — the output-token column, every other
 number carried in prose, and the wording of both documents. A rule stated
 wrongly in sentences passes here and is caught by review or not at all. It
 rewrites nothing.
 """
 
+import math
 import pathlib
 import re
 import sys
@@ -39,7 +47,7 @@ import tomllib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "lib"))
 from price_export import price_problems  # noqa: E402
-from routing_profiles import validation_problems  # noqa: E402
+from routing_profiles import EFFORT_ORDER, validation_problems  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCTRINE = ROOT / "doctrine" / "model-routing.md"
@@ -51,6 +59,8 @@ ROW = re.compile(
     r"^\|\s*([a-z0-9.\- ]+?)\s*(?:·\s*([^|]+?)\s*)?\|([^|]*)\|([^|]*)\|([^|]*)\|"
 )
 NUMBER = re.compile(r"\d+(?:\.\d+)?")
+CLAUDE_CACHE_WRITES = {"cache_write": 1.25, "cache_write_1h": 2.0}
+CODEX_CREDITS_PER_API_DOLLAR = 25.0
 
 
 def efforts_in(cell):
@@ -71,6 +81,31 @@ def carries(cell, value, scale):
     expected = expected_cell(value, scale)
     found = numbers_in(cell)
     return expected in found or expected.rstrip("0").rstrip(".") in found
+
+
+def relation_problems(models):
+    """Rank order along effort, Claude cache-write prices and Codex credit rates."""
+    problems = []
+    for model in models:
+        model_id = model["id"]
+        ranks = sorted((EFFORT_ORDER.index(tier["effort"]), tier["effort"], tier["rank"])
+                       for tier in model.get("effort", [])
+                       if tier.get("effort") in EFFORT_ORDER and type(tier.get("rank")) is int)
+        for (_, lower, lower_rank), (_, higher, higher_rank) in zip(ranks, ranks[1:]):
+            if higher_rank < lower_rank:
+                problems.append(f"{model_id}: rank falls from {lower} ({lower_rank}) to {higher} ({higher_rank})")
+        prices = model.get("api_price_per_million", {})
+        if model.get("family") == "claude" and "input" in prices:
+            for key, multiplier in CLAUDE_CACHE_WRITES.items():
+                if not math.isclose(prices.get(key, math.nan), multiplier * prices["input"]):
+                    problems.append(f"{model_id}: {key} must be {multiplier:g} times input "
+                                    f"({multiplier * prices['input']:g}), not {prices.get(key)}")
+        for key, credits in model.get("subscription_credits_per_million", {}).items():
+            expected = CODEX_CREDITS_PER_API_DOLLAR * prices.get(key, math.nan)
+            if not math.isclose(credits, expected):
+                problems.append(f"{model_id}: {key} credits must be {CODEX_CREDITS_PER_API_DOLLAR:g} per API "
+                                f"dollar ({expected:g}), not {credits:g}")
+    return problems
 
 
 def main():
@@ -141,6 +176,7 @@ def main():
 
     problems.extend(validation_problems(ROOT))
     problems.extend(price_problems(models))
+    problems.extend(relation_problems(models))
 
     for problem in problems:
         print(problem)

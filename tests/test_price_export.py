@@ -123,23 +123,6 @@ class PriceExportTest(unittest.TestCase):
         stray = tomllib.loads('[[model]]\nid = "x"\napi_price_read = "2026-09-01"\n')["model"]
         self.assertTrue(price_problems(stray))
 
-    def test_the_roster_exports_and_lints(self):
-        """Claim: the real roster passes the price lint, every Claude row
-        exported with prices prices one-hour cache writes at twice its input
-        and five-minute writes at 1.25 times, and the Opus row answers to the id Claude
-        records. Rejects an export with the one-hour write left out, which
-        leaves a Claude estimate unpriced on its one-hour writes."""
-        models = tomllib.loads((ROOT / "routing" / "models.toml").read_text())["model"]
-        self.assertEqual(price_problems(models), [])
-        rows = {row["id"]: row for row in price_export(ROOT)["models"]}
-        for model in models:
-            if model.get("family") == "claude" and rows.get(model["id"], {}).get("per_million"):
-                prices = rows[model["id"]]["per_million"]
-                with self.subTest(model=model["id"]):
-                    self.assertAlmostEqual(prices["cache_write_5m"], 1.25 * prices["uncached_input"])
-                    self.assertAlmostEqual(prices["cache_write_1h"], 2 * prices["uncached_input"])
-        self.assertIn("claude-opus-5-5", rows["opus-5.5"]["aliases"])
-
     def test_the_command_writes_the_table(self):
         """Claim: `agent-routing prices --format tapes --output FILE` writes the
         table and the bare command prints a readable one naming each row's

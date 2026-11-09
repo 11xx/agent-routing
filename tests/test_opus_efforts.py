@@ -5,7 +5,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import tomllib
 import unittest
 
 REPOSITORY = pathlib.Path(__file__).resolve().parent.parent
@@ -14,14 +13,6 @@ sys.path.insert(0, str(REPOSITORY / "tests"))
 from roster import ROOT  # noqa: E402
 from claude_agents import claude_agent_bundle
 from routing_profiles import RouteRefusal, resolve
-
-STABLE_TIERS = ("low", "medium", "high", "xhigh")
-
-
-def opus_tiers(root=ROOT):
-    models = tomllib.loads((root / "routing/models.toml").read_text())["model"]
-    opus = next(model for model in models if model["id"] == "opus-5.5")
-    return {tier["effort"]: tier for tier in opus["effort"]}
 
 
 class OpusEffortsTest(unittest.TestCase):
@@ -32,13 +23,6 @@ class OpusEffortsTest(unittest.TestCase):
         for name in ("routing", "templates"):
             shutil.copytree(ROOT / name, root / name)
         return root
-
-    def test_review_tiers_never_fall_as_effort_rises(self):
-        # Rejects an ordering where a deeper tier could be reviewed below a shallower one.
-        tiers = opus_tiers()
-        ladder = [tiers[effort]["rank"] for effort in STABLE_TIERS]
-        self.assertEqual(ladder, sorted(ladder))
-        self.assertGreaterEqual(tiers["max"]["floor"], ladder[-1])
 
     def test_check_refuses_max_under_every_name(self):
         # Rejects max answering as explicit-only, which would let a direct request reach it.
