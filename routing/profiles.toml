@@ -22,7 +22,7 @@
 
 [meta]
 schema = "routing-profiles/1"
-updated = "2026-10-24"
+updated = "2026-11-09"
 
 # Pi routes to DeepSeek V4.1 Flash on the OpenCode Go pool by operator
 # direction: the GPT profiles name the codex backend alone, and a
@@ -421,6 +421,28 @@ backends = ["claude"]
   model = "opus-5.5"
   backend_model = "claude-opus-5-5"
   effort = "xhigh"
+  stability = "stable"
+  backends = ["claude"]
+
+[[profile]]
+id = "visual"
+purpose = "visual and identity design: the look of an interface, mockups, palettes, marks and icons, delivered as preview artifacts or a design spec"
+# Fable 5.2 holds the visual seat by operator direction of 2026-11-09. High is
+# the standing tier and the reasonable ceiling; medium is the cheaper named
+# variant. Low, xhigh and max stay explicit selections on the row.
+provider = "anthropic"
+model = "fable-5.2"
+backend_model = "claude-fable-5-2"
+effort = "high"
+stability = "stable"
+backends = ["claude"]
+
+  [[profile.variant]]
+  id = "medium"
+  provider = "anthropic"
+  model = "fable-5.2"
+  backend_model = "claude-fable-5-2"
+  effort = "medium"
   stability = "stable"
   backends = ["claude"]
 

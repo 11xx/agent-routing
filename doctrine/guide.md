@@ -261,6 +261,8 @@ CHOOSE A PROFILE BY THE SHAPE OF THE WORK
   review       read-only correctness and regression review of a bounded,
                behavior-affecting change
   design       read-only judgment on UX, copy, API ergonomics, or simplicity
+  visual       visual and identity design: the look of an interface, mockups,
+               palettes, marks and icons, as preview artifacts or a design spec
   generate     candidate generation whose output is raw material rather than a
                deliverable, and never the last model to touch shipped work
   interactive  the default Pi parent session, before a child route is selected

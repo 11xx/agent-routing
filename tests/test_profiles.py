@@ -551,13 +551,13 @@ role = "steered generator for tests only"
         route = self.direct_selection(
             profile_id="implement",
             backend="claude",
-            model="fable-5.1",
+            model="fable-5.2",
             effort="high",
             provider="anthropic",
         )
         self.assertEqual(route["selection_kind"], "operator-directed")
-        self.assertEqual(route["model"], "fable-5.1")
-        self.assertEqual(route["backend_model"], "claude-fable-5-1")
+        self.assertEqual(route["model"], "fable-5.2")
+        self.assertEqual(route["backend_model"], "claude-fable-5-2")
         self.assertEqual(route["stability"], "experimental")
 
     def test_cross_pool_opt_in_cannot_waive_unknown_backend_model_support(self):
@@ -1178,6 +1178,7 @@ backends = ["claude"]
         self.assertEqual(prices["sonnet-5.5"]["cached_input"], 0.10)
         self.assertEqual(prices["opus-5.5"]["cached_input"], 0.20)
         self.assertEqual(prices["fable-5.1"]["cached_input"], 0.25)
+        self.assertEqual(prices["fable-5.2"]["cached_input"], 0.20)
         self.assertEqual(prices["haiku-5.5"]["cached_input"], 0.01)
 
     def test_an_unsupported_backend_refusal_names_the_alternatives(self):

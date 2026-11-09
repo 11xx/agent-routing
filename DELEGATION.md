@@ -91,8 +91,8 @@ available route or wait/record debt according to policy. Never invent an actor
 or a frozen model name to manufacture independence.
 
 Futures and new evidence are data updates rather than frozen policy: Gemini
-3.8 Flash, GLM 5.3, Grok 4.6, and Kimi K3 remain unprobed rows; Fable 5.1 is
-available on the Claude subscription but unmeasured; Sonnet 5.5 is a trial row
+3.8 Flash, GLM 5.3, Grok 4.6, and Kimi K3 remain unprobed rows; Fable 5.2 is
+on the Claude subscription, seated for visual work but unmeasured here; Sonnet 5.5 is a trial row
 on the same subscription, reached only by operator direction; Astra is available to the
 operator but unprobed, with low/medium/high hypotheses recorded in the roster.
 Concrete selection belongs to the current resolver and the user's request, not
@@ -484,8 +484,8 @@ Backend selection between the two GPT routes:
   the [read-only triage swarm](eras/2026-10-08-haiku-5-5-triage-swarm.md); Luna
   and DeepSeek worked different tasks, so neither compares their seats.
   The Anthropic pool serves Opus 5.5,
-  Fable 5.1, Sonnet 5.5, and Haiku 5.5; Opus 5, Fable 5, Sonnet 5, and
-  Haiku 4.5 are outside its served set.
+  Fable 5.2, Sonnet 5.5, and Haiku 5.5; Opus 5, Fable 5, Fable 5.1, Sonnet 5,
+  and Haiku 4.5 are outside its served set.
 
 ## Launcher hygiene and liveness
 

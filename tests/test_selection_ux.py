@@ -31,16 +31,16 @@ class SelectionUXTest(unittest.TestCase):
         self.assertEqual(sorted(caught.exception.payload()["seated_efforts"]), ["high", "low"])
 
     def test_backend_spelling_and_named_tuple_cover_explicit_and_trial_tiers(self):
-        for effort in ("high", "xhigh"):
+        for effort in ("low", "xhigh", "max"):
             command = [ROOT / "bin/validate-selection", "--profile", "implement",
                        "--backend", "claude", "--provider", "anthropic",
-                       "--model", "claude-fable-5-1", "--effort", effort,
+                       "--model", "claude-fable-5-2", "--effort", effort,
                        "--reason", "operator named this tuple", "--operator-named", "--json"]
             result = subprocess.run(command, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             selected = json.loads(result.stdout)
-            self.assertEqual(selected["canonical_model"], "fable-5.1")
-            self.assertEqual(selected["backend_model"], "claude-fable-5-1")
+            self.assertEqual(selected["canonical_model"], "fable-5.2")
+            self.assertEqual(selected["backend_model"], "claude-fable-5-2")
             self.assertEqual(selected["stability"], "experimental")
             self.assertTrue(selected["operator_named"])
         selected = self.selection(model="claude-sonnet-5-5", profile_id="implement",
