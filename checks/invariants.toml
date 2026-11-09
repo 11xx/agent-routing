@@ -1,0 +1,15 @@
+# The fixed invariants bin/check-change runs on every change. It reads this
+# list from the change's base and adds the candidate's entries under new
+# names, so a change cannot drop the invariant that covers what it breaks.
+# Their combined limit is 3 seconds; measure it when adding an entry.
+
+# The roster, profiles and doctrine agree and validate.
+[[invariant]]
+name = "lint-routing"
+command = "bin/lint-routing"
+
+# The sibling consumers carry no concrete roster pins. AGENT_CODE_ROOT comes
+# from the caller, or $HOME/code, resolved before the check is isolated.
+[[invariant]]
+name = "lint-consumers"
+command = "bin/lint-consumers"

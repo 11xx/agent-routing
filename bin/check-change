@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+"""Check a change: compile it, run the fixed invariants, run the witnesses it names.
+
+The candidate is the committed HEAD of a clean checkout; the change is the
+commits BASE..HEAD. BASE is `--base REV`, else the merge base of HEAD with the
+target branch `arc show --json` reports.
+
+- Compile: every Python source under lib/, bin/ and tests/ compiles, without
+  writing bytecode, and every shell script in bin/ passes `bash -n`.
+- Invariants: the entries of checks/invariants.toml, read from BASE, plus the
+  candidate's entries under names BASE lacks, so a change cannot drop the
+  invariant that covers what it breaks. Together they get INVARIANT_LIMIT.
+- Witnesses: the `Witness:` trailers of BASE..HEAD, each
+  `tests/FILE.py::Class.test_name` or `none (REASON)`, at most MAX_WITNESSES
+  distinct names. Each runs once within WITNESS_LIMIT; a failure, an error, a
+  skip or no test run fails it. A commit touching lib/, bin/, templates/,
+  tests/ or checks/ (Markdown aside) names a witness or `none (REASON)`.
+
+The whole run fits BUDGET; an overrun fails and names its phase. Every check
+runs with a private HOME, TMPDIR and XDG directories, removed afterwards. Each
+run writes one JSON receipt under $XDG_CACHE_HOME/agent-routing/checks/.
+"""
+
+import argparse
+import datetime
+import json
+import os
+import pathlib
+import re
+import resource
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+import tomllib
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+BUDGET = 20.0
+INVARIANT_LIMIT = 3.0
+WITNESS_LIMIT = 5.0
+MAX_WITNESSES = 3
+CODE = ("lib/", "bin/", "templates/", "tests/", "checks/")
+INVARIANTS = "checks/invariants.toml"
+WITNESS = re.compile(r"(tests/[A-Za-z0-9_]+\.py)::([A-Za-z_]\w*\.[A-Za-z_]\w*)")
+NONE = re.compile(r"none \((.*\S.*)\)")
+
+# Runs one named unittest and reports its counts on the last line of stdout.
+RUNNER = """
+import importlib.util, json, pathlib, sys, unittest
+path, name = pathlib.Path(sys.argv[1]).resolve(), sys.argv[2]
+sys.path.insert(0, str(path.parent))
+spec = importlib.util.spec_from_file_location(path.stem, path)
+module = sys.modules[path.stem] = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+result = unittest.TextTestRunner(stream=sys.stderr, verbosity=2).run(
+    unittest.defaultTestLoader.loadTestsFromName(name, module))
+print(json.dumps({"run": result.testsRun, "failures": len(result.failures), "errors": len(result.errors),
+                  "skipped": len(result.skipped), "expected_failures": len(result.expectedFailures),
+                  "unexpected_successes": len(result.unexpectedSuccesses)}))
+"""
+
+
+class Refusal(Exception):
+    """The change cannot be checked as declared; names the phase that refused."""
+
+    def __init__(self, phase, message):
+        super().__init__(message)
+        self.phase = phase
+
+
+def git(*args):
+    result = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True)
+    if result.returncode:
+        raise Refusal("base", f"git {' '.join(args)}: {result.stderr.strip()}")
+    return result.stdout
+
+
+def resolve_base(value):
+    if value is None:
+        shown = subprocess.run(["arc", "show", "--json"], cwd=ROOT, capture_output=True, text=True)
+        target = None
+        if shown.returncode == 0:
+            try:
+                target = json.loads(shown.stdout).get("target_branch")
+            except ValueError:
+                target = None
+        if not target:
+            raise Refusal("base", "no --base given and `arc show --json` names no target branch")
+        value = git("merge-base", "HEAD", target).strip()
+    return git("rev-parse", "--verify", "--end-of-options", f"{value}^{{commit}}").strip()
+
+
+def touched(commit):
+    parents = git("rev-list", "--parents", "-n", "1", commit).split()[1:]
+    if parents:
+        names = git("diff", "--name-only", "--no-renames", parents[0], commit)
+    else:
+        names = git("diff-tree", "-r", "--no-commit-id", "--name-only", "--no-renames", "--root", commit)
+    return names.splitlines()
+
+
+def trailers(message):
+    parsed = subprocess.run(["git", "interpret-trailers", "--parse"], input=message,
+                            capture_output=True, text=True, check=True).stdout
+    return [line.partition(":")[2].strip() for line in parsed.splitlines()
+            if line.partition(":")[0].strip().lower() == "witness"]
+
+
+def declarations(base):
+    """Every commit's witness trailers, refused when malformed, missing or too many."""
+    witnesses = []
+    for commit in git("rev-list", "--reverse", f"{base}..HEAD").split():
+        subject = git("log", "-1", "--format=%s", commit).strip()
+        label = f"{commit[:12]} {subject!r}"
+        values = trailers(git("log", "-1", "--format=%B", commit))
+        for value in values:
+            if NONE.fullmatch(value):
+                continue
+            match = WITNESS.fullmatch(value)
+            if not match:
+                raise Refusal("declarations", f"{label}: Witness {value!r} is neither "
+                              "tests/FILE.py::Class.test_name nor none (REASON)")
+            if subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"HEAD:{match[1]}"],
+                              capture_output=True).returncode:
+                raise Refusal("declarations", f"{label}: witness file {match[1]} is not in HEAD")
+            if value not in witnesses:
+                witnesses.append(value)
+        code = [name for name in touched(commit) if name.startswith(CODE) and not name.endswith(".md")]
+        if code and not values:
+            raise Refusal("declarations", f"{label} touches {code[0]} without Witness: "
+                          "tests/FILE.py::Class.test_name or Witness: none (REASON)")
+    if len(witnesses) > MAX_WITNESSES:
+        raise Refusal("declarations", f"{len(witnesses)} distinct witnesses named; at most {MAX_WITNESSES} "
+                      f"run, so {witnesses[MAX_WITNESSES]!r} is refused")
+    return witnesses
+
+
+def invariants(base):
+    """The base's invariants, then the candidate's under names the base lacks."""
+    def entries(text, origin):
+        rows = tomllib.loads(text).get("invariant", [])
+        if not all(isinstance(row, dict) and set(row) == {"name", "command"}
+                   and all(isinstance(row[key], str) and row[key].strip() for key in row) for row in rows):
+            raise Refusal("invariants", f"{INVARIANTS} at {origin}: each invariant needs exactly a name and a command")
+        return rows
+
+    shown = subprocess.run(["git", "-C", str(ROOT), "show", f"{base}:{INVARIANTS}"],
+                           capture_output=True, text=True)
+    path = ROOT / INVARIANTS
+    candidate = entries(path.read_text(), "HEAD") if path.exists() else []
+    if shown.returncode:
+        return [dict(row, origin="candidate") for row in candidate]
+    listed = [dict(row, origin="base") for row in entries(shown.stdout, base[:12])]
+    names = {row["name"] for row in listed}
+    return listed + [dict(row, origin="candidate") for row in candidate if row["name"] not in names]
+
+
+def isolated_environment(private):
+    """The caller's environment with a private home, temporary and XDG directories."""
+    code_root = os.environ.get("AGENT_CODE_ROOT") or str(pathlib.Path.home() / "code")
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.startswith(("XDG_", "GIT_", "ARC_", "PYTHON"))}
+    directories = {"HOME": "home", "TMPDIR": "tmp", "XDG_CONFIG_HOME": "config", "XDG_CACHE_HOME": "cache",
+                   "XDG_DATA_HOME": "data", "XDG_STATE_HOME": "state", "XDG_RUNTIME_DIR": "run"}
+    for key, name in directories.items():
+        path = private / name
+        path.mkdir(mode=0o700)
+        environment[key] = str(path)
+    environment.update(AGENT_CODE_ROOT=code_root, PYTHONDONTWRITEBYTECODE="1", GIT_CONFIG_NOSYSTEM="1",
+                       GIT_AUTHOR_NAME="check-change", GIT_AUTHOR_EMAIL="check-change@localhost",
+                       GIT_COMMITTER_NAME="check-change", GIT_COMMITTER_EMAIL="check-change@localhost")
+    return environment
+
+
+class Run:
+    def __init__(self, started, base, head, environment, receipt):
+        self.started = started
+        self.environment = environment
+        self.receipt = receipt
+        receipt.update(base=base, head=head, phases={}, checks=[])
+
+    def remaining(self):
+        return BUDGET - (time.monotonic() - self.started)
+
+    def execute(self, phase, name, command, limit, **options):
+        """Run one check in its own process group; kill the group at its limit."""
+        limit = min(limit, self.remaining())
+        if limit <= 0:
+            raise Refusal(phase, f"the run's {BUDGET:g}s budget is spent before {name}")
+        before = resource.getrusage(resource.RUSAGE_CHILDREN)
+        started = time.monotonic()
+        process = subprocess.Popen(command, cwd=ROOT, env=self.environment, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, text=True, start_new_session=True, **options)
+        try:
+            output, _ = process.communicate(timeout=limit)
+            status = process.returncode
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            output, _ = process.communicate()
+            status = None
+        finally:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        after = resource.getrusage(resource.RUSAGE_CHILDREN)
+        row = {"phase": phase, "name": name, "wall": round(time.monotonic() - started, 3),
+               "cpu": round(after.ru_utime - before.ru_utime + after.ru_stime - before.ru_stime, 3),
+               "exit_status": status}
+        self.receipt["checks"].append(row)
+        if status is None and self.remaining() <= 0:
+            raise Refusal(phase, f"the run overran its {BUDGET:g}s budget in the {phase} phase at {name}")
+        return row, output
+
+    def phase(self, name, body):
+        started = time.monotonic()
+        self.receipt["phases"][name] = {"status": "running"}
+        try:
+            body()
+        finally:
+            wall = round(time.monotonic() - started, 3)
+            self.receipt["phases"][name] = {"status": "running", "wall": wall}
+        if self.remaining() < 0:
+            raise Refusal(name, f"the run overran its {BUDGET:g}s budget in the {name} phase")
+        self.receipt["phases"][name]["status"] = "pass"
+        print(f"{name}: pass in {wall:.2f}s")
+
+    def compile(self):
+        sources = sorted(path for directory in ("lib", "tests") for path in (ROOT / directory).rglob("*.py"))
+        scripts = sorted(path for path in (ROOT / "bin").iterdir() if path.is_file())
+        shells = []
+        for path in scripts:
+            first = path.read_text(errors="replace").partition("\n")[0]
+            if "python" in first:
+                sources.append(path)
+            elif first.startswith("#!") and re.search(r"\b(ba)?sh\b", first):
+                shells.append(path)
+        for path in sources:
+            try:
+                compile(path.read_text(), str(path), "exec", dont_inherit=True)
+            except (SyntaxError, ValueError) as error:
+                raise Refusal("compile", f"{path.relative_to(ROOT)}: {error}") from None
+        for path in shells:
+            row, output = self.execute("compile", f"bash -n {path.relative_to(ROOT)}",
+                                       ["bash", "-n", str(path)], self.remaining())
+            if row["exit_status"] != 0:
+                raise Refusal("compile", f"{path.relative_to(ROOT)}: {output.strip() or 'timed out'}")
+        self.receipt["compiled"] = {"python": len(sources), "shell": len(shells)}
+
+    def invariants(self, listed):
+        deadline = time.monotonic() + INVARIANT_LIMIT
+        for entry in listed:
+            row, output = self.execute("invariants", entry["name"], ["bash", "-c", entry["command"]],
+                                       deadline - time.monotonic())
+            row.update(command=entry["command"], origin=entry["origin"])
+            if row["exit_status"] is None:
+                raise Refusal("invariants", f"invariant {entry['name']} overran the invariants' "
+                              f"{INVARIANT_LIMIT:g}s limit\n{output}")
+            if row["exit_status"] != 0:
+                raise Refusal("invariants", f"invariant {entry['name']} failed ({row['exit_status']})\n{output}")
+
+    def witnesses(self, names):
+        for name in names:
+            if NONE.fullmatch(name):
+                continue
+            path, test = WITNESS.fullmatch(name).groups()
+            row, output = self.execute("witnesses", name, [sys.executable, "-c", RUNNER, path, test], WITNESS_LIMIT)
+            counts = None
+            if row["exit_status"] == 0 and output.strip():
+                try:
+                    counts = json.loads(output.strip().splitlines()[-1])
+                except ValueError:
+                    counts = None
+            row["counts"] = counts
+            if row["exit_status"] is None:
+                raise Refusal("witnesses", f"witness {name} overran its {WITNESS_LIMIT:g}s limit\n{output}")
+            passed = (counts is not None and counts["run"] >= 1
+                      and not any(counts[key] for key in counts if key != "run"))
+            if not passed:
+                raise Refusal("witnesses", f"witness {name} did not pass: {counts or 'no result'}\n{output}")
+
+
+def receipt_path(head):
+    cache = os.environ.get("XDG_CACHE_HOME") or str(pathlib.Path.home() / ".cache")
+    directory = pathlib.Path(cache) / "agent-routing" / "checks"
+    directory.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    return directory / f"{stamp}-{head[:12]}.json"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
+    parser.add_argument("--base", help="the revision the change is checked against")
+    args = parser.parse_args()
+    sys.dont_write_bytecode = True
+    before = resource.getrusage(resource.RUSAGE_CHILDREN)
+    receipt = {"schema": "agent-routing-check/1", "budget": BUDGET, "invariant_limit": INVARIANT_LIMIT,
+               "witness_limit": WITNESS_LIMIT, "exit_status": 1, "failure": None,
+               "started_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+    head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    path = receipt_path(head or "unknown")
+    private = pathlib.Path(tempfile.mkdtemp(prefix="agent-routing-check-"))
+    started = time.monotonic()
+    try:
+        base = resolve_base(args.base)
+        if git("status", "--porcelain").strip():
+            raise Refusal("base", "the checkout differs from HEAD; commit the candidate first")
+        run = Run(started, base, head, isolated_environment(private), receipt)
+        witnesses = declarations(base)
+        receipt["witnesses"] = witnesses
+        listed = invariants(base)
+        run.phase("compile", run.compile)
+        run.phase("invariants", lambda: run.invariants(listed))
+        run.phase("witnesses", lambda: run.witnesses(witnesses))
+        receipt.update(exit_status=0, failure=None)
+    except Refusal as refusal:
+        receipt.update(exit_status=1, failure={"phase": refusal.phase, "message": str(refusal)})
+        phase = receipt.get("phases", {}).get(refusal.phase)
+        if phase is not None:
+            phase["status"] = "fail"
+        print(f"check-change: {refusal.phase}: {refusal}", file=sys.stderr)
+    finally:
+        shutil.rmtree(private, ignore_errors=True)
+        after = resource.getrusage(resource.RUSAGE_CHILDREN)
+        receipt["wall"] = round(time.monotonic() - started, 3)
+        receipt["children_cpu"] = {"user": round(after.ru_utime - before.ru_utime, 3),
+                                   "system": round(after.ru_stime - before.ru_stime, 3)}
+        path.write_text(json.dumps(receipt, indent=2) + "\n")
+    verdict = "pass" if receipt["exit_status"] == 0 else "fail"
+    print(f"check-change: {verdict} in {receipt['wall']:.2f}s; receipt {path}")
+    return receipt["exit_status"]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
