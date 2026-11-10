@@ -412,6 +412,69 @@ def family_relation(root: pathlib.Path) -> dict[str, list[str]]:
     return {value: [row["id"], *row["aliases"]] for row in rows for value in [row["id"], *row["aliases"]]}
 
 
+def family_exception_problems(models: list[dict], profiles: list[dict], families: list[dict], rows: object) -> list[str]:
+    """Why the manifest's ``[[family_exception]]`` rows do not each declare one usable exception.
+
+    A row names a roster ``reviewer`` and a nonempty list of roster
+    ``authors`` of its family other than itself, with a ``note`` naming who
+    directed it. A reviewer appears in one row and holds no seat on the
+    ``review`` profile, so ``resolve review`` and ``assess`` never disagree
+    about a seat. ``families`` must already be a valid ``[[family]]`` relation.
+    """
+    if not isinstance(rows, list):
+        return ["[[family_exception]] must be an array of tables"]
+    by_id = {model["id"]: model for model in models if isinstance(model.get("id"), str)}
+    relation = {value: [row["id"], *row["aliases"]] for row in families for value in [row["id"], *row["aliases"]]}
+    review = next((profile for profile in profiles if profile.get("id") == "review"), {})
+    review_models = {route.get("model") for route in [review, *review.get("variant", [])]} if review else set()
+    seen: set[str] = set()
+    problems: list[str] = []
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != {"reviewer", "authors", "note"}:
+            problems.append("[[family_exception]]: each row declares exactly reviewer, authors and note")
+            continue
+        reviewer, authors = row["reviewer"], row["authors"]
+        if not isinstance(reviewer, str) or reviewer not in by_id:
+            problems.append(f"family exception {reviewer!r}: reviewer is not a roster model id")
+            continue
+        if reviewer in seen:
+            problems.append(f"family exception {reviewer!r}: reviewer is already named by another row")
+        seen.add(reviewer)
+        if not _nonblank_string(row["note"]):
+            problems.append(f"family exception {reviewer!r}: note must say who directed it and when")
+        if reviewer in review_models:
+            problems.append(f"family exception {reviewer!r}: reviewer holds a seat on the review profile")
+        if not isinstance(authors, list) or not authors:
+            problems.append(f"family exception {reviewer!r}: authors must be a nonempty list of roster model ids")
+            continue
+        reviewer_values = _family_values(relation, by_id[reviewer])
+        for author in authors:
+            if not isinstance(author, str) or author not in by_id:
+                problems.append(f"family exception {reviewer!r}: {author!r} is not a roster model id")
+            elif author == reviewer:
+                problems.append(f"family exception {reviewer!r}: a reviewer cannot except its own model")
+            elif _family(by_id[author]) not in reviewer_values:
+                problems.append(f"family exception {reviewer!r}: {author!r} is not of the reviewer's family")
+    return problems
+
+
+def family_exceptions(root: pathlib.Path) -> dict[str, list[str]]:
+    """Each excepted reviewer model with the same-family author models it may clear.
+
+    The one reading of ``[[family_exception]]``: ``assess`` raises the
+    informational ``family-exception`` in place of ``same-family`` exactly
+    for these pairs. A manifest whose rows are invalid refuses.
+    """
+    manifest = load_toml(root / "routing" / "models.toml")
+    families = manifest.get("family", [])
+    rows = manifest.get("family_exception", [])
+    problems = family_problems(manifest.get("model", []), families) or family_exception_problems(
+        manifest.get("model", []), load_toml(root / "routing" / "profiles.toml").get("profile", []), families, rows)
+    if problems:
+        raise RouteRefusal("manifest-invalid", "; ".join(problems))
+    return {row["reviewer"]: list(row["authors"]) for row in rows}
+
+
 def _family_values(relation: dict[str, list[str]], model: dict) -> list[str]:
     """Every family value naming ``model``'s family: its row's id and aliases, else its own alone."""
     return relation.get(_family(model), [_family(model)])
@@ -631,6 +694,8 @@ def structural_problems(root: pathlib.Path) -> list[str]:
     family_errors = family_problems(models, families)
     if not family_errors:
         problems.extend(review_policy_problems(models, profiles, {}, families))
+        problems.extend(family_exception_problems(models, profiles, families,
+                                                  model_manifest.get("family_exception", [])))
     problem = clearance_problem(model_manifest.get("review"))
     if problem:
         problems.append(problem)
@@ -1309,6 +1374,7 @@ def _assessed_coordinate(root: pathlib.Path, coordinate: str, role: str, *, effo
         "effort": effort if separator else None,
         "family": _family(model),
         "family_values": _family_values(family_relation(root), model),
+        "excepted_authors": family_exceptions(root).get(facts["model_id"], []),
         "identities": model_identities(root, facts["model_id"]),
         "tier": facts["tier"] if separator else None,
         "floors": _floors(model, facts["tier"] if separator else None),
@@ -1349,7 +1415,10 @@ def _assessment(
     both read it, so no second independence rule can disagree with it.
 
     ``independence`` is eligible exactly when no qualifier but
-    ``below-clearance`` or the informational ``reviewer-unseated`` holds.
+    ``below-clearance`` or the informational ``reviewer-unseated`` and
+    ``family-exception`` holds. ``family-exception`` stands in for
+    ``same-family`` for an author the reviewer's ``[[family_exception]]``
+    row names.
     Clearance ignores seating and requires family independence and both floors.
     ``findings`` asks only that the reviewer's tier reach each author's floor,
     rejecting its own model at a lower effort. Schema 1 carries the
@@ -1361,8 +1430,11 @@ def _assessment(
     qualifiers = []
     if any(author["model"] == reader["model"] for author in written):
         qualifiers.append("same-model")
-    if any(author["family"] in reader["family_values"] for author in written):
+    kin = [author for author in written if author["family"] in reader["family_values"]]
+    if any(author["model"] not in reader["excepted_authors"] for author in kin):
         qualifiers.append("same-family")
+    if any(author["model"] in reader["excepted_authors"] for author in kin):
+        qualifiers.append("family-exception")
     if review_tier is not None and floor is not None and review_tier < floor:
         qualifiers.append("below-floor")
     if schema > 1 and review_tier is not None and review_tier < clearance:
@@ -1371,8 +1443,9 @@ def _assessment(
         qualifiers.append("floor-unknown")
     if not reader["seated"]:
         qualifiers.append("reviewer-unseated")
-    independent = not [qualifier for qualifier in qualifiers if qualifier not in {"below-clearance", "reviewer-unseated"}]
-    clears = not [q for q in qualifiers if q != "reviewer-unseated"]
+    informational = {"reviewer-unseated", "family-exception"}
+    independent = not [qualifier for qualifier in qualifiers if qualifier not in {"below-clearance", *informational}]
+    clears = not [q for q in qualifiers if q not in informational]
 
     assessment = {
         "schema": ASSESSMENT_SCHEMAS[schema],
@@ -1475,7 +1548,7 @@ def _assessment_at(root: pathlib.Path, reviewer: str, authors: list[str], as_of:
             raise RouteRefusal("unknown-coordinate", f"unknown {role} coordinate {value!r} at {as_of}",
                                role=role, coordinate=value)
         return {"model": model["model"], "effort": effort if separator else None,
-                "family": model["family"], "family_values": [model["family"]],
+                "family": model["family"], "family_values": [model["family"]], "excepted_authors": [],
                 "identities": model["identities"], "rank": min(row["rank"] for row in tiers),
                 "floors": [row["floor"] for row in tiers],
                 "seated": (model["model"], effort) in seated}
