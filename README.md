@@ -241,10 +241,12 @@ including a model reached through another provider.
 
 A `[[family_exception]]` row in `models.toml` names a `reviewer` model, the
 `authors` of its own family whose work it may clear, and a `note` saying who
-directed it. For those pairs `assess` reports the informational
-`family-exception` in place of `same-family`, so the read is independent and
-clears when every author's floor and `[review].clearance` are met; the same
-model still raises `same-model` and never clears. Review routes keep their
+directed it. For those pairs `assess` raises no `same-family` and lists the
+authors under `family_exception`, beside the qualifiers rather than among
+them, so the read is independent and clears when every author's floor and
+`[review].clearance` are met, and a consumer reading the closed qualifier set
+records it as clearing. The same model still raises `same-model` and never
+clears. Review routes keep their
 family exclusions, and lint refuses an excepted reviewer that holds a seat on
 `review`, so such a reviewer is reached only by naming it. Fable 5.2 may clear
 Opus 5.5, Sonnet 5.5 and Haiku 5.5 work this way.

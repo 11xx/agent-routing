@@ -74,9 +74,9 @@ aliases = ["gpt-5.6", "gpt-5.5"]
 # A `[[family_exception]]` row lets its `reviewer`, a roster model id, clear
 # the work of each of its `authors`, roster model ids of the reviewer's family
 # other than its own, and its `note` says who directed it and when. `assess`
-# then calls that pair `family-exception`, which blocks neither independence
-# nor clearance, in place of `same-family`; `same-model`, every floor and the
-# clearance floor still bind. A reviewer appears in one row and holds no seat
+# then raises no `same-family` for that pair and lists the author under
+# `family_exception`, outside the qualifiers; `same-model`, every floor and
+# the clearance floor still bind. A reviewer appears in one row and holds no seat
 # on the `review` profile, whose routes keep every family exclusion, so an
 # excepted reviewer is reached only by naming it.
 [[family_exception]]

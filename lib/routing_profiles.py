@@ -461,9 +461,9 @@ def family_exception_problems(models: list[dict], profiles: list[dict], families
 def family_exceptions(root: pathlib.Path) -> dict[str, list[str]]:
     """Each excepted reviewer model with the same-family author models it may clear.
 
-    The one reading of ``[[family_exception]]``: ``assess`` raises the
-    informational ``family-exception`` in place of ``same-family`` exactly
-    for these pairs. A manifest whose rows are invalid refuses.
+    The one reading of ``[[family_exception]]``: ``assess`` raises no
+    ``same-family`` for exactly these pairs and lists the authors under
+    ``family_exception``. A manifest whose rows are invalid refuses.
     """
     manifest = load_toml(root / "routing" / "models.toml")
     families = manifest.get("family", [])
@@ -1415,10 +1415,11 @@ def _assessment(
     both read it, so no second independence rule can disagree with it.
 
     ``independence`` is eligible exactly when no qualifier but
-    ``below-clearance`` or the informational ``reviewer-unseated`` and
-    ``family-exception`` holds. ``family-exception`` stands in for
-    ``same-family`` for an author the reviewer's ``[[family_exception]]``
-    row names.
+    ``below-clearance`` or the informational ``reviewer-unseated`` holds.
+    An author the reviewer's ``[[family_exception]]`` row names raises no
+    ``same-family``; the assessment lists such authors under
+    ``family_exception`` instead, outside the qualifiers, so a consumer that
+    reads only the closed qualifier set sees a clearing read as clearing.
     Clearance ignores seating and requires family independence and both floors.
     ``findings`` asks only that the reviewer's tier reach each author's floor,
     rejecting its own model at a lower effort. Schema 1 carries the
@@ -1431,10 +1432,9 @@ def _assessment(
     if any(author["model"] == reader["model"] for author in written):
         qualifiers.append("same-model")
     kin = [author for author in written if author["family"] in reader["family_values"]]
+    excepted = sorted({author["model"] for author in kin if author["model"] in reader["excepted_authors"]})
     if any(author["model"] not in reader["excepted_authors"] for author in kin):
         qualifiers.append("same-family")
-    if any(author["model"] in reader["excepted_authors"] for author in kin):
-        qualifiers.append("family-exception")
     if review_tier is not None and floor is not None and review_tier < floor:
         qualifiers.append("below-floor")
     if schema > 1 and review_tier is not None and review_tier < clearance:
@@ -1443,9 +1443,8 @@ def _assessment(
         qualifiers.append("floor-unknown")
     if not reader["seated"]:
         qualifiers.append("reviewer-unseated")
-    informational = {"reviewer-unseated", "family-exception"}
-    independent = not [qualifier for qualifier in qualifiers if qualifier not in {"below-clearance", *informational}]
-    clears = not [q for q in qualifiers if q not in informational]
+    independent = not [qualifier for qualifier in qualifiers if qualifier not in {"below-clearance", "reviewer-unseated"}]
+    clears = not [q for q in qualifiers if q != "reviewer-unseated"]
 
     assessment = {
         "schema": ASSESSMENT_SCHEMAS[schema],
@@ -1463,6 +1462,8 @@ def _assessment(
         "qualifiers": qualifiers,
         "debt_kind": None if clears else INELIGIBLE_REVIEW_DEBT_KIND,
     }
+    if excepted:
+        assessment["family_exception"] = excepted
     if schema > 1:
         findings = review_tier is not None and floors_known and all(
             review_tier >= row["floor"] and not (

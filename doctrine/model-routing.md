@@ -211,7 +211,8 @@ A clearing read is outside every author's family, or names it in a
 every author's floor and `[review].clearance`. A findings read reaches every
 floor and rejects the same model at a lower effort, but may share a family.
 `--purpose findings` resolves that question; `assess` reports both answers.
-`reviewer-unseated` and `family-exception` are informational. Retired rows, marked `superseded = true`,
+`reviewer-unseated` is informational; an excepted pair raises no qualifier and
+is listed under `family_exception`. Retired rows, marked `superseded = true`,
 remain judgeable without becoming routes. Pool-local `seat_rank` orders
 selections only within their providers.
 

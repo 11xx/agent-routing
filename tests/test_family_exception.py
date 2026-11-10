@@ -1,8 +1,9 @@
 """A declared family exception lets one reviewer clear named same-family authors.
 
-A `[[family_exception]]` row replaces `same-family` with the informational
-`family-exception` for exactly the pairs it names; every floor, the clearance
-floor and `same-model` still bind, and lint keeps the rows meaningful.
+A `[[family_exception]]` row lifts `same-family` for exactly the pairs it
+names and lists those authors under `family_exception`, outside the
+qualifiers; every floor, the clearance floor and `same-model` still bind, and
+lint keeps the rows meaningful.
 """
 
 import pathlib
@@ -40,18 +41,21 @@ class FamilyExceptionTest(unittest.TestCase):
         return root
 
     def test_an_excepted_reviewer_clears_a_named_same_family_author(self):
-        # Claim: with the row, Fable 5.2 high clears Opus 5.5 xhigh work.
-        # Rejects: a declared exception that assess ignores, still reporting
-        # same-family and leaving the debt owed; and, without the row, a pair
+        # Claim: with the row, Fable 5.2 high clears Opus 5.5 xhigh work in a
+        # form Arc records: a clearing assessment names no qualifier, and the
+        # exception is said under `family_exception`. Rejects: a declared
+        # exception that assess ignores, still reporting same-family and
+        # leaving the debt owed; an exception carried as a qualifier, which
+        # Arc refuses as outside its closed set; and, without the row, a pair
         # that clears anyway.
         excepted = assess_review(self.roster(), "fable-5.2#high", ["opus-5.5#xhigh"])
-        self.assertIn("family-exception", excepted["qualifiers"])
-        self.assertNotIn("same-family", excepted["qualifiers"])
+        self.assertEqual(excepted["qualifiers"], [])
+        self.assertEqual(excepted["family_exception"], ["opus-5.5"])
         self.assertEqual(excepted["independence"], "eligible")
         self.assertIs(excepted["clears"], True)
         plain = assess_review(self.roster(None), "fable-5.2#high", ["opus-5.5#xhigh"])
         self.assertIn("same-family", plain["qualifiers"])
-        self.assertNotIn("family-exception", plain["qualifiers"])
+        self.assertNotIn("family_exception", plain)
         self.assertIs(plain["clears"], False)
 
     def test_the_exception_waives_neither_same_model_nor_floors(self):

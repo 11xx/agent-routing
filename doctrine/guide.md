@@ -149,13 +149,13 @@ ASSESS A REVIEW
     below-floor        rank is below the highest author's floor
     below-clearance    rank is below [review].clearance
     floor-unknown      an author's floor is unestablished
-    family-exception   a shared family that a [[family_exception]] row lets
-                       this reviewer clear; informational
     reviewer-unseated  no stable route seats the reviewer's tier; a routing
                        note that does not refuse findings or clearance
-  Independence ignores below-clearance, family-exception and
-  reviewer-unseated. Clearance ignores only family-exception and
-  reviewer-unseated. Unknown models or efforts are refused.
+  Independence ignores below-clearance and reviewer-unseated. Clearance
+  ignores only reviewer-unseated. A pair a [[family_exception]] row names
+  raises no same-family; the assessment lists those authors under
+  family_exception, outside the qualifiers. Unknown models or efforts are
+  refused.
 
 EXPORT THE CAPABILITY LADDER
   agent-routing ladder --json [--history] [--accepted <ref>]
