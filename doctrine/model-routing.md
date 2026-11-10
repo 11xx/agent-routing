@@ -206,11 +206,12 @@ and an exclusive top. The evidence is in
 [the capability ladder](../eras/2026-11-04-capability-ladder.md).
 
 Independent-review dispatch resolves `review` with the recorded author.
-A clearing read is outside every author's family and its rank reaches both
+A clearing read is outside every author's family, or names it in a
+`[[family_exception]]` row, and its rank reaches both
 every author's floor and `[review].clearance`. A findings read reaches every
 floor and rejects the same model at a lower effort, but may share a family.
 `--purpose findings` resolves that question; `assess` reports both answers.
-`reviewer-unseated` is informational. Retired rows, marked `superseded = true`,
+`reviewer-unseated` and `family-exception` are informational. Retired rows, marked `superseded = true`,
 remain judgeable without becoming routes. Pool-local `seat_rank` orders
 selections only within their providers.
 

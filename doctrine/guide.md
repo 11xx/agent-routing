@@ -110,7 +110,8 @@ ASSESS A REVIEW
               same model at an effort lower than its author's
     clears    true when findings are eligible, the reviewer is independent
               of every author's family, and rank reaches [review].clearance
-  Equal-rank same-family reads can find but never clear. An effort-less
+  Equal-rank same-family reads can find but never clear, except for the
+  model pairs a models.toml [[family_exception]] row names. An effort-less
   reviewer uses its minimum rank; an effort-less author its maximum floor.
   --purpose records the question asked and leads the text; both answers are
   always given. --as-of reads the accepted branch's first-parent history at
@@ -148,10 +149,13 @@ ASSESS A REVIEW
     below-floor        rank is below the highest author's floor
     below-clearance    rank is below [review].clearance
     floor-unknown      an author's floor is unestablished
+    family-exception   a shared family that a [[family_exception]] row lets
+                       this reviewer clear; informational
     reviewer-unseated  no stable route seats the reviewer's tier; a routing
                        note that does not refuse findings or clearance
-  Independence ignores below-clearance and reviewer-unseated. Clearance
-  ignores only reviewer-unseated. Unknown models or efforts are refused.
+  Independence ignores below-clearance, family-exception and
+  reviewer-unseated. Clearance ignores only family-exception and
+  reviewer-unseated. Unknown models or efforts are refused.
 
 EXPORT THE CAPABILITY LADDER
   agent-routing ladder --json [--history] [--accepted <ref>]

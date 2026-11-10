@@ -238,6 +238,16 @@ the authors of its reviewer's family, reported as `excluded_author_families`,
 and `assess` calls exactly those pairs `same-family`; a route declares no
 exclusions of its own. This fences the Claude and GPT pools by model family,
 including a model reached through another provider.
+
+A `[[family_exception]]` row in `models.toml` names a `reviewer` model, the
+`authors` of its own family whose work it may clear, and a `note` saying who
+directed it. For those pairs `assess` reports the informational
+`family-exception` in place of `same-family`, so the read is independent and
+clears when every author's floor and `[review].clearance` are met; the same
+model still raises `same-model` and never clears. Review routes keep their
+family exclusions, and lint refuses an excepted reviewer that holds a seat on
+`review`, so such a reviewer is reached only by naming it. Fable 5.2 may clear
+Opus 5.5, Sonnet 5.5 and Haiku 5.5 work this way.
 `review_tier` in `models.toml` sets a seated tier's reviewer tier and author
 floor. An unseated tier may carry `author_floor`, which sets only the author
 requirement and grants no reviewer eligibility. Superseded models with shipped
@@ -258,7 +268,7 @@ author_tier` and `reviewer_tier` at or above the single clearance floor that
 debt. `findings` requires only `reviewer_tier >= author_tier`; a route whose
 excluded families hold the author's needs `reviewer_tier > author_tier` and
 must be the route resolved, the backend default or the named `--variant`, so
-a same-family read that finds but never clears is never reached as a
+a same-family read that finds but does not clear is never reached as a
 fallback, and a cost-gated variant such as Astra is reached only by name.
 The backend default keeps precedence when it serves the purpose; otherwise the
 resolver checks the remaining routes in manifest order on that same backend.
