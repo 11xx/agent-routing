@@ -64,7 +64,8 @@ The scale is 1 bounded work, 2 working technical peer, 3 deliberate deep review;
 every floor must be met by another family. Lint enforces both declarations.
 Pool ordering uses seat_rank. assess compares rank against author floors and
 [review].clearance; reviewer-unseated is informational. Same-family reads can
-find but never clear; the same model at a lower effort cannot find.
+find but never clear unless a [[family_exception]] row names the pair; the
+same model at a lower effort cannot find.
 assess --as-of and ladder read the accepted first-parent history; --accepted
 selects its ref, defaulting to the repository default branch rather than HEAD.
 Tables land as no-ff merges or single accepted commits. Legacy answers follow
