@@ -21,7 +21,8 @@
 # across pools. The lint requires it exactly on stable seated tiers.
 #
 # `[review].clearance` is the minimum capability rank for clearing review
-# debt, in addition to every author's floor and family independence.
+# debt, in addition to every author's floor and family independence, which a
+# `[[family_exception]]` row waives for the pairs it names.
 # `reviewer-unseated` is an informational routing qualifier, not a refusal.
 #
 # `api_price_per_million` holds API list prices in USD under the keys input,
@@ -69,6 +70,19 @@ clearance = 2
 [[family]]
 id = "openai"
 aliases = ["gpt-5.6", "gpt-5.5"]
+
+# A `[[family_exception]]` row lets its `reviewer`, a roster model id, clear
+# the work of each of its `authors`, roster model ids of the reviewer's family
+# other than its own, and its `note` says who directed it and when. `assess`
+# then calls that pair `family-exception`, which blocks neither independence
+# nor clearance, in place of `same-family`; `same-model`, every floor and the
+# clearance floor still bind. A reviewer appears in one row and holds no seat
+# on the `review` profile, whose routes keep every family exclusion, so an
+# excepted reviewer is reached only by naming it.
+[[family_exception]]
+reviewer = "fable-5.2"
+authors = ["opus-5.5", "sonnet-5.5", "haiku-5.5"]
+note = "Operator direction of 2026-11-10: Fable 5.2 sits above Opus 5.5, Sonnet 5.5 and Haiku 5.5 in the Claude family and may clear their work."
 
 [[model]]
 id = "opus-5.5"
@@ -169,7 +183,7 @@ character = "Anthropic's Fable successor to 5.1 at a lower price ($8 / $40 per m
 weaknesses = ["no independent pass@1: the Datacurve board has no row for it, and the Artificial Analysis index is an aggregator scale recorded beside the matrix, never as pass@1", "quota weight is unmeasured on this plan. Fable 5 drew roughly twice the window Opus 5 draws for the same tokens and Fable 5.1 was capped at half of a Max plan's weekly allowance; until a session measures 5.2, that is the working assumption", "verbose above high: max spends 3.2x high's output tokens on the index and xhigh 1.7x, so a deep tier also costs latency", "its thinking blocks are readable by no earlier model, so a session continued on another model loses that reasoning"]
 api_price_per_million = { input = 8.0, cached_input = 0.20, cache_write = 10.0, cache_write_1h = 16.0, output = 40.0 }
 api_price_read = "2026-11-09"
-notes = "Released 2026-11-09 as `claude-fable-5-2` with five effort levels (low, medium, high, xhigh, max; the vendor default is high), 1M context and 128k maximum output. Reachable on the subscription through Claude Code and the first-party `claude` backend by its full slug, `claude -p --model claude-fable-5-2 --effort <tier>`, before Claude Code's model list named it. Pricing read from Anthropic's Claude API reference on 2026-11-09: $8 input, $10 five-minute and $16 one-hour cache writes, $0.20 cache hits (0.025x), $40 output per million; batch $4 / $20. Effort direction, the operator's read of the curve on 2026-11-09: medium and high are the preferred tiers; low looks interesting, but medium is a good increase for a small cost increase; high is the reasonable ceiling, and xhigh and max cost much more for diminishing returns; every tier stays reachable. Capability ranks and floors follow the Claude ladder as Opus 5.5 and Fable 5.1 carry it, low and medium 1, high and xhigh 2, max 3; the index reads Fable 5.2 above Opus 5.5 at every effort, and raising its ranks waits for review evidence rather than an aggregator score. See eras/2026-11-09-fable-5-2-visual-seat.md"
+notes = "Released 2026-11-09 as `claude-fable-5-2` with five effort levels (low, medium, high, xhigh, max; the vendor default is high), 1M context and 128k maximum output. Reachable on the subscription through Claude Code and the first-party `claude` backend by its full slug, `claude -p --model claude-fable-5-2 --effort <tier>`, before Claude Code's model list named it. Pricing read from Anthropic's Claude API reference on 2026-11-09: $8 input, $10 five-minute and $16 one-hour cache writes, $0.20 cache hits (0.025x), $40 output per million; batch $4 / $20. Effort direction, the operator's read of the curve on 2026-11-09: medium and high are the preferred tiers; low looks interesting, but medium is a good increase for a small cost increase; high is the reasonable ceiling, and xhigh and max cost much more for diminishing returns; every tier stays reachable. Capability ranks and floors follow the Claude ladder as Opus 5.5 and Fable 5.1 carry it, low and medium 1, high and xhigh 2, max 3; the index reads Fable 5.2 above Opus 5.5 at every effort, and raising its ranks waits for review evidence rather than an aggregator score. See eras/2026-11-09-fable-5-2-visual-seat.md. By the declared `[[family_exception]]` it may clear Opus 5.5, Sonnet 5.5 and Haiku 5.5 work."
   [[model.effort]]
   effort = "low"
   rank = 1
