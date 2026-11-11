@@ -456,6 +456,14 @@ stability = "experimental"
 backends = ["codex", "pi"]
 
   [[profile.variant]]
+  id = "terra-medium"
+  provider = "openai-codex"
+  model = "gpt-6.1-terra"
+  effort = "medium"
+  stability = "experimental"
+  backends = ["codex"]
+
+  [[profile.variant]]
   id = "medium"
   provider = "openai-codex"
   model = "gpt-6.1-sol"

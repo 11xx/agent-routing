@@ -314,6 +314,17 @@ role = "steered generator for tests only"
         route = self.direct_selection(profile_id="computer-use", effort="low")
         self.assertEqual(route["stability"], "experimental")
 
+    def test_terra_medium_computer_use_is_an_explicit_codex_variant(self):
+        route = resolve(REPOSITORY, "computer-use", "codex", variant_id="terra-medium", allow_experimental=True)
+        self.assertEqual((route["model"], route["effort"], route["provider"]),
+                         ("gpt-6.1-terra", "medium", "openai-codex"))
+        self.assertEqual(route["stability"], "experimental")
+        with self.assertRaises(RouteRefusal) as caught:
+            resolve(REPOSITORY, "computer-use", "codex", variant_id="terra-medium")
+        self.assertEqual(caught.exception.kind, "stability")
+        default = resolve(REPOSITORY, "computer-use", "codex", allow_experimental=True)
+        self.assertEqual((default["model"], default["effort"]), ("gpt-6.1-sol", "low"))
+
     def test_a_profile_without_a_baseline_on_the_backend_stays_experimental(self):
         root = self.fixture_root()
         profiles = root / "routing" / "profiles.toml"

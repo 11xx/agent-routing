@@ -929,7 +929,7 @@ notes = "Codex usage estimates published on the Codex pricing page (read 2026-09
 [[model]]
 id = "gpt-6.1-terra"
 family = "openai"
-role = "Codex implementation option at medium, high and xhigh. Low requires explicit selection and max is prohibited."
+role = "Codex implementation option at medium, high and xhigh, with an explicit experimental computer-use variant at medium. Low requires explicit selection and max is prohibited."
 character = "The operator's Slopalytics Pareto comparison places medium, high and xhigh on the worthwhile effort line. No independent task or price measurement is recorded here."
 notes = "The Codex backend supports the effort levels. Stable tiers use review tier 2 as a conservative routing floor; this is a policy assignment, not a measured capability comparison. Every declared tier carries capability rank and floor 2 as an operator policy judgment, independent of selection status."
   [[model.effort]]
@@ -943,7 +943,7 @@ notes = "The Codex backend supports the effort levels. Stable tiers use review t
   rank = 2
   floor = 2
   seat_rank = { "openai-codex" = 2 }
-  use = "stable implementation variant"
+  use = "stable implementation variant; explicit experimental Codex computer-use comparison tier"
   [[model.effort]]
   effort = "high"
   rank = 2
