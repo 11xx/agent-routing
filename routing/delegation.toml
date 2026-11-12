@@ -1,27 +1,27 @@
 # Delegation mechanism matrix: machine-readable source of truth.
-# Prose view: ~/code/arc/DELEGATION.md (canonical prose for mechanism
-# routing). Model/effort selection lives in models.toml, not here.
+# Prose view: `agent-routing mechanism`. Model/effort selection lives in
+# models.toml. Application mechanism defaults live in agent-harnesses.
 # Access without a path: `agent-routing delegation`.
 # `harness` field marks harness-specific rows; omit = shared policy.
 
 [meta]
-updated = "2026-10-09"
-golden_rule = "never tell an executor to delegate to itself"
+updated = "2026-11-12"
+golden_rule = "an executor delegates only when its task grants that role"
 
 [[route]]
-actor = "claude"
+actor = "lead"
 task = "plan an arc chain"
 mechanism = "arc JSON export + detailed journal spec"
 rules = "make dependencies and ownership explicit; generated executor prompts stop before review, merge, or integration"
 
 [[route]]
-actor = "claude"
-task = "delegate implementation to codex"
-mechanism = "agent-delegate against an Arc change or bounded range; claude itself may run the resolved codex exec mechanism"
-rules = "executor commands appear only in instructions claude will run; Arc owns the brief, provenance, rounds, debt, review choice, and integration record; never ask the codex executor to delegate again"
+actor = "lead"
+task = "delegate implementation"
+mechanism = "the application's native delegation tools or a selected CLI mechanism that can express the resolved route"
+rules = "pass the selected model, effort and provider explicitly; give a curated brief; record the assignment and actual executor in Arc; report unsupported required settings before dispatch"
 
 [[route]]
-actor = "claude"
+actor = "lead"
 task = "review and merge"
 mechanism = "review base..head, record verdict, arc integrate when gates pass"
 rules = "inspect delegated work directly; use independent review only when policy, the user, or consequence requires it; record routine deferred coverage as Arc debt; never let debt override changes-requested"
@@ -33,16 +33,16 @@ mechanism = "stakes-based reviewer line (full policy: models.toml [policy].revie
 rules = "do not call self-review independent; a lead may review delegated work it did not author; use independent review only when policy, the user, or consequence requires it; record routine deferred coverage as Arc debt; reviewer tiers remain stakes-based, and debt never overrides changes-requested"
 
 [[route]]
-actor = "codex"
-task = "execute a local arc"
+actor = "executor"
+task = "execute assigned work"
 mechanism = "read journal spec and work in assigned worktree; import bundle only when sandbox and Arc store permit writes, otherwise lead imports it and provides the spec"
-rules = "under `read-only`, inspect and report; under `workspace-write`, implement and verify, then leave the diff for the lead to commit and snapshot; under full access, implement, verify, and commit, then snapshot only when the Arc store is writable, otherwise the lead snapshots before review. In every mode, no codex exec, no delegation, no merge, no integrate"
+rules = "inspect and report under read-only authority; implement, verify, commit and snapshot only within the granted access; the lead performs required actions the executor cannot perform. Delegate only when the task grants that role; review and integration remain with their assigned owners"
 
 [[route]]
-actor = "codex"
-task = "orchestrate sub-codex work"
-mechanism = "codex exec with a self-contained plan"
-rules = "only when the prompt explicitly assigns codex the orchestrator role; preserve the lead's review and merge boundary"
+actor = "lead"
+task = "orchestrate child work"
+mechanism = "the application's orchestration tools or the explicitly selected CLI workflow"
+rules = "make route settings, context and dependencies explicit; preserve the assigned review and integration boundary"
 
 [[route]]
 actor = "arc-skill"
@@ -51,10 +51,9 @@ mechanism = "arc CLI ledger: worktrees, blockers, snapshots, gates, reviews, int
 rules = "one writer per branch/worktree; local-only executor prompts; the lead owns dependency order and integration"
 
 [[rule]]
-id = "native-subagent-fence"
-policy = "do not route work through harness-native subagent defaults; invoke executors explicitly with stated model, effort, and a curated self-contained brief"
-why = "Codex 5.6 native subagents inherit the full conversation plus the parent's model family and reasoning level: the ladder deliberately routes fixed-shape calls to Luna low/medium, bounded implementation to Luna max, and lead judgment to Sol xhigh, while whole-conversation inheritance is unscoped context transfer"
-revisit = "if a harness ships reliable per-subagent model/effort/context controls"
+id = "explicit-route-settings"
+policy = "native and CLI delegation execute a resolved route with stated model, effort and provider, a curated brief and bounded authority; report required settings the mechanism cannot express before dispatch and never silently substitute"
+why = "route validation and execution ownership are separate; inherited settings and conversation history do not establish that the selected route is being executed"
 
 [[rule]]
 id = "executor-write-fence"
@@ -74,17 +73,17 @@ why = "measured on the rescue chain: three of six first attempts blocked on unve
 
 [[rule]]
 id = "preferred-patterns"
-policy = "prefer programmatic orchestration (one-off script encoding per-agent prompt/model/effort/context and control flow as code) or an arc chain (ledger-backed dependency order, curated specs, machine-checked gates) over implicit inheritance"
+policy = "make each child's route, task context, dependencies and completion condition explicit in the selected application's orchestration or the chosen CLI workflow"
 
 [[rule]]
 id = "proxy-shells"
 harness = "claude-code"
-policy = "backend proxy shells (codex and pi agent types) run on Opus at low effort through the version-agnostic `opus` alias; they relay the exact command and result, never perform or redesign the delegated task; labels use cx- for codex-backed spawns and pi- for pi-backed spawns"
+policy = "when the caller selects backend proxy shells (codex and pi agent types), they run on Opus at low effort through the version-agnostic `opus` alias; they relay the exact command and result, never perform or redesign the delegated task; labels use cx- for codex-backed spawns and pi- for pi-backed spawns"
 
 [[rule]]
 id = "luna-invocation"
 harness = "codex"
-policy = "resolve the extract profile for fixed-shape calls and the stable implement profile for bounded production work; do not pin a Luna model id or assume native mixed-model subagents"
+policy = "resolve the extract profile for fixed-shape calls and the stable implement profile for bounded production work; do not pin a Luna model id; establish the chosen mechanism's model and effort capabilities before dispatch"
 
 [[rule]]
 id = "deepseek-invocation"
