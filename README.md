@@ -60,10 +60,10 @@ agent-routing page                                  # the same edits from a loca
 ```
 
 An edit validates all three data files and makes one Git commit of the data.
-It deploys and pushes nothing. A model and effort seated for the first time
-on a subscription also needs `--pool-rank N`; the refusal shows that
-subscription's order and suggests a place. Field notes are dated evidence
-for whoever chooses a seat; no routing answer reads them.
+It deploys and pushes nothing. If the preview asks for `--pool-rank N`,
+rerun it with a place in the subscription's order; the refusal lists the
+order and suggests one. Field notes are dated evidence for whoever chooses a
+seat; no routing answer reads them.
 
 ## Where the rest is
 
