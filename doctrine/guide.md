@@ -314,8 +314,11 @@ COMPARE WITH THE CALLER'S OBSERVED SEAT
   policy cannot compare. A less scarce pool establishes no cross-pool tier cost
   comparison, so that move remains unknown. Cross-pool ranks remain unranked.
   The block names the caller, the selection, the pool and, as `benefit`, the
-  `when` of the seat that holds the selected tier. A standing user
-  authorization replaces the offer; the block is not a dispatch gate.
+  `when` of the seat being selected: for resolve the seat it answered with,
+  for validate the named profile's seat, or else an escalation source's, on
+  that backend, provider, model and effort. A selection that is no seat has a
+  null benefit. A standing user authorization replaces the offer; the block is
+  not a dispatch gate.
 
 CHOOSE A PROFILE BY THE SHAPE OF THE WORK
   `agent-routing profiles` prints every profile with its purpose line, and

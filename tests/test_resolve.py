@@ -147,13 +147,25 @@ class ValidateTest(unittest.TestCase):
         self.assertTrue(confirmation["offer_to_user"])
         self.assertEqual(confirmation["benefit"], "Implementation that needs the head model's standing tier.")
 
-    def test_an_offer_on_another_pool_quotes_the_seat_holding_the_tier(self):
-        """Claim: when no seat holds the selected tier on the selection's own
-        provider, the benefit is the `when` of a seat holding that tier on
-        another. Rejects an offer that goes silent because the pool differs."""
+    def test_the_benefit_is_the_selected_seats_own_when(self):
+        """Claim: the benefit is the `when` of the seat being selected, the
+        named profile's seat on that backend and provider, even where another
+        profile's seat holds the same tier first. Rejects quoting whichever
+        seat holds the tier first, which described review work with the
+        implement seat's purpose."""
+        resolved = resolve(FIXTURE, "review", "pi", caller="orbit-flash#low")
+        validated = validate_selection(FIXTURE, "review", "pi", "orbit-flash", "max", "flat-pool", "fixture reason",
+                                       caller="orbit-flash#low")
+        self.assertEqual((resolved["confirmation"]["benefit"], validated["confirmation"]["benefit"]),
+                         ("Review from pi.", "Review from pi."))
+
+    def test_a_selection_no_seat_holds_has_no_benefit(self):
+        """Claim: a directed selection that is no seat of its profile carries
+        a null benefit. Rejects borrowing the purpose of a seat on another
+        pool or profile, which describes work the selection is not for."""
         answer = validate_selection(FIXTURE, "extract", "pi", "ts-3-core", "low", "flat-pool", "fixture reason",
                                     allow_experimental=True, caller="orbit-flash#low")
-        self.assertEqual(answer["confirmation"]["benefit"], "Fixed-shape calls on the Tessel window.")
+        self.assertIsNone(answer["confirmation"]["benefit"])
 
     def test_an_effort_the_backend_cannot_express_is_refused(self):
         """Claim: an effort outside a backend's support for that model (here

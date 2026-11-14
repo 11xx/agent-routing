@@ -842,15 +842,29 @@ def _classify_selection(
     }
 
 
-def _seat_when(root: pathlib.Path, model: str, effort: str, provider: str) -> str | None:
-    """The `when` of the first policy seat holding this tier, preferring one on this provider."""
-    seats = [seat for seat in data(root).policy.get("seat", []) if (seat["model"], seat["effort"]) == (model, effort)]
-    seat = next((seat for seat in seats if seat["provider"] == provider), seats[0] if seats else None)
-    return seat["when"] if seat else None
+def _route_seat_when(root: pathlib.Path, resolved_profile: str) -> str | None:
+    """The `when` of the seat a resolved `profile[:variant]` names."""
+    profile_id, _, variant = resolved_profile.partition(":")
+    return next((seat["when"] for seat in data(root).policy.get("seat", [])
+                 if seat["profile"] == profile_id and seat.get("variant") == (variant or None)), None)
+
+
+def _selection_seat_when(root: pathlib.Path, profile: dict, backend: str, provider: str, model: str,
+                         effort: str) -> str | None:
+    """The `when` of the seat a directed selection is: the named profile's, then an escalation source's."""
+    seats = data(root).policy.get("seat", [])
+    for profile_id in [profile["id"], *profile.get("escalation_sources", [])]:
+        for seat in seats:
+            if (seat["profile"], seat["provider"], seat["model"], seat["effort"]) == (profile_id, provider, model,
+                                                                                       effort) \
+                    and backend in seat["backends"]:
+                return seat["when"]
+    return None
 
 
 def caller_confirmation(root: pathlib.Path, route: dict, canonical_model: str,
-                        caller: str | None, caller_provider: str | None = None) -> dict | None:
+                        caller: str | None, caller_provider: str | None = None, *,
+                        benefit: str | None = None) -> dict | None:
     """Compare an observed caller seat with known pool-local ranks and scarcity."""
     if caller is None:
         if caller_provider is not None:
@@ -900,7 +914,7 @@ def caller_confirmation(root: pathlib.Path, route: dict, canonical_model: str,
         "selection": {"model": route["model"], "effort": route["effort"],
                       "provider": provider, "rank": selected_rank,
                       "pool": by_pool.get(provider, {}).get("plan")},
-        "benefit": _seat_when(root, canonical_model, route["effort"], provider),
+        "benefit": benefit,
     }
 
 
@@ -1109,7 +1123,9 @@ def validate_selection(
     }
     if pool_refusal_result:
         selection["cross_pool"] = pool_refusal_result.fields["plan"]
-    confirmation = caller_confirmation(root, selection, model_id, caller, caller_provider)
+    confirmation = caller_confirmation(
+        root, selection, model_id, caller, caller_provider,
+        benefit=_selection_seat_when(root, profile, backend, provider, model_id, effort))
     if confirmation is not None:
         selection["confirmation"] = confirmation
     return selection
@@ -1748,7 +1764,8 @@ def resolve(
         route["role_exception"] = selected["role_exception"]
     if review is not None:
         route["review"] = review
-    confirmation = caller_confirmation(root, route, selected["model"], caller, caller_provider)
+    confirmation = caller_confirmation(root, route, selected["model"], caller, caller_provider,
+                                       benefit=_route_seat_when(root, resolved_profile))
     if confirmation is not None:
         route["confirmation"] = confirmation
     if usage is not None:
