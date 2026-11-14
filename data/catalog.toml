@@ -169,6 +169,8 @@ effort = "max"
 rank = 3
 floor = 3
 stability = "explicit-only"
+prohibited = true
+reason = "Max effort is not worth its cost on this model."
 
 [[price]]
 model = "fable-5.2"
