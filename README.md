@@ -87,12 +87,50 @@ only data paths. `--why` records the reason; repeat `--because NOTE_ID` to
 cite field evidence. `--dry-run` validates and previews without writing, and
 `--json` emits one result object for callers.
 
+The invented fixture shows the fields a preview changes:
+
 ```sh
-agent-routing set-seat implement --backend cli --model MODEL --effort high \
-  --when "Bounded work needs this tier." --why "It catches the observed failures."
-agent-routing again n0001 --evidence REFERENCE
-agent-routing card MODEL
-agent-routing undo --why "Restore the previously verified policy."
+agent-routing set-seat implement --variant flat --backend pi \
+  --model orbit-flash --effort low --when "Fixed-scope implementation from pi." \
+  --why "Use the cheaper measured tier." --dry-run
+```
+
+```text
+set-seat (dry run)
+data/policy.toml seat implement:flat (backends: pi)
+  effort: max → low
+  when: Specified implementation from pi. → Fixed-scope implementation from pi.
+  why: The flat pool's workhorse. → Use the cheaper measured tier.
+  since: 2030-01-03 → 2030-01-09
+route_version: b31715eb8626 -> 298e8fdfce1f
+stale consumers: none
+```
+
+A card puts seats and guard instructions before field evidence:
+
+```sh
+agent-routing card nw-swift-2
+```
+
+```text
+nw-swift-2 · northwind
+Seats
+  extract:swift  claude  high  default  Fixed-shape calls from a Northwind
+                                        session.
+Prohibited
+  none
+Guards
+  · max: Run max only as a capped trial, never as an escalation.
+    why: The tier is explicit-only and unmeasured.
+    since 2030-01-05
+Weaknesses
+  none
+Strengths
+  none
+Observations and measurements
+  none
+Inherited, unverified for this model
+  none
 ```
 
 `set-seat`, `remove-seat` and `default-seat` edit seats; `prohibit`, `allow`
@@ -112,8 +150,8 @@ changes. Earlier note bytes cannot be rewritten, even by the commit verb.
 commit, preserving disjoint later edits and refusing conflicts. Policy undo
 restores the previous bytes; note undo appends a compensating event.
 
-An edit reports the rows before and after, the old and new route versions,
-and affected generated consumers with refresh commands. Claude definitions
+An edit names each row and prints only changed fields as `old → new`,
+followed by route versions and affected consumers with refresh commands. Claude definitions
 refresh with `agent-routing emit claude-agents`; interactive harness settings
 refresh with `agent-harness build`. Generated output and its pin table must
 be installed by the consumer's deployment workflow; the edit performs no

@@ -129,7 +129,8 @@ EDIT POLICY OR CATALOG
     edits refuse dirty data paths, staged or unstaged, with instructions to
     commit them or discard them. Unrelated staged work stays staged.
   agent-routing log [--limit N] [--json]
-    Show the stores' Git history, including hand commits, newest first.
+    Show the stores' Git history, including hand commits, newest first. Each
+    line carries a short hash, date, verb, row and the reason's first sentence.
   agent-routing undo --why TEXT [--dry-run] [--json]
     Revert the latest Routing-edit commit as a new verb commit. Disjoint later
     edits are retained; overlapping edits refuse. Catalog and policy regain
@@ -137,8 +138,10 @@ EDIT POLICY OR CATALOG
     appended undo events, preserving every earlier byte. Undoing an undo
     restores the effect of the original edit.
 
-  Every edit prints each row before and after, old and new route_version,
-  commit id, and affected generated consumers with refresh commands. Notes
+  Every edit names the store, table and row, then prints only changed fields
+  as field: old → new. Added rows list their fields; removed rows are named
+  as removed. The footer carries old and new route_version, commit id, and
+  affected generated consumers with refresh commands. Notes
   leave route_version unchanged. --json emits one agent-routing-edit/1 object
   with verb, dry_run, changes, old_route_version, new_route_version,
   stale_consumers and commit (null for dry runs); changes name store, table,
@@ -173,9 +176,76 @@ FILE AND READ FIELD EVIDENCE
       occurrence date, then id. Dates and evidence accompany each occurrence.
   agent-routing card MODEL [--json]
       Print seats, prohibited tiers and scoped guards, then live evidence in
-      recurrence and recency order. A predecessor naming this model as its
-      catalog successor contributes evidence under "Inherited and unverified
-      for this model". The model's direct notes stay separate.
+      recurrence and recency order. Sections are Seats, Prohibited, Guards,
+      Weaknesses, Strengths, Observations and measurements, then inherited
+      evidence. Empty sections say none. A predecessor naming this model as
+      its catalog successor contributes evidence under "Inherited from
+      PREDECESSOR, unverified for this model".
+
+READABLE TEXT VIEWS
+  Text uses the terminal width, or 80 columns for redirected output. Seat
+  columns align across the model's own rows. Variants read profile:variant;
+  experimental and probationary labels lead the seat's when sentence.
+  Guards lead with their effort and profile scope, with why, since and
+  because beneath the rule. Claims wrap with a hanging indent; evidence
+  has its own indented line. A note shows ×N and a date range only when its
+  first and last dates differ. notes leads each entry with model and effort,
+  and inactive entries say retracted or superseded with their reason.
+  Text uses no colour. JSON output retains the complete structured result.
+
+  The invented fixture, at 80 columns:
+
+    agent-routing card nw-atlas-2
+
+nw-atlas-2 · northwind
+Seats
+  implement:atlas       claude  medium  default  Specified implementation from a
+                                                 Northwind session.
+  implement:atlas-high  claude  high             Implementation that needs the
+                                                 head model's standing tier.
+  implement:bounded     claude  medium           experimental · Explicit
+                                                 comparison with a fixed
+                                                 deadline.
+  review:atlas          claude  xhigh   default  Review from a Northwind
+                                                 session.
+Prohibited
+  max: Fixture ban: the top tier buys nothing over xhigh.
+Guards
+  · high, implement: Name exact targets and stop when a target is absent before
+    beginning any implementation.
+    why: The fixture's failed brief left its target ambiguous.
+    since 2030-01-06   because n0003
+Weaknesses
+  n0003  ×2  2030-01-06 → 2030-01-09   An ambiguous target can send
+                                       implementation past the intended files
+                                       unless the brief names a stop condition.
+    evidence: 2030-01-06 fixture:case-3
+    evidence: 2030-01-09 fixture:repeat
+Strengths
+  n0005  ×1  2030-01-07   A bounded change with named probes lands cleanly.
+    evidence: fixture:case-5
+Observations and measurements
+  n0010  ×1  2030-01-09   The corrected fixture score is one quarter.
+    evidence: fixture:case-10
+    metrics: pass_at_1: 0.25
+Inherited from nw-atlas-1, unverified for this model
+  n0006  ×1  2030-01-03   The predecessor needed explicit target boundaries.
+    evidence: fixture:case-6
+
+  A preview names its seat and shows only the fields it changes:
+
+agent-routing set-seat implement --variant flat --backend pi \
+  --model orbit-flash --effort low --when "Fixed-scope implementation from pi." \
+  --why "Use the cheaper measured tier." --dry-run
+
+set-seat (dry run)
+data/policy.toml seat implement:flat (backends: pi)
+  effort: max → low
+  when: Specified implementation from pi. → Fixed-scope implementation from pi.
+  why: The flat pool's workhorse. → Use the cheaper measured tier.
+  since: 2030-01-03 → 2030-01-09
+route_version: b31715eb8626 -> 298e8fdfce1f
+stale consumers: none
 
 RESOLVE A ROUTE
   agent-routing resolve <profile> --backend <backend> --json

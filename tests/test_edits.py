@@ -141,7 +141,9 @@ class EditTest(GitStoreTest):
         self.assertIn(result["old_route_version"], text)
         self.assertIn(result["new_route_version"], text)
         for row in result["changes"]:
-            self.assertIn(json.dumps(row["after"]), text)
+            for key, item in row["after"].items():
+                if row["before"].get(key) != item:
+                    self.assertIn(str(item), " ".join(text.split()))
 
     def test_commit_hand_edits_and_reject_notes_rewrite(self):
         """Claim: hand edits canonicalize and commit, while rewritten note history refuses; rejects using commit to erase evidence."""

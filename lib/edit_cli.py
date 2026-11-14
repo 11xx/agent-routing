@@ -92,7 +92,7 @@ def main(root, argv=None):
             if args["limit"] < 1:
                 raise stores.StoreError("--limit must be positive")
             result = dict(schema="agent-routing-history/1", edits=data_edits.history(root, **args))
-            text = "\n".join(f"{row['commit'][:12]} {row['subject']}" for row in result["edits"])
+            text = data_edits.render(result, root=root) if not as_json else None
         elif verb in {"notes", "card"}:
             with stores.store_lock(root, exclusive=False):
                 texts = data_edits.read_texts(root)
@@ -103,10 +103,10 @@ def main(root, argv=None):
             else:
                 result = dict(schema="agent-routing-card/1",
                               **field_notes.card(stores.Data.from_texts(texts), records, args["model"]))
-            text = data_edits.render(result)
+            text = data_edits.render(result, data=stores.Data.from_texts(texts)) if not as_json else None
         else:
             result = data_edits.apply(root, verb, **args)
-            text = data_edits.render(result)
+            text = data_edits.render(result) if not as_json else None
         print(json.dumps(result, ensure_ascii=False) if as_json else text)
         return 0
     except (OSError, ValueError, TypeError, KeyError) as error:

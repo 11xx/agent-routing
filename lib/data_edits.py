@@ -9,7 +9,6 @@ import contextlib
 import copy
 import datetime
 import difflib
-import json
 import os
 import pathlib
 import re
@@ -486,46 +485,11 @@ def subject_for(verb, opts, result):
     return f"data: {action.get(verb, verb.replace('-', ' '))} {target}{suffix}"
 
 
-def render(result):
-    """A readable rendering of exactly the facts in the JSON result."""
-    if isinstance(result, list):
-        return "\n".join(json.dumps(row, ensure_ascii=False) for row in result)
-    if result.get("schema") == "agent-routing-card/1":
-        lines = [f"Model: {result['model']}"]
-        for table in ("seats", "prohibited", "guards"):
-            lines.append(f"{table}:")
-            lines.extend(json.dumps(row, ensure_ascii=False) for row in result[table])
-        def evidence(rows):
-            for row in rows:
-                lines.append(f"{row['kind']} {row['id']} ({row['occurrences']} occurrences, "
-                             f"{row['date']} to {row['last_seen']}): {row['claim']}")
-                lines.extend(f"  {item['date']}: {item['reference']}" for item in row["evidence"])
-        lines.append("Strengths and weaknesses (recurrence, then recency):")
-        evidence([row for row in result["notes"] if row["kind"] in {"strength", "weakness"}])
-        lines.append("Observations and measurements:")
-        evidence([row for row in result["notes"] if row["kind"] not in {"strength", "weakness"}])
-        lines.append("Inherited and unverified for this model:")
-        evidence(result["inherited_unverified"])
-        return "\n".join(lines)
-    if result.get("schema") != "agent-routing-edit/1":
-        lines = []
-        for key, value in result.items():
-            lines.append("Inherited and unverified for this model:" if key == "inherited_unverified" else f"{key}:")
-            lines.append(json.dumps(value, ensure_ascii=False))
-        return "\n".join(lines)
-    lines = [f"{result['verb']}{' (dry run)' if result['dry_run'] else ''}"]
-    for row in result["changes"]:
-        lines += [f"{row['store']} [[{row['table']}]]", f"before: {json.dumps(row['before'], ensure_ascii=False)}",
-                  f"after: {json.dumps(row['after'], ensure_ascii=False)}"]
-    lines.append(f"route_version: {result['old_route_version']} -> {result['new_route_version']}")
-    for row in result["stale_consumers"]:
-        lines.append(f"stale {row['consumer']} ({row['path']}): {row['refresh']}")
-    if not result["stale_consumers"]:
-        lines.append("stale consumers: none")
-    for key in ("notice", "record_id", "undone_commit", "commit"):
-        if result.get(key):
-            lines.append(f"{key}: {result[key]}")
-    return "\n".join(lines)
+def render(result, *, width=None, data=None, root=None):
+    """Readable text with optional catalog context; the result's JSON shape is unchanged."""
+    from text_output import render as readable
+
+    return readable(result, width=width, data=data, root=root)
 
 
 def notes_history_problems(root, base, head="HEAD"):
