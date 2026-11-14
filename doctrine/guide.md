@@ -129,8 +129,9 @@ EDIT POLICY OR CATALOG
   validate --allow-experimental answers both before and after the edit
   with a different direction, stability or kind, or says none does. Every
   profile, backend and reached tier in those pools is asked of validate
-  itself, on copies of the stores before and after; a selection it
-  refuses either way, for any reason, is not listed.
+  itself, answering from the stores as they are before the edit and as
+  they would be after it; a selection it refuses either way, for any
+  reason, is not listed.
   default-seat PROFILE --variant NAME [--backend BACKEND...] --why TEXT
       Make that variant the unnamed request's default on all its backends.
       Multi-backend rows default together. An overlapping primary is retained
