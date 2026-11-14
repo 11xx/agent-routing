@@ -1066,6 +1066,16 @@ when = "A whole-surface read chosen for capability on the Codex window."
 why = "Chosen for capability, not independence: Sol xhigh ties Astra xhigh at rank 3, and the review profile already prefers Sol as its Codex default."
 since = "2026-11-14"
 
+[[review_seat]]
+purpose = "exhaustive"
+author_family = "any"
+backend = "claude"
+model = "opus-5.5"
+effort = "xhigh"
+when = "A whole-surface read chosen for capability from a Claude session."
+why = "Chosen for capability, not independence: Opus xhigh is the highest-ranked review route on Claude, and its only one."
+since = "2026-11-14"
+
 [[repository]]
 id = "skills"
 name = "agent-harnesses"
