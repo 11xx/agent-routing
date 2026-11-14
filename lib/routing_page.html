@@ -459,6 +459,7 @@ async function loadChoices(ed, field, select) {
   if (current && !found) options.unshift(h("option", { value: JSON.stringify([current.model, current.effort, current.provider]), selected: true },
     `${current.model} · ${current.effort}   (current, not among this backend's reachable tiers)`));
   if (!options.length) options.push(h("option", { value: "", disabled: true, selected: true }, field.none || "nothing reachable"));
+  const shown = JSON.stringify(values(ed));
   ed.choices = new Map(answer.choices.map(choice => [JSON.stringify([choice.model, choice.effort, choice.provider]), choice]));
   ed.pools = answer.pools || {};
   const before = select.value;
@@ -466,6 +467,8 @@ async function loadChoices(ed, field, select) {
   if (before && [...select.options].some(option => option.value === before && !option.disabled)) select.value = before;
   select.disabled = false;
   placeRank(ed);
+  // New choices may move the tier or the suggested place; a preview of the old values no longer matches the editor.
+  if (JSON.stringify(values(ed)) !== shown) clearPreview(ed);
 }
 
 // A stable seat's tier has a place in its pool's order; show the order and the place this edit gives it.
@@ -530,7 +533,9 @@ function clearErrors(ed) {
   }
 }
 
+// Any input, a cancel or a newer preview invalidates every preview request still in flight.
 function clearPreview(ed, focus) {
+  ed.generation = (ed.generation || 0) + 1;
   ed.pending = null;
   ed.preview.hidden = true;
   ed.preview.replaceChildren();
@@ -577,7 +582,9 @@ async function preview(ed, action) {
   }
   let argv;
   try { argv = action.argv(vals, ed); } catch (error) { showError(ed, error.message); return; }
+  const ticket = ed.generation;
   const answer = await api("/api/edit", { argv, confirm: false });
+  if (ticket !== ed.generation || !S.editors.has(ed.key)) return;
   if (!answer.ok) { showError(ed, answer.error); return; }
   ed.pending = { argv, stamp: answer.stamp, action };
   drawPreview(ed, answer);
