@@ -15,15 +15,10 @@ def coordinate(row: dict) -> str:
     return row["model"] + (f"#{row['effort']}" if row["effort"] else "")
 
 
-def qualified(assessment: dict) -> str:
-    return (",".join(assessment["qualifiers"]) or "none") + "".join(
-        f"; {reason}" for reason in assessment.get("purpose_qualifiers", []))
-
-
 def line(assessment: dict) -> str:
     authors = ", ".join(f"{coordinate(row)} (floor {row['floor']})" for row in assessment["authors"])
     reviewer = assessment["reviewer"]
-    qualifiers = qualified(assessment)
+    qualifiers = ",".join(assessment["qualifiers"]) or "none"
     return (
         f"{assessment['independence']}: reviewer {coordinate(reviewer)} (tier {reviewer["review_tier"] or "unseated"}) "
         f"against {authors}; qualifiers {qualifiers}"
@@ -34,10 +29,10 @@ def line_v2(assessment: dict) -> str:
     """One line leading with the answer to the purpose asked, then the other answer."""
     authors = ", ".join(f"{coordinate(row)} (floor {row['floor']})" for row in assessment["authors"])
     reviewer = assessment["reviewer"]
-    qualifiers = qualified(assessment)
+    qualifiers = ",".join(assessment["qualifiers"]) or "none"
     findings = f"findings {assessment['findings']}"
     clears = "clears" if assessment["clears"] else "does not clear"
-    asked, other = (clears, findings) if assessment["purpose"] == "clearance" else (findings, clears)
+    asked, other = (findings, clears) if assessment["purpose"] == "findings" else (clears, findings)
     return (
         f"{asked}: reviewer {coordinate(reviewer)} (tier {reviewer['review_tier'] or 'unseated'}, "
         f"clearance {assessment['clearance']}) against {authors}; {other}; qualifiers {qualifiers}"
@@ -62,8 +57,8 @@ def main() -> int:
     parser.add_argument(
         "--purpose",
         choices=REVIEW_PURPOSES,
-        help="the question asked of the read: findings, clearance of review debt (the default), or an "
-        "exhaustive read chosen for capability, which never clears; both answers are always reported",
+        help="the question asked of the read: findings, or clearance of review debt (the default); "
+        "both answers are always reported; exhaustive selects a reader and is refused here",
     )
     parser.add_argument(
         "--schema",

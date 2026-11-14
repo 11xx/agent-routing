@@ -15,8 +15,9 @@ REVIEW_PURPOSE_TEXT = {
                 "lab included, except the same model at a lower effort.",
     "clearance": "The independent read of a change, the one that may clear review debt: a seat outside the "
                  "author's lab, at or above the author's floor and the clearance floor.",
-    "exhaustive": "A whole-surface read chosen for capability, not independence: a seat among its backend's "
-                  "highest-ranked review routes, the author's own lab and model included; it never clears.",
+    "exhaustive": "A reader chosen for capability, for a whole-surface read: a seat among its backend's "
+                  "highest-ranked stable review routes, whatever its lab. The read is then assessed for what it "
+                  "is, with findings or clearance.",
 }
 
 

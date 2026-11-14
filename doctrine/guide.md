@@ -300,10 +300,10 @@ RESOLVE A ROUTE
     findings    candidate defects for someone else to adjudicate: a seat at or
                 above the author's tier, its own lab included, except the
                 same model at a lower effort
-    exhaustive  a whole-surface read chosen for capability: a seat among the
-                backend's highest-ranked stable review routes, the author's
-                own lab and model included; it never clears, and --author is
-                optional
+    exhaustive  a reader chosen for capability, for a whole-surface read: a
+                seat among the backend's highest-ranked stable review routes,
+                whatever its lab, the author's own lab and model included;
+                --author is optional
   A route's excluded families are its reviewer's family: the lineages the
   catalog's [[family]] row groups with the reviewer's own, the same relation
   assess reads for same-family. --variant names the route instead of the
@@ -325,13 +325,14 @@ RESOLVE A ROUTE
   author's tier), findings ("eligible" or "ineligible") and clears (true or
   false), with the assessment qualifiers. A findings route may say
   independence "ineligible" and clears false; only clears true discharges
-  debt. An exhaustive answer always says clears false and adds
-  purpose_qualifiers: ["not-chosen-for-independence"]. Eligibility is not a
-  verdict. ARC_MODEL is never used as the author, since the caller may not
+  debt. Exhaustive selects a reader and judges nothing: its answers are the
+  seat's own, so another lab's reader at the floors clears like any
+  independent read and the author's own lab gives findings. Eligibility is
+  not a verdict. ARC_MODEL is never used as the author, since the caller may not
   have written the diff. --author and --purpose are only valid for review.
 
   When no route serves the purpose, --accept-ineligible (which needs --author
-  and refuses exhaustive, which clears nothing) returns the strongest stable
+  and refuses exhaustive, which owes no debt) returns the strongest stable
   seat instead of refusing, ties broken by the profile's order of
   preference. Its `review` block carries the seat's answers and qualifiers,
   recommendation: "record-debt" and debt_kind: "ineligible-review". Where a
@@ -401,7 +402,7 @@ QUOTA ADMISSION BEFORE DISPATCH
 ASSESS A REVIEW
   agent-routing assess --reviewer <model>[#<effort>]
     --author <model>[#<effort>] [--author ...]
-    [--purpose findings|clearance|exhaustive] [--as-of <RFC3339> [--accepted <ref>]]
+    [--purpose findings|clearance] [--as-of <RFC3339> [--accepted <ref>]]
     [--schema 1|2] [--json]
 
   Every catalog tier has a capability rank and author floor: 1 bounded work,
@@ -421,17 +422,11 @@ ASSESS A REVIEW
   model pairs a policy [[family_exception]] row names. An effort-less reviewer
   uses its minimum rank; an effort-less author its maximum floor. --purpose
   records the question asked and leads the text; both answers are always
-  given.
-
-  An exhaustive read is chosen for capability, not independence, so
-  --purpose exhaustive never clears and adds purpose_qualifiers:
-  ["not-chosen-for-independence"], outside the closed qualifier set, in
-  both schemas. A reader of the closed set must see why the read does not
-  clear, so the answer is given only when a closed qualifier already makes
-  the read ineligible (same-model, same-family, below-floor or
-  floor-unknown). A reviewer independent of every author is refused as
-  "exhaustive-independent". --as-of reads the accepted branch's first-parent history at the
-  instant; --accepted <ref> selects that history explicitly. The default is
+  given. A read is assessed for what it is, with findings or clearance,
+  however its reader was chosen: --purpose exhaustive, which selects a
+  reader in resolve review, is refused as invalid-purpose. --as-of reads the
+  accepted branch's first-parent history at the instant; --accepted <ref>
+  selects that history explicitly. The default is
   the repository's default branch, never the checkout's HEAD. Remote
   origin/HEAD identifies the local default branch when available; a sole local
   master or main is the fallback. Ambiguous or unavailable defaults require
@@ -459,8 +454,7 @@ ASSESS A REVIEW
   rank; authors carry floor. Each coordinate includes its known identities. The
   shape is independent of --as-of. --schema 1 emits the independence answer
   without purpose, clearance, findings, clears or below-clearance; it refuses
-  --purpose findings. Without --json the answer is one line, ending with any
-  purpose qualifier.
+  --purpose findings. Without --json the answer is one line.
 
   Qualifiers are a closed set:
     same-model         the reviewer is an author's model, at any effort

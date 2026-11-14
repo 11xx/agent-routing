@@ -32,7 +32,7 @@ def main() -> int:
         help="the read's purpose, answered by the policy's review seat for it, the author's lab and the backend: "
         "clearance of review debt (the default) needs an independent seat at the author's floor and the clearance "
         "floor; findings a seat at the author's tier, its own model never below the author's effort; exhaustive, "
-        "with or without --author, a seat among the backend's highest-ranked review routes, which never clears",
+        "with or without --author, a seat among the backend's highest-ranked stable review routes, whatever its lab",
     )
     parser.add_argument(
         "--accept-ineligible",

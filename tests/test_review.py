@@ -273,63 +273,65 @@ class ReviewPurposeTest(unittest.TestCase):
         self.assertEqual((missing["kind"], missing["reason"]), ("review-purpose", "no-review-seat"))
 
     def test_an_exhaustive_seat_may_be_the_authors_own_lab_and_model(self):
-        """Claim: an exhaustive read is answered from the author's own lab and
-        even its own model, says so in its qualifiers, never clears, and
-        names why in purpose_qualifiers; without an author it is unverified.
-        Rejects an exhaustive read refused for sharing the author's lab, or
-        one reported as clearing."""
+        """Claim: exhaustive selects its seat from the author's own lab and
+        even its own model, and the review block answers that read for what
+        it is, as for any purpose: a same-lab read does not clear, an
+        independent one does; without an author it is unverified. Rejects an
+        exhaustive selection refused for sharing the author's lab, or a read
+        answered by the purpose that chose it rather than by who reads."""
         for author in ("nw-atlas-2#high", "nw-atlas-2#xhigh", "nw-swift-2#high"):
             with self.subTest(author=author):
                 review = resolve(FIXTURE, "review", "claude", author=author, purpose="exhaustive")["review"]
-                self.assertEqual((review["purpose"], review["independence"], review["clears"],
-                                  review["purpose_qualifiers"]),
-                                 ("exhaustive", "ineligible", False, ["not-chosen-for-independence"]))
+                self.assertEqual((review["purpose"], review["independence"], review["clears"]),
+                                 ("exhaustive", "ineligible", False))
                 self.assertIn("same-family", review["qualifiers"])
         own = resolve(FIXTURE, "review", "claude", author="nw-atlas-2#xhigh", purpose="exhaustive")["review"]
         self.assertEqual((own["findings"], own["qualifiers"]), ("eligible", ["same-model", "same-family"]))
         unverified = resolve(FIXTURE, "review", "claude", purpose="exhaustive")["review"]
-        self.assertEqual((unverified["author"], unverified["independence"], unverified["clears"]),
+        self.assertEqual((unverified["author"], unverified["independence"], "clears" in unverified),
                          (None, "unverified", False))
         independent = resolve(FIXTURE, "review", "claude", author="ts-3-core#max", purpose="exhaustive")["review"]
-        self.assertEqual((independent["independence"], independent["clears"]), ("eligible", False))
+        self.assertEqual((independent["independence"], independent["clears"]), ("eligible", True))
+        self.assertNotIn("purpose_qualifiers", independent)
         self.assertEqual(self.refusal(FIXTURE, "review", "claude", author="ts-3-core#max", purpose="exhaustive",
                                       accept_ineligible=True)["kind"], "invalid-purpose")
 
-    def test_assess_exhaustive_never_clears_and_names_why_in_both_schemas(self):
-        """Claim: assess --purpose exhaustive answers a same-lab reader as a
-        findings read that does not clear, in both schemas, with every
-        qualifier in the closed set and its reason in purpose_qualifiers; an
-        independent reader, which no closed qualifier marks, is refused
-        rather than reported eligible. Rejects an exhaustive read a reader of
-        the closed set would take as clearing."""
+    def test_assess_judges_a_read_with_findings_or_clearance_never_exhaustive(self):
+        """Claim: assess refuses --purpose exhaustive in both schemas, saying
+        exhaustive selects a reader, and the reader an exhaustive selection
+        dispatches is assessed like any other read, agreeing with resolve:
+        another lab's strong reader clears and the author's own lab finds.
+        Rejects an assessment that answers for the purpose that chose the
+        reader, or that disagrees with resolve about the same read."""
         for schema in (1, 2):
             with self.subTest(schema=schema):
-                answer = assess_review(FIXTURE, "nw-atlas-2#xhigh", ["nw-swift-2#high"], purpose="exhaustive",
-                                       schema=schema)
-                self.assertEqual((answer["independence"], answer["purpose_qualifiers"]),
-                                 ("ineligible", ["not-chosen-for-independence"]))
-                self.assertTrue(answer["qualifiers"])
-                self.assertLessEqual(set(answer["qualifiers"]), CLOSED_QUALIFIERS)
-                self.assertNotEqual(answer.get("clears"), True)
                 with self.assertRaises(RouteRefusal) as caught:
-                    assess_review(FIXTURE, "nw-atlas-2#xhigh", ["ts-3-core#max"], purpose="exhaustive",
+                    assess_review(FIXTURE, "nw-atlas-2#xhigh", ["nw-swift-2#high"], purpose="exhaustive",
                                   schema=schema)
-                self.assertEqual(caught.exception.kind, "exhaustive-independent")
-        second = assess_review(FIXTURE, "nw-atlas-2#xhigh", ["nw-swift-2#high"], purpose="exhaustive")
-        self.assertEqual((second["purpose"], second["findings"], second["clears"]), ("exhaustive", "eligible", False))
+                self.assertEqual(caught.exception.kind, "invalid-purpose")
+                self.assertIn("exhaustive selects a reader", caught.exception.message)
+                self.assertIn("--purpose findings or clearance", caught.exception.message)
+        for author, clears in (("ts-3-core#max", True), ("nw-swift-2#high", False)):
+            with self.subTest(author=author):
+                chosen = resolve(FIXTURE, "review", "claude", author=author, purpose="exhaustive")
+                reader = f"{chosen['model']}#{chosen['effort']}"
+                answer = assess_review(FIXTURE, reader, [author])
+                self.assertEqual((answer["clears"], answer["findings"], chosen["review"]["clears"]),
+                                 (clears, "eligible", clears))
+                self.assertNotIn("purpose_qualifiers", answer)
 
     def test_existing_purposes_answer_multi_author_diffs_as_before(self):
         """Claim: clearance and findings give the same answers for a
-        multi-author diff whichever is asked, and only the exhaustive
-        purpose withholds clearance. Rejects withholding clearance from a
-        purpose other than exhaustive."""
+        multi-author diff whichever is asked. Rejects a purpose changing an
+        answer it does not own, such as withholding clearance from a
+        findings question."""
         for purpose in ("clearance", "findings"):
             with self.subTest(purpose=purpose):
                 mixed = assess_review(FIXTURE, "ts-3-prime#xhigh", ["orbit-flash#max", "nw-atlas-2#high"],
                                       purpose=purpose)
                 self.assertEqual((mixed["floor"], mixed["independence"], mixed["findings"], mixed["clears"],
-                                  mixed["qualifiers"], mixed["debt_kind"], "purpose_qualifiers" in mixed),
-                                 (2, "eligible", "eligible", True, [], None, False))
+                                  mixed["qualifiers"], mixed["debt_kind"]),
+                                 (2, "eligible", "eligible", True, [], None))
                 own = assess_review(FIXTURE, "nw-atlas-2#xhigh", ["nw-swift-2#high", "orbit-flash#max"],
                                     purpose=purpose)
                 self.assertEqual((own["independence"], own["findings"], own["clears"], own["qualifiers"],
