@@ -113,6 +113,10 @@ class StoreError(ValueError):
 # --- canonical emission -------------------------------------------------------
 
 
+# TOML basic strings escape the quote, the backslash and every control character but tab.
+_ESCAPES = {'"': '\\"', "\\": "\\\\", "\b": "\\b", "\t": "\\t", "\n": "\\n", "\f": "\\f", "\r": "\\r"}
+
+
 def _scalar(value) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
@@ -123,7 +127,8 @@ def _scalar(value) -> str:
             raise StoreError(f"cannot write the non-finite number {value!r}")
         return repr(value)
     if isinstance(value, str):
-        return json.dumps(value, ensure_ascii=False)
+        return '"' + "".join(_ESCAPES.get(char) or (f"\\u{ord(char):04x}" if ord(char) < 0x20 or ord(char) == 0x7F
+                                                     else char) for char in value) + '"'
     if isinstance(value, list):
         return "[" + ", ".join(_scalar(item) for item in value) + "]"
     raise StoreError(f"cannot write {type(value).__name__} value {value!r} in a store")

@@ -58,6 +58,21 @@ class EmitterTest(unittest.TestCase):
         edit(root, stores.POLICY, "clearance = 2", "clearance = 3")
         self.assertNotEqual(routing_profiles.route_version(root), before)
 
+    def test_every_character_toml_escapes_round_trips(self):
+        """Claim: a string holding the quote, the backslash, any control
+        character or DEL is written as a valid TOML basic string and parses
+        back to itself. Rejects writing DEL raw, which tomllib refuses, so a
+        formatted hand edit became unreadable."""
+        characters = ['"', "\\", *map(chr, range(0x20)), "\x7f"]
+        document = stores.parse_toml((FIXTURE / stores.CATALOG).read_text(), stores.CATALOG)
+        for character in characters:
+            with self.subTest(character=hex(ord(character))):
+                document["tier"][0]["reason"] = f"before{character}after"
+                text = stores.emit_catalog(document)
+                self.assertEqual(stores.parse_toml(text, stores.CATALOG)["tier"][0]["reason"],
+                                 f"before{character}after")
+                self.assertEqual(stores.emit_catalog(stores.parse_toml(text, stores.CATALOG)), text)
+
 
 class ValidatorTest(unittest.TestCase):
     def test_the_fixture_is_valid(self):
