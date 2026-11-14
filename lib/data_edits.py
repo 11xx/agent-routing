@@ -446,10 +446,10 @@ def atomic_write(path, text):
 
 
 def history(root, limit=20):
-    raw = git(root, "log", f"-{limit}", "--format=%H%x00%s%x00%B%x00", "--", *PATHS).decode()
+    raw = git(root, "log", f"-{limit}", "--format=%H%x00%cs%x00%s%x00%B%x00", "--", *PATHS).decode()
     fields = raw.split("\0")
-    return [{"commit": fields[i].strip(), "subject": fields[i + 1], "body": fields[i + 2].strip()}
-            for i in range(0, len(fields) - 2, 3)]
+    return [{"commit": fields[i].strip(), "date": fields[i + 1], "subject": fields[i + 2], "body": fields[i + 3].strip()}
+            for i in range(0, len(fields) - 3, 4)]
 
 
 def merge_revert(current, edited, previous, name):

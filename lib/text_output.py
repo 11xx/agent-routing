@@ -161,8 +161,7 @@ def history(root, edits):
 
     lines = []
     for row in edits:
-        commit = row["commit"]
-        date = git(root, "show", "-s", "--format=%cs", commit).decode().strip()
+        commit, date = row["commit"], row["date"]
         trailer = re.search(r"^Routing-edit: (\S+)$", row["body"].rsplit("\n\n", 1)[-1], re.M)
         verb = trailer[1] if trailer else "hand"
         changed = git(root, "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", commit, "--", *PATHS).decode().splitlines()
