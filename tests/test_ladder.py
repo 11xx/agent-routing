@@ -9,12 +9,18 @@ from fixture import edit, scratch
 
 import review_ladder
 import stores
+from routing_profiles import RouteRefusal, assess_review
+
+HIGH = 'model = "nw-atlas-2"\neffort = "high"\nrank = 2'
+RAISED = 'model = "nw-atlas-2"\neffort = "high"\nrank = 3'
 
 IDENTITY = {"GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@localhost",
             "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@localhost"}
 
 
-class LadderTest(unittest.TestCase):
+class LadderCase(unittest.TestCase):
+    """A scratch repository whose first data commit is the numeric record's start."""
+
     def setUp(self):
         self.root = scratch(self)
         self.git("init", "--quiet", "--initial-branch=main")
@@ -38,6 +44,13 @@ class LadderTest(unittest.TestCase):
         self.git("commit", "--quiet", "--all", "--message", f"data at {date}", date=date)
         return self.git("rev-parse", "HEAD")
 
+    def tier(self, as_of, **options):
+        """nw-atlas-2#high's review tier as the dated assessment reads it."""
+        answer = assess_review(self.root, "nw-atlas-2#high", ["ts-3-core#max"], as_of=as_of, **options)
+        return answer["reviewer"]["review_tier"]
+
+
+class LadderTest(LadderCase):
     def test_the_current_version_is_the_first_commit_of_the_current_table(self):
         """Claim: the current version is named for the earliest accepted commit
         whose table is unchanged, its rows carry the lab, identities and tiers
@@ -68,6 +81,98 @@ class LadderTest(unittest.TestCase):
         self.assertEqual([version["gap"] for version in versions], [True, False, False])
         self.assertEqual([version.get("id") for version in versions[1:]], [f"v-{self.first}", f"v-{second}"])
         self.assertEqual(versions[2]["effective_from"], "2030-01-05T00:00:00Z")
+
+
+class DatedAssessmentTest(LadderCase):
+    def test_a_dated_assessment_reads_the_table_in_force_then(self):
+        """Claim: --as-of judges with the capability table of the last
+        accepted commit at that instant, not today's. Rejects a past review
+        re-judged by a later rank change."""
+        edit(self.root, stores.CATALOG, HIGH, RAISED)
+        self.commit("2030-01-05T00:00:00Z")
+        self.assertEqual((self.tier("2030-01-04T00:00:00Z"), self.tier("2030-01-06T00:00:00Z")), (2, 3))
+
+    def test_malformed_and_pre_record_instants_are_refused(self):
+        """Claim: an instant that is not RFC 3339, and one before the numeric
+        record, are refused as historical-ladder without an answer, and
+        --accepted needs --as-of. Rejects a dated answer read from the wrong
+        table or none."""
+        for instant, message in (("2030-13-01T00:00:00Z", "expected an RFC 3339 instant"),
+                                 ("2030-01-04", "expected an RFC 3339 instant"),
+                                 ("2029-12-31T00:00:00Z", "ladder-gap")):
+            with self.subTest(instant=instant):
+                with self.assertRaises(RouteRefusal) as caught:
+                    self.tier(instant)
+                self.assertEqual(caught.exception.kind, "historical-ladder")
+                self.assertIn(message, str(caught.exception))
+        with self.assertRaises(RouteRefusal) as caught:
+            assess_review(self.root, "nw-atlas-2#high", ["ts-3-core#max"], accepted="main")
+        self.assertEqual(caught.exception.kind, "invalid-accepted")
+
+    def test_the_accepted_ref_selects_the_history_for_export_and_assessment(self):
+        """Claim: a table committed only on a branch is absent from the
+        default accepted history and present when that branch is named, for
+        both the export and the dated assessment. Rejects reading a branch or
+        the working tree as accepted."""
+        self.git("checkout", "--quiet", "-b", "feature")
+        edit(self.root, stores.CATALOG, HIGH, RAISED)
+        branch = self.commit("2030-01-05T00:00:00Z")
+        self.git("checkout", "--quiet", "main")
+        edit(self.root, stores.CATALOG, HIGH, 'model = "nw-atlas-2"\neffort = "high"\nrank = 1')
+        later = "2030-01-06T00:00:00Z"
+        self.assertEqual((self.tier(later), self.tier(later, accepted="feature")), (2, 3))
+        self.assertEqual(review_ladder.export(self.root)["version"][0]["id"], f"v-{self.first}")
+        self.assertEqual(review_ladder.export(self.root, accepted="feature")["version"][0]["id"], f"v-{branch}")
+
+    def test_a_merge_dates_the_table_at_acceptance_and_hides_branch_tables(self):
+        """Claim: a table that reaches the accepted branch through a merge
+        takes effect at the merge, and the branch's intermediate tables never
+        appear in the accepted history. Rejects backdating a table to the
+        branch commit that wrote it."""
+        self.git("checkout", "--quiet", "-b", "feature")
+        edit(self.root, stores.CATALOG, HIGH, 'model = "nw-atlas-2"\neffort = "high"\nrank = 1')
+        self.commit("2030-01-04T00:00:00Z")
+        edit(self.root, stores.CATALOG, 'model = "nw-atlas-2"\neffort = "high"\nrank = 1', RAISED)
+        self.commit("2030-01-05T00:00:00Z")
+        self.git("checkout", "--quiet", "main")
+        self.git("merge", "--quiet", "--no-ff", "--message", "accept", "feature", date="2030-01-08T00:00:00Z")
+        merge = self.git("rev-parse", "HEAD")
+        versions = review_ladder.export(self.root, history=True)["version"]
+        self.assertEqual([(version["id"], version["effective_from"]) for version in versions[1:]],
+                         [(f"v-{self.first}", "2030-01-03T00:00:00Z"), (f"v-{merge}", "2030-01-08T00:00:00Z")])
+        self.assertEqual((self.tier("2030-01-06T00:00:00Z"), self.tier("2030-01-09T00:00:00Z")), (2, 3))
+
+    def test_the_witness_reads_the_era_file_as_committed_then(self):
+        """Claim: a dated assessment's witness hashes the era file as the
+        accepted revision held it, absent included, never the working tree
+        or a later commit. Rejects a witness that moves when a later edit
+        touches history it does not describe."""
+        before = assess_review(self.root, "nw-atlas-2#high", ["ts-3-core#max"],
+                               as_of="2030-01-04T00:00:00Z")["route_version"]
+        evidence = self.root / review_ladder.EVIDENCE
+        evidence.parent.mkdir(parents=True)
+        evidence.write_text("the ladder's design record\n")
+        self.assertEqual(assess_review(self.root, "nw-atlas-2#high", ["ts-3-core#max"],
+                                       as_of="2030-01-04T00:00:00Z")["route_version"], before)
+        self.git("add", review_ladder.EVIDENCE)
+        self.commit("2030-01-05T00:00:00Z")
+        self.assertEqual(assess_review(self.root, "nw-atlas-2#high", ["ts-3-core#max"],
+                                       as_of="2030-01-04T00:00:00Z")["route_version"], before)
+        self.assertNotEqual(assess_review(self.root, "nw-atlas-2#high", ["ts-3-core#max"],
+                                          as_of="2030-01-06T00:00:00Z")["route_version"], before)
+
+    def test_a_shallow_clone_exports_its_current_table_but_not_history(self):
+        """Claim: a shallow clone still exports the current version from the
+        commits it holds, and refuses --history it cannot read. Rejects a
+        history exported from a truncated record as if complete."""
+        clone = scratch(self)
+        subprocess.run(["git", "clone", "--quiet", "--depth", "1", "--branch", "main", f"file://{self.root}",
+                        str(clone / "repo")], check=True, capture_output=True)
+        head = self.git("rev-parse", "HEAD")
+        version = review_ladder.export(clone / "repo")["version"][0]
+        self.assertEqual(version["id"], f"v-{head}")
+        with self.assertRaises(ValueError):
+            review_ladder.export(clone / "repo", history=True)
 
 
 if __name__ == "__main__":
