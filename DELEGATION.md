@@ -30,7 +30,8 @@ observation, control and recovery commands.
 Give each child a self-contained task, exact targets, scope ceiling, permitted
 writes, completion condition and required verification. Check the paths, symbols
 and premises against source before dispatch. Missing targets or prerequisites
-require a report rather than an invented substitute.
+require a report rather than an invented substitute. A continuation brief lists
+its predecessor's progress notes as claims to verify, not as work done.
 
 Use fresh context for bounded work. A conversation fork is appropriate when the
 task requires the parent's history; choose it deliberately and verify its model

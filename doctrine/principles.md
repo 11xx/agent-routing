@@ -21,12 +21,13 @@ ranks that apply them follow, rendered from the stores.
 - Escalating above the caller's own seat, or into a scarcer pool, is offered to the user, naming the route, what it buys and the pool it spends. A standing user authorization replaces the ask for the work it covers.
 - Routing upward within what the caller's seat costs is ordinary, and so is escalating to the caller's own tier; prefer an equivalent tier from another lab.
 - A declined offer leaves the work at the caller's tier, except under a floor, where it waits.
+- Consult another model automatically only after local analysis exposes one concrete, high-impact uncertainty; architecture, migration or risk alone is not a trigger. One consultation is the default, and a panel needs an Arc discussion with explicit positions or an explicit user request.
 - The head model's own effort is not an escalation path: a slice its working tier cannot land is decomposed, given better context, or given a sideways second opinion.
 - Founding slices of a clean repository set the conventions later models copy, so they go to the head model at its routing ceiling; the conventions then land in AGENTS.md and the format and lint gates.
 
 ## Delegating
 
-- Delegation runs a resolved route with a curated brief, never a harness's native subagent defaults, which inherit the parent's model, effort and conversation.
+- Delegation runs a resolved route with a curated brief. Whatever the mechanism, establish the model, effort and context the child runs with rather than accepting the mechanism's defaults.
 - Delegation effort is priced by residual risk after the gate, not by how ambiguous the handoff feels. Migrations, schema and breaking changes, destructive operations and security keep the judgment-bearing tier however well specified.
 - Task distance is a routing axis: a misreading compounds with arc length, so cheap tiers are safe over short distances and specification effort belongs where the arc is long.
 - Wall-clock is a routing axis: a slow tier holds its harness slot, so work that gates others is budgeted by its tail, not its median.
