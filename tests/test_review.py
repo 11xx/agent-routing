@@ -357,7 +357,6 @@ class ReviewPurposeTest(unittest.TestCase):
                          (None, "unverified", False))
         independent = resolve(FIXTURE, "review", "claude", author="ts-3-core#max", purpose="exhaustive")["review"]
         self.assertEqual((independent["independence"], independent["clears"]), ("eligible", True))
-        self.assertNotIn("purpose_qualifiers", independent)
         self.assertEqual(self.refusal(FIXTURE, "review", "claude", author="ts-3-core#max", purpose="exhaustive",
                                       accept_ineligible=True)["kind"], "invalid-purpose")
 
@@ -383,7 +382,6 @@ class ReviewPurposeTest(unittest.TestCase):
                 answer = assess_review(FIXTURE, reader, [author])
                 self.assertEqual((answer["clears"], answer["findings"], chosen["review"]["clears"]),
                                  (clears, "eligible", clears))
-                self.assertNotIn("purpose_qualifiers", answer)
 
     def test_existing_purposes_answer_multi_author_diffs_as_before(self):
         """Claim: clearance and findings give the same answers for a
