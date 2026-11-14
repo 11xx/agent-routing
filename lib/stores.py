@@ -710,7 +710,8 @@ def policy_problems(policy: dict, catalog: dict) -> list[str]:
 
 def _sentence_problems(where: str, row: dict, keys=("when", "why")) -> list[str]:
     return [f"{where}: {key} is one sentence of at most 240 characters" for key in keys
-            if isinstance(row.get(key), str) and (len(row[key]) > 240 or ". " in row[key])]
+            if isinstance(row.get(key), str) and (len(row[key]) > 240 or "\n" in row[key] or "\r" in row[key]
+                                                  or re.search(r"[.!?]\s+\S", row[key]))]
 
 
 def _keys(document: dict, table: str, *keys: str) -> set:

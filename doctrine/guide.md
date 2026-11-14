@@ -67,6 +67,115 @@ THE STORES
   catalog and then the policy, the path, a NUL byte, the file's bytes and a
   NUL byte. Notes do not move it.
 
+EDIT POLICY OR CATALOG
+  All edit commands take --dry-run and --json. Catalog and policy edits
+  require --why TEXT (one or two sentences); a seat's or guard's stored why
+  is one sentence, at most 240 characters. Repeat --because NOTE_ID to cite
+  motivating notes in the commit body; guards also retain them in because.
+
+  set-seat PROFILE --backend BACKEND [--backend BACKEND...] [--variant NAME]
+    --model MODEL --effort EFFORT [--provider PROVIDER]
+    [--stability stable|probationary|experimental] --when SENTENCE --why TEXT
+      Create or update the seat identified by profile and optional variant.
+      Backends replace the row's backend list. Provider can be omitted only
+      when every backend has exactly one common reach provider. An existing
+      stability is retained unless supplied; new seats default to stable.
+  remove-seat PROFILE [--variant NAME] --why TEXT
+      Remove that seat. A default backend must retain a resolvable default.
+  default-seat PROFILE --variant NAME [--backend BACKEND...] --why TEXT
+      Make that variant the unnamed request's default on all its backends.
+      Multi-backend rows default together. An overlapping primary is retained
+      as primary-BACKEND (backends joined with hyphens when there are several),
+      leaving its other backends on the primary. A partly overlapping variant
+      default needs a hand split first; the command names it and refuses.
+  prohibit MODEL EFFORT --reason SENTENCE --why TEXT
+  allow MODEL EFFORT --why TEXT
+      Set or lift the tier's prohibition. A seated prohibition is refused;
+      choose another seat before prohibiting the tier.
+  rank MODEL EFFORT --rank N --floor N --why TEXT
+      Set capability rank and author floor. This moves Arc assurance at once;
+      clearance changes when Arc next imports the ladder.
+  set-fallback PROFILE --from-provider PROVIDER --backend BACKEND
+    [--variant NAME] --why TEXT
+  remove-fallback PROFILE --from-provider PROVIDER --backend BACKEND --why TEXT
+      Upsert or remove the fallback keyed by profile, exhausted provider and
+      destination backend. The destination must be a stable seat.
+  set-guard MODEL [--effort EFFORT] [--profile PROFILE] --rule SENTENCE --why TEXT
+  retire-guard MODEL [--effort EFFORT] [--profile PROFILE] --why TEXT
+      Upsert or retire one guard at this exact scope. Multiple guards at the
+      same scope are ambiguous; edit them by hand. Neither rule nor because
+      influences any deciding verb.
+  add-model MODEL --family FAMILY --reach JSON [--reach JSON...]
+    --tier JSON [--tier JSON...] --why TEXT
+      Add a minimal catalog model. Each reach object has backend, provider,
+      backend_model and optional agent_alias; each tier object has effort,
+      rank, floor and optional stability. The model key is supplied by the
+      command. Large roster changes, including pool membership, use hand edits.
+  supersede-model MODEL --successor MODEL --why TEXT
+      Mark an unseated model superseded; its notes remain reference evidence.
+
+  Each edit builds candidate text in memory and validates the whole data set,
+  including route, pool, price and rank relations, notes and guards. A refusal
+  names the store and row and leaves the files untouched. Writers hold a
+  checkout lock; readers take its shared lock so catalog and policy are read
+  together. Files are flushed to a temporary sibling and renamed. A failed
+  Git commit restores the earlier working bytes. Signing follows Git config.
+  The commit contains only changed data paths, the reason, motivating note
+  ids and Routing-edit: VERB. When arc env establishes an acting harness and
+  model, Implemented-by records them. Nothing is pushed.
+
+  agent-routing commit --why TEXT [--because NOTE_ID...] [--dry-run] [--json]
+    Validate and canonicalize hand edits, then commit only data paths. Other
+    edits refuse dirty data paths, staged or unstaged, with instructions to
+    commit them or discard them. Unrelated staged work stays staged.
+  agent-routing log [--limit N] [--json]
+    Show the stores' Git history, including hand commits, newest first.
+  agent-routing undo --why TEXT [--dry-run] [--json]
+    Revert the latest Routing-edit commit as a new verb commit. Disjoint later
+    edits are retained; overlapping edits refuse. Catalog and policy regain
+    the previous bytes. Notes regain their previous presentation through
+    appended undo events, preserving every earlier byte. Undoing an undo
+    restores the effect of the original edit.
+
+  Every edit prints each row before and after, old and new route_version,
+  commit id, and affected generated consumers with refresh commands. Notes
+  leave route_version unchanged. --json emits one agent-routing-edit/1 object
+  with verb, dry_run, changes, old_route_version, new_route_version,
+  stale_consumers and commit (null for dry runs); changes name store, table,
+  before and after. Errors use agent-routing-edit-error/1 with verb and error.
+  Generation is reported from seat and reach inputs, not by reading deployed
+  consumers. Emit stages agents/ and consumers-pins.toml under its output
+  directory; consumer deployment owns installation and enrollment of pins.
+
+FILE AND READ FIELD EVIDENCE
+  agent-routing note --model MODEL [--effort EFFORT]
+    --kind strength|weakness|observation|measurement --area AREA [--area AREA...]
+    --claim SENTENCE --cause brief|executor|integration|unknown --evidence REF
+    [--metrics JSON] [--date YYYY-MM-DD] [--dry-run] [--json]
+      Append one canonical note with the next id. Metrics are a nonempty
+      object of finite numbers and strings. The date defaults to today.
+  agent-routing again NOTE_ID --evidence REF [--date YYYY-MM-DD]
+      Append one recurrence. No reason is required.
+  agent-routing retract NOTE_ID --reason TEXT [--date YYYY-MM-DD]
+      Append a retraction for a mistaken live note.
+  agent-routing supersede NOTE_ID --claim SENTENCE --evidence REF --reason TEXT
+    [--model MODEL] [--effort EFFORT] [--kind KIND] [--area AREA...]
+    [--cause CAUSE] [--metrics JSON] [--date YYYY-MM-DD]
+      Append a corrected note, inheriting unspecified fields, then a
+      supersession referencing it. The earlier note becomes inactive.
+  Recurrence and disposition commands also take --dry-run and --json.
+  No note command needs --why. Earlier lines are never rewritten.
+
+  agent-routing notes [MODEL] [--kind KIND] [--area AREA]
+    [--liveness live|inactive|all] [--json]
+      Filter notes, live by default, ordered by occurrence count, latest
+      occurrence date, then id. Dates and evidence accompany each occurrence.
+  agent-routing card MODEL [--json]
+      Print seats, prohibited tiers and scoped guards, then live evidence in
+      recurrence and recency order. A predecessor naming this model as its
+      catalog successor contributes evidence under "Inherited and unverified
+      for this model". The model's direct notes stay separate.
+
 RESOLVE A ROUTE
   agent-routing resolve <profile> --backend <backend> --json
 

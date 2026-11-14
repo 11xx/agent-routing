@@ -102,8 +102,13 @@ def pool_problems(root: pathlib.Path) -> list[str]:
     block resolving an unrelated one, and it is the only class of problem a
     caller may deliberately override.
     """
-    profiles = data(root).profiles
-    by_pool = pools(root)
+    return loaded_pool_problems(data(root))
+
+
+def loaded_pool_problems(loaded: stores.Data) -> list[str]:
+    """Pool checks on an in-memory candidate, without reading working files."""
+    profiles = loaded.profiles
+    by_pool = {pool["provider"]: pool for pool in loaded.pools}
     problems: list[str] = []
     for profile in profiles:
         for route in [profile, *profile.get("variant", [])]:
@@ -518,7 +523,12 @@ def _structural_problems(root: pathlib.Path, loaded: stores.Data) -> list[str]:
         variants = profile.get("variant", [])
         variant_ids: set[str] = set()
         backend_defaults: dict[str, str] = {}
-        for route in [profile, *variants]:
+        declared_routes = ([profile] if profile.get("backends") else []) + variants
+        if not declared_routes:
+            problems.append(f"{stores.POLICY} [[profile]] id={profile_id}: no seats declared")
+        elif not profile.get("backends") and not any(route.get("default_for_backend") for route in variants):
+            problems.append(f"{stores.POLICY} [[profile]] id={profile_id}: no resolvable default seat")
+        for route in declared_routes:
             variant_id = route.get("id", "<missing>")
             label = profile_id if route is profile else f"{profile_id}:{variant_id}"
             allowed = PROFILE_KEYS if route is profile else VARIANT_KEYS
@@ -620,7 +630,8 @@ def _structural_problems(root: pathlib.Path, loaded: stores.Data) -> list[str]:
     from review_ladder import project_data, table_problems
 
     problems.extend(table_problems(project_data(loaded)))
-    problems.extend(family_exception_problems(models, profiles, family_relation(root),
+    relation = {value: row["values"] for row in loaded.families for value in row["values"]}
+    problems.extend(family_exception_problems(models, profiles, relation,
                                               loaded.policy.get("family_exception", [])))
     if loaded.policy["review"]["clearance"] < 1:
         problems.append(f"{stores.POLICY} [review]: clearance must be a positive integer capability rank")
@@ -636,9 +647,9 @@ def _structural_problems(root: pathlib.Path, loaded: stores.Data) -> list[str]:
             if (not isinstance(rule.get("from_provider"), str)
                     or rule["from_provider"] not in {pool.get("provider") for pool in delegation.get("pool", [])}):
                 problems.append(f"{profile['id']}: unknown fallback source pool")
-            target = next((route for route in [profile, *profile.get("variant", [])]
-                           if rule.get("variant") == (None if route is profile else route["id"])
-                           and rule.get("backend") in route.get("backends", [])), None)
+            target = (_baseline_route(profile, rule.get("backend")) if rule.get("variant") is None else
+                      next((route for route in profile.get("variant", []) if route["id"] == rule["variant"]
+                            and rule.get("backend") in route.get("backends", [])), None))
             if target is None or target.get("stability") != "stable":
                 problems.append(f"{profile['id']}: fallback must name a stable route on its backend")
     return problems

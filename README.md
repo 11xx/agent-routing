@@ -80,14 +80,44 @@ unambiguous.
 
 ## Changing the data
 
-1. Edit `data/catalog.toml` or `data/policy.toml`, or append a line to
-   `data/notes.jsonl`. A measurement goes in a note's `metrics`, never in the
-   catalog; leave a value out rather than guess it.
-2. Run `agent-routing format` to restore canonical form, then
-   `agent-routing lint`, which names every offending row.
-3. Harness instruction files name verbs, not models, so a data edit needs no
-   rebuild there. Pi's settings name the `interactive` route, so changing that
-   profile needs `agent-harness build`.
+Use an edit verb for a single policy or catalog change. Every edit validates
+all three stores before writing, locks the checkout, publishes canonical
+files by rename, and makes one signed-as-configured Git commit containing
+only data paths. `--why` records the reason; repeat `--because NOTE_ID` to
+cite field evidence. `--dry-run` validates and previews without writing, and
+`--json` emits one result object for callers.
+
+```sh
+agent-routing set-seat implement --backend cli --model MODEL --effort high \
+  --when "Bounded work needs this tier." --why "It catches the observed failures."
+agent-routing again n0001 --evidence REFERENCE
+agent-routing card MODEL
+agent-routing undo --why "Restore the previously verified policy."
+```
+
+`set-seat`, `remove-seat` and `default-seat` edit seats; `prohibit`, `allow`
+and `rank` edit tiers; `set-fallback` and `remove-fallback` edit recovery
+routes; `set-guard` and `retire-guard` edit standing instructions;
+`add-model` and `supersede-model` cover small catalog changes. The guide
+lists their arguments. Notes use `note`, `again`, `retract` and `supersede`;
+`notes` filters the live evidence and `card` shows a model's policy and
+recurrence-ordered evidence, marking predecessor evidence inherited and
+unverified.
+
+For a large roster edit, change the files by hand and run
+`agent-routing commit --why "REASON"`. It validates and canonicalizes before
+committing; a regular edit refuses pre-existing staged or unstaged data
+changes. Earlier note bytes cannot be rewritten, even by the commit verb.
+`log` shows the data history. `undo` reverses the latest verb edit in a new
+commit, preserving disjoint later edits and refusing conflicts. Policy undo
+restores the previous bytes; note undo appends a compensating event.
+
+An edit reports the rows before and after, the old and new route versions,
+and affected generated consumers with refresh commands. Claude definitions
+refresh with `agent-routing emit claude-agents`; interactive harness settings
+refresh with `agent-harness build`. Generated output and its pin table must
+be installed by the consumer's deployment workflow; the edit performs no
+deployment and pushes nothing.
 
 Rolling provider ids keep a checkpoint-specific `build` on the catalog row;
 field notes name the build, provider, harness and effort they observed.

@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""Edit a routing store, file evidence, inspect cards, or read the edit log."""
+
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from edit_cli import main
+
+if __name__ == "__main__":
+    raise SystemExit(main(ROOT))

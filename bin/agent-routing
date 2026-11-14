@@ -32,6 +32,16 @@ Run `agent-routing` with no verb for the routing guide.
                       list resolvable picker routes and prohibited tiers
   prices [--format tapes] [--output <file>]
                       print API list prices, or write a tapes-price-table/2 file
+  set-seat / remove-seat / default-seat    edit a profile seat or its default
+  prohibit / allow / rank                   edit a tier ban or capability
+  set-fallback / remove-fallback            edit an exhaustion fallback
+  set-guard / retire-guard                  edit a standing instruction
+  add-model / supersede-model               edit catalog membership
+  note / again / retract / supersede        append field evidence or its disposition
+  notes / card / log                        inspect evidence and edit history
+  commit / undo                            commit hand edits or reverse a verb edit
+    Edit verbs take --dry-run and --json; catalog and policy edits require --why.
+    Run an edit verb with --help for its arguments.
   check <model> [eff] exit non-zero if that model/effort is prohibited
   resolve <profile> --backend <backend> [--variant <name>] [--author <model>[#effort]]
           [--purpose findings|clearance] [--allow-experimental] [--accept-ineligible]
@@ -84,6 +94,8 @@ case "${1:-}" in
   assess)     shift; exec "$root/bin/assess-review" "$@" ;;
   ladder)     shift; exec "$root/bin/review-ladder" "$@" ;;
   frontier)   shift; exec "$root/bin/frontier-review" "$@" ;;
+  set-seat|remove-seat|default-seat|prohibit|allow|rank|set-fallback|remove-fallback|set-guard|retire-guard|add-model|supersede-model|note|again|retract|supersede|notes|card|commit|log|undo)
+              exec "$root/bin/edit-data" "$@" ;;
   emit)       shift; exec "$root/bin/emit-claude-agents" "$@" ;;
   *)          usage >&2; exit 2 ;;
 esac
