@@ -254,7 +254,8 @@ EDIT FROM A PAGE
   stores, which the page polls to notice an edit made elsewhere.
   /api/choices?profile=P[&variant=V]&backend=B... lists every tier the
   backends reach through one provider, withholding each that resolve
-  refuses with its reasons. For the seat profile and variant name, a stable
+  refuses, or that validation refuses for the seat's stability, with its
+  reasons. For the seat profile and variant name, a stable
   one, each choice carries pool_rank: its current rank on its pool, or the
   rank set-seat would suggest and why; "pools" holds each pool's order.
   With for=review_seat&backend=B it lists the review profile's stable

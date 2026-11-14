@@ -80,7 +80,8 @@ def seat_choices(root: pathlib.Path, profile: str, backends: list[str], variant:
     """Every tier the backends reach through one provider, and the pools' orders those tiers would join.
 
     A choice is withheld with the resolver's own refusals for the model, its
-    pool, the tier and the backends' effort support. A stable seat on a tier
+    pool, the tier and the backends' effort support, and with validation's
+    refusal of a tier whose status the seat's stability cannot carry. A stable seat on a tier
     its pool has not ranked carries the place the edit would give it, which
     `set-seat --pool-rank` writes in the same commit. Validation of the whole
     candidate on preview stays the authority.
@@ -95,7 +96,8 @@ def seat_choices(root: pathlib.Path, profile: str, backends: list[str], variant:
     reach = loaded.catalog.get("reach", [])
     previous = next((row for row in loaded.policy.get("seat", [])
                      if row["profile"] == profile and row.get("variant") == variant), None)
-    ranked_seat = previous is None or previous.get("stability") == "stable"
+    stability = previous.get("stability", "stable") if previous else "stable"
+    ranked_seat = stability == "stable"
     choices = []
     for row in reach:
         if row["backend"] != backends[0] or row["model"] not in by_model:
@@ -110,8 +112,15 @@ def seat_choices(root: pathlib.Path, profile: str, backends: list[str], variant:
             reasons = [error.message for error in (refusal, pool) if error is not None]
             if tier.get("prohibited"):
                 reasons.append(f"prohibited: {tier['reason']}")
-            if tier.get("status"):
-                reasons.append(f"{tier['status']} tier")
+            status = tier.get("status")
+            if status == "explicit-only":
+                reasons.append("requires an explicit model request and cannot back a profile")
+            elif status == "probationary" and stability not in {"probationary", "experimental"}:
+                reasons.append(f"a probationary tier cannot hold a {stability} seat")
+            elif status == "experimental" and stability != "experimental":
+                reasons.append(f"an experimental tier cannot hold a {stability} seat")
+            if model.get("status") == "experimental" and stability != "experimental":
+                reasons.append(f"an experimental model cannot hold a {stability} seat")
             reasons += [error.message for backend in backends
                         if (error := routes.backend_effort_refusal(backend_rows[backend], profile, model["id"],
                                                                    tier["effort"])) is not None]

@@ -242,8 +242,9 @@ class PageTest(GitStoreTest):
         """Claim: the seat choices for a profile and backends list every
         tier those backends reach; an unranked tier is offered with the
         place its pool rank would take and the pool's current order, and
-        only tiers resolve refuses (prohibited, unstable, fenced, beyond
-        the backend's efforts) are withheld, with the resolver's reason.
+        only tiers resolve or validation refuses for that seat
+        (prohibited, fenced, beyond the backend's efforts, or a tier status
+        the seat's stability cannot carry) are withheld, with the reason.
         Every offered choice previews as a valid seat at its suggested
         rank and every withheld one is refused. Rejects a picker that hides
         unranked tiers or offers what validation then refuses."""
@@ -259,7 +260,10 @@ class PageTest(GitStoreTest):
         pi = {(row["model"], row["effort"]): row
               for row in self.read("/api/choices?profile=implement&variant=flat&backend=pi")["choices"]}
         self.assertIn("unsupported effort 'xhigh'", pi["ts-3-prime", "xhigh"]["reasons"][0])
-        self.assertIn("experimental tier", pi["orbit-trial", "high"]["reasons"])
+        self.assertIn("an experimental tier cannot hold a stable seat", pi["orbit-trial", "high"]["reasons"])
+        trial = {(row["model"], row["effort"]): row
+                 for row in self.read("/api/choices?profile=implement&variant=trial&backend=pi")["choices"]}
+        self.assertEqual((trial["orbit-trial", "high"]["offered"], trial["orbit-trial", "high"]["pool_rank"]), (True, None))
         self.assertEqual(pi["ts-3-prime", "low"]["pool_rank"]["basis"], "starts at the bottom of the pool, outranking nothing")
         review = {(row["model"], row["effort"]): row
                   for row in self.read("/api/choices?profile=review&backend=pi")["choices"]}
