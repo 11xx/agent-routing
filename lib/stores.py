@@ -78,7 +78,7 @@ POLICY_TABLES = {
                          ("since", "date", True)),
     "fence": (("model", "str", True), ("profile", "str", True), ("why", "str", True), ("since", "date", True)),
     "profile": (("id", "str", True), ("purpose", "str", True), ("escalation_sources", "strs", False)),
-    "seat": (("profile", "str", True), ("variant", "str", False), ("backend", "str", True), ("provider", "str", True),
+    "seat": (("profile", "str", True), ("variant", "str", False), ("backends", "strs", True), ("provider", "str", True),
              ("model", "str", True), ("effort", "str", True), ("stability", "str", True), ("default", "bool", False),
              ("role_exception", "str", False), ("when", "str", True), ("why", "str", True), ("since", "date", True)),
     "fallback": (("profile", "str", True), ("from_provider", "str", True), ("backend", "str", True),
@@ -281,7 +281,6 @@ class Data:
             self.pools = [dict(row) for row in policy.get("pool", [])]
             self.families = project_families(catalog)
 
-
     @classmethod
     def from_texts(cls, texts: dict[str, str]) -> "Data":
         return cls(parse_toml(texts[CATALOG], CATALOG), parse_toml(texts[POLICY], POLICY), route_version(texts))
@@ -359,32 +358,25 @@ def reach_name(catalog: dict, model: str, backend: str, provider: str) -> str | 
 
 
 def project_profiles(catalog: dict, policy: dict) -> list[dict]:
-    """Each profile with its primary route and named variants, one route per seat group.
-
-    The seats of one route, its rows for each backend, share every field but
-    the backend and its reasons; `problems` refuses a route whose rows differ.
-    """
+    """Each profile with its primary route and named variants, one route per seat."""
     profiles = []
     for row in policy.get("profile", []):
         profile = {key: row[key] for key in ("id", "purpose", "escalation_sources") if key in row}
         routes: dict[str | None, dict] = {}
         for seat in _rows(policy, "seat", profile=row.get("id")):
             variant = seat.get("variant")
-            route = routes.get(variant)
-            if route is None:
-                route = {"provider": seat.get("provider"), "model": seat.get("model"), "effort": seat.get("effort"),
-                         "stability": seat.get("stability"), "backends": []}
-                if variant is not None:
-                    route["id"] = variant
-                    if "default" in seat:
-                        route["default_for_backend"] = seat["default"]
-                if "role_exception" in seat:
-                    route["role_exception"] = seat["role_exception"]
-                name = reach_name(catalog, seat.get("model"), seat.get("backend"), seat.get("provider"))
-                if name is not None and name != seat.get("model"):
-                    route["backend_model"] = name
-                routes[variant] = route
-            route["backends"].append(seat.get("backend"))
+            route = {"provider": seat.get("provider"), "model": seat.get("model"), "effort": seat.get("effort"),
+                     "stability": seat.get("stability"), "backends": list(seat.get("backends", []))}
+            if variant is not None:
+                route["id"] = variant
+                if "default" in seat:
+                    route["default_for_backend"] = seat["default"]
+            if "role_exception" in seat:
+                route["role_exception"] = seat["role_exception"]
+            name = reach_name(catalog, seat.get("model"), route["backends"][0], seat.get("provider"))
+            if name is not None and name != seat.get("model"):
+                route["backend_model"] = name
+            routes[variant] = route
         primary = routes.pop(None, {"backends": []})
         profile.update({key: value for key, value in primary.items()})
         profile["variant"] = list(routes.values())
@@ -457,7 +449,7 @@ def label(table: str, row: dict) -> str:
             "price": ("model", "from"), "surcharge": ("model",), "price_window": ("model", "from"),
             "credit": ("model",), "reach": ("model", "backend", "provider"), "effort_support": ("model", "backend"),
             "pool": ("provider",), "family_exception": ("reviewer",), "fence": ("model", "profile"),
-            "profile": ("id",), "seat": ("profile", "variant", "backend"), "fallback": ("profile", "backend"),
+            "profile": ("id",), "seat": ("profile", "variant"), "fallback": ("profile", "backend"),
             "seat_rank": ("model", "effort", "pool"), "repository": ("id",), "accessor": ("id",),
             "consumer": ("id",), "proxy": ("consumer", "path"), "pin": ("consumer", "path")}.get(table, ())
     parts = [f"{key}={row[key]}" if isinstance(row[key], str) else f"{key}={row[key]!r}"
@@ -623,35 +615,32 @@ def policy_problems(policy: dict, catalog: dict) -> list[str]:
     for row in policy.get("profile", []):
         unique("profile", row, ("profile", row.get("id")))
     for row in policy.get("seat", []):
-        unique("seat", row, ("seat", row.get("profile"), row.get("variant"), row.get("backend")))
+        unique("seat", row, ("seat", row.get("profile"), row.get("variant")))
         where = f"{store} {label('seat', row)}"
         if row.get("profile") not in profiles:
             problems.append(f"{where}: profile is not a policy profile")
         if row.get("model") not in models:
             problems.append(f"{where}: model {row.get('model')!r} is not a catalog model")
-        if row.get("backend") not in backends:
-            problems.append(f"{where}: backend {row.get('backend')!r} is not a catalog backend")
+        if not row.get("backends"):
+            problems.append(f"{where}: backends names at least one backend")
         if row.get("stability") not in SEAT_STABILITIES:
             problems.append(f"{where}: stability must be one of {', '.join(SEAT_STABILITIES)}")
         if "default" in row and "variant" not in row:
             problems.append(f"{where}: default names a variant that answers an unnamed request")
-        if row.get("model") in models and reach_name(catalog, row.get("model"), row.get("backend"),
-                                                     row.get("provider")) is None:
-            problems.append(f"{where}: no [[reach]] row says how backend {row.get('backend')!r} reaches "
-                            f"{row.get('model')!r} through {row.get('provider')!r}")
-        for key in ("when", "why"):
-            text = row.get(key)
-            if isinstance(text, str) and (len(text) > 240 or text.count(". ") > 0):
-                problems.append(f"{where}: {key} is one sentence of at most 240 characters")
-    groups: dict[tuple, dict] = {}
-    for row in policy.get("seat", []):
-        key = (row.get("profile"), row.get("variant"))
-        first = groups.setdefault(key, row)
-        fields = ("provider", "model", "effort", "stability", "default", "role_exception")
-        differing = [field for field in fields if row.get(field) != first.get(field)]
-        if differing:
-            problems.append(f"{store} {label('seat', row)}: {differing[0]} differs from the same route's "
-                            f"{first.get('backend')} seat; one route's seats agree on all but backend and reasons")
+        names = set()
+        for backend in row.get("backends", []):
+            if backend not in backends:
+                problems.append(f"{where}: backend {backend!r} is not a catalog backend")
+                continue
+            name = reach_name(catalog, row.get("model"), backend, row.get("provider"))
+            if row.get("model") in models and name is None:
+                problems.append(f"{where}: no [[reach]] row says how backend {backend!r} reaches "
+                                f"{row.get('model')!r} through {row.get('provider')!r}")
+            names.add(name)
+        if len(names) > 1:
+            problems.append(f"{where}: its backends reach {row.get('model')!r} under different backend models; "
+                            "split it into one seat per backend model")
+        problems += _sentence_problems(where, row)
     for row in policy.get("fallback", []):
         if row.get("profile") not in profiles:
             problems.append(f"{store} {label('fallback', row)}: profile is not a policy profile")
@@ -672,6 +661,11 @@ def policy_problems(policy: dict, catalog: dict) -> list[str]:
         if row.get("profile") not in profiles:
             problems.append(f"{store} {label('pin', row)}: profile is not a policy profile")
     return problems
+
+
+def _sentence_problems(where: str, row: dict, keys=("when", "why")) -> list[str]:
+    return [f"{where}: {key} is one sentence of at most 240 characters" for key in keys
+            if isinstance(row.get(key), str) and (len(row[key]) > 240 or ". " in row[key])]
 
 
 def note_problems(notes: list[dict], catalog: dict) -> list[str]:

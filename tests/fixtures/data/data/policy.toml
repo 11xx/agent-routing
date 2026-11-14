@@ -58,7 +58,7 @@ escalation_sources = ["plan", "review"]
 
 [[seat]]
 profile = "extract"
-backend = "codex"
+backends = ["codex"]
 provider = "tessel-plan"
 model = "ts-3-core"
 effort = "low"
@@ -70,7 +70,7 @@ since = "2030-01-03"
 [[seat]]
 profile = "extract"
 variant = "flat"
-backend = "pi"
+backends = ["pi"]
 provider = "flat-pool"
 model = "orbit-flash"
 effort = "low"
@@ -83,7 +83,7 @@ since = "2030-01-03"
 [[seat]]
 profile = "extract"
 variant = "swift"
-backend = "claude"
+backends = ["claude"]
 provider = "northwind-plan"
 model = "nw-swift-2"
 effort = "high"
@@ -100,7 +100,7 @@ escalation_sources = ["plan"]
 
 [[seat]]
 profile = "implement"
-backend = "codex"
+backends = ["codex"]
 provider = "tessel-plan"
 model = "ts-3-core"
 effort = "max"
@@ -112,7 +112,7 @@ since = "2030-01-03"
 [[seat]]
 profile = "implement"
 variant = "flat"
-backend = "pi"
+backends = ["pi"]
 provider = "flat-pool"
 model = "orbit-flash"
 effort = "max"
@@ -125,7 +125,7 @@ since = "2030-01-03"
 [[seat]]
 profile = "implement"
 variant = "atlas"
-backend = "claude"
+backends = ["claude"]
 provider = "northwind-plan"
 model = "nw-atlas-2"
 effort = "medium"
@@ -138,7 +138,7 @@ since = "2030-01-03"
 [[seat]]
 profile = "implement"
 variant = "atlas-high"
-backend = "claude"
+backends = ["claude"]
 provider = "northwind-plan"
 model = "nw-atlas-2"
 effort = "high"
@@ -150,7 +150,7 @@ since = "2030-01-03"
 [[seat]]
 profile = "implement"
 variant = "trial"
-backend = "pi"
+backends = ["pi"]
 provider = "flat-pool"
 model = "orbit-trial"
 effort = "high"
@@ -171,7 +171,7 @@ escalation_sources = ["review"]
 
 [[seat]]
 profile = "plan"
-backend = "codex"
+backends = ["codex"]
 provider = "tessel-plan"
 model = "ts-3-prime"
 effort = "xhigh"
@@ -183,7 +183,7 @@ since = "2030-01-03"
 [[seat]]
 profile = "plan"
 variant = "sage"
-backend = "claude"
+backends = ["claude"]
 provider = "northwind-plan"
 model = "nw-sage-2"
 effort = "high"
@@ -196,7 +196,7 @@ since = "2030-01-03"
 [[seat]]
 profile = "plan"
 variant = "flat"
-backend = "pi"
+backends = ["pi"]
 provider = "flat-pool"
 model = "orbit-flash"
 effort = "max"
@@ -213,7 +213,7 @@ escalation_sources = ["plan"]
 
 [[seat]]
 profile = "review"
-backend = "codex"
+backends = ["codex"]
 provider = "tessel-plan"
 model = "ts-3-prime"
 effort = "xhigh"
@@ -225,7 +225,7 @@ since = "2030-01-03"
 [[seat]]
 profile = "review"
 variant = "atlas"
-backend = "claude"
+backends = ["claude"]
 provider = "northwind-plan"
 model = "nw-atlas-2"
 effort = "xhigh"
@@ -238,7 +238,7 @@ since = "2030-01-03"
 [[seat]]
 profile = "review"
 variant = "flat"
-backend = "pi"
+backends = ["pi"]
 provider = "flat-pool"
 model = "orbit-flash"
 effort = "max"
@@ -253,6 +253,21 @@ profile = "review"
 from_provider = "tessel-plan"
 backend = "claude"
 variant = "atlas"
+
+[[profile]]
+id = "survey"
+purpose = "a read-only survey of a source tree"
+
+[[seat]]
+profile = "survey"
+backends = ["codex", "pi"]
+provider = "tessel-plan"
+model = "ts-3-core"
+effort = "high"
+stability = "stable"
+when = "Surveys from a Tessel or pi session."
+why = "The workhorse at high reads a tree well enough."
+since = "2030-01-03"
 
 [[seat_rank]]
 model = "nw-atlas-2"
@@ -313,6 +328,12 @@ model = "nw-sage-2"
 effort = "high"
 pool = "northwind-plan"
 rank = 5
+
+[[seat_rank]]
+model = "ts-3-core"
+effort = "high"
+pool = "tessel-plan"
+rank = 1
 
 [[repository]]
 id = "harness"

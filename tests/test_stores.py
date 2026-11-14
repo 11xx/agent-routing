@@ -99,8 +99,8 @@ class ValidatorTest(unittest.TestCase):
                         '"claim": "x", "cause": "unknown", "evidence": "x"}\n')
         problems = routing_profiles.data_problems(root)
         for expected in (
-                "data/policy.toml [[seat]] profile=implement variant=flat backend=pi: when is one sentence "
-                "of at most 240 characters",
+                "data/policy.toml [[seat]] profile=implement variant=flat: when is one sentence of at most 240 "
+                "characters",
                 "data/notes.jsonl note 'n0001': id is used twice",
                 "data/notes.jsonl note 'n0001': model 'nobody' is not a catalog model",
                 "data/notes.jsonl note 'n0001': kind must be one of strength, weakness, observation, measurement"):

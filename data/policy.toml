@@ -58,7 +58,7 @@ escalation_sources = ["plan", "review"]
 
 [[seat]]
 profile = "extract"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6-luna"
 effort = "low"
@@ -70,7 +70,7 @@ since = "2026-09-23"
 [[seat]]
 profile = "extract"
 variant = "deepseek-go"
-backend = "pi"
+backends = ["pi"]
 provider = "opencode-go"
 model = "deepseek-flash"
 effort = "max"
@@ -83,7 +83,7 @@ since = "2026-09-23"
 [[seat]]
 profile = "extract"
 variant = "haiku"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "haiku-5.5"
 effort = "high"
@@ -100,7 +100,7 @@ escalation_sources = ["plan", "review"]
 
 [[seat]]
 profile = "explore"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6-luna"
 effort = "max"
@@ -112,7 +112,7 @@ since = "2026-09-23"
 [[seat]]
 profile = "explore"
 variant = "deepseek-go"
-backend = "pi"
+backends = ["pi"]
 provider = "opencode-go"
 model = "deepseek-flash"
 effort = "low"
@@ -125,7 +125,7 @@ since = "2026-10-27"
 [[seat]]
 profile = "explore"
 variant = "haiku"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "haiku-5.5"
 effort = "high"
@@ -138,7 +138,7 @@ since = "2026-10-09"
 [[seat]]
 profile = "explore"
 variant = "opus"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "high"
@@ -154,7 +154,7 @@ escalation_sources = ["execute"]
 
 [[seat]]
 profile = "implement"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6-luna"
 effort = "max"
@@ -166,7 +166,7 @@ since = "2026-09-23"
 [[seat]]
 profile = "implement"
 variant = "terra-medium"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6.1-terra"
 effort = "medium"
@@ -178,7 +178,7 @@ since = "2026-10-26"
 [[seat]]
 profile = "implement"
 variant = "terra-high"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6.1-terra"
 effort = "high"
@@ -190,7 +190,7 @@ since = "2026-10-26"
 [[seat]]
 profile = "implement"
 variant = "terra-xhigh"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6.1-terra"
 effort = "xhigh"
@@ -202,7 +202,7 @@ since = "2026-10-26"
 [[seat]]
 profile = "implement"
 variant = "deepseek-go"
-backend = "pi"
+backends = ["pi"]
 provider = "opencode-go"
 model = "deepseek-flash"
 effort = "max"
@@ -215,7 +215,7 @@ since = "2026-09-23"
 [[seat]]
 profile = "implement"
 variant = "opus-low"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "low"
@@ -228,7 +228,7 @@ since = "2026-10-24"
 [[seat]]
 profile = "implement"
 variant = "opus-medium"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "medium"
@@ -240,7 +240,7 @@ since = "2026-10-24"
 [[seat]]
 profile = "implement"
 variant = "opus-high"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "high"
@@ -252,7 +252,7 @@ since = "2026-10-24"
 [[seat]]
 profile = "implement"
 variant = "opus-xhigh"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "xhigh"
@@ -267,7 +267,7 @@ purpose = "high-volume or heavily steered candidate generation whose output is r
 
 [[seat]]
 profile = "generate"
-backend = "pi"
+backends = ["pi"]
 provider = "opencode-go"
 model = "deepseek-flash"
 effort = "max"
@@ -282,7 +282,7 @@ purpose = "default interactive Pi parent session before a task-specific child ro
 
 [[seat]]
 profile = "interactive"
-backend = "pi"
+backends = ["pi"]
 provider = "opencode-go"
 model = "deepseek-flash"
 effort = "max"
@@ -298,7 +298,7 @@ escalation_sources = ["review"]
 
 [[seat]]
 profile = "plan"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6.1-sol"
 effort = "xhigh"
@@ -310,7 +310,7 @@ since = "2026-10-29"
 [[seat]]
 profile = "plan"
 variant = "deepseek-go"
-backend = "pi"
+backends = ["pi"]
 provider = "opencode-go"
 model = "deepseek-flash"
 effort = "max"
@@ -323,7 +323,7 @@ since = "2026-09-23"
 [[seat]]
 profile = "plan"
 variant = "astra-xhigh"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6-astra"
 effort = "xhigh"
@@ -335,7 +335,7 @@ since = "2026-09-23"
 [[seat]]
 profile = "plan"
 variant = "opus"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "high"
@@ -348,7 +348,7 @@ since = "2026-10-24"
 [[seat]]
 profile = "plan"
 variant = "opus-xhigh"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "xhigh"
@@ -363,7 +363,7 @@ purpose = "broad or multi-slice implementation where technical judgment and long
 
 [[seat]]
 profile = "execute"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6.1-sol"
 effort = "xhigh"
@@ -375,7 +375,7 @@ since = "2026-10-06"
 [[seat]]
 profile = "execute"
 variant = "deepseek-go"
-backend = "pi"
+backends = ["pi"]
 provider = "opencode-go"
 model = "deepseek-flash"
 effort = "max"
@@ -388,7 +388,7 @@ since = "2026-09-23"
 [[seat]]
 profile = "execute"
 variant = "opus"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "low"
@@ -401,7 +401,7 @@ since = "2026-10-24"
 [[seat]]
 profile = "execute"
 variant = "opus-high"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "high"
@@ -428,7 +428,7 @@ escalation_sources = ["plan"]
 
 [[seat]]
 profile = "review"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6.1-sol"
 effort = "xhigh"
@@ -440,7 +440,7 @@ since = "2026-10-06"
 [[seat]]
 profile = "review"
 variant = "deepseek-go"
-backend = "pi"
+backends = ["pi"]
 provider = "opencode-go"
 model = "deepseek-flash"
 effort = "max"
@@ -453,7 +453,7 @@ since = "2026-09-23"
 [[seat]]
 profile = "review"
 variant = "opus"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "xhigh"
@@ -466,7 +466,7 @@ since = "2026-10-06"
 [[seat]]
 profile = "review"
 variant = "astra"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6-astra"
 effort = "medium"
@@ -478,7 +478,7 @@ since = "2026-09-29"
 [[seat]]
 profile = "review"
 variant = "high-stakes"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6-astra"
 effort = "xhigh"
@@ -490,7 +490,7 @@ since = "2026-09-23"
 [[seat]]
 profile = "review"
 variant = "cyber"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-daybreak-blue"
 effort = "xhigh"
@@ -505,7 +505,7 @@ purpose = "read-only judgment on UX, copy, API ergonomics, or architectural simp
 
 [[seat]]
 profile = "design"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "high"
@@ -517,7 +517,7 @@ since = "2026-10-24"
 [[seat]]
 profile = "design"
 variant = "xhigh"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "xhigh"
@@ -532,7 +532,7 @@ purpose = "visual and identity design: the look of an interface, mockups, palett
 
 [[seat]]
 profile = "visual"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "fable-5.2"
 effort = "high"
@@ -544,7 +544,7 @@ since = "2026-11-09"
 [[seat]]
 profile = "visual"
 variant = "medium"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "fable-5.2"
 effort = "medium"
@@ -559,18 +559,7 @@ purpose = "explicit visible-desktop tasks with bounded context and retained foll
 
 [[seat]]
 profile = "computer-use"
-backend = "codex"
-provider = "openai-codex"
-model = "gpt-6.1-sol"
-effort = "low"
-stability = "experimental"
-when = "Explicit visible-desktop tasks with bounded context and retained follow-ups."
-why = "Low is the experimental computer-use default, and task outcomes establish whether it suffices."
-since = "2026-09-29"
-
-[[seat]]
-profile = "computer-use"
-backend = "pi"
+backends = ["codex", "pi"]
 provider = "openai-codex"
 model = "gpt-6.1-sol"
 effort = "low"
@@ -582,7 +571,7 @@ since = "2026-09-29"
 [[seat]]
 profile = "computer-use"
 variant = "terra-medium"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6.1-terra"
 effort = "medium"
@@ -594,19 +583,7 @@ since = "2026-11-11"
 [[seat]]
 profile = "computer-use"
 variant = "medium"
-backend = "codex"
-provider = "openai-codex"
-model = "gpt-6.1-sol"
-effort = "medium"
-stability = "experimental"
-when = "Computer-use comparison at medium, named by variant."
-why = "An explicit comparison tier with no automatic escalation or claimed effort curve."
-since = "2026-09-29"
-
-[[seat]]
-profile = "computer-use"
-variant = "medium"
-backend = "pi"
+backends = ["codex", "pi"]
 provider = "openai-codex"
 model = "gpt-6.1-sol"
 effort = "medium"
@@ -618,19 +595,7 @@ since = "2026-09-29"
 [[seat]]
 profile = "computer-use"
 variant = "high"
-backend = "codex"
-provider = "openai-codex"
-model = "gpt-6.1-sol"
-effort = "high"
-stability = "experimental"
-when = "Computer-use comparison at high, named by variant."
-why = "An explicit comparison tier with no automatic escalation or claimed effort curve."
-since = "2026-09-29"
-
-[[seat]]
-profile = "computer-use"
-variant = "high"
-backend = "pi"
+backends = ["codex", "pi"]
 provider = "openai-codex"
 model = "gpt-6.1-sol"
 effort = "high"
@@ -642,7 +607,7 @@ since = "2026-09-29"
 [[seat]]
 profile = "computer-use"
 variant = "xhigh"
-backend = "codex"
+backends = ["codex"]
 provider = "openai-codex"
 model = "gpt-6.1-sol"
 effort = "xhigh"
@@ -654,7 +619,7 @@ since = "2026-09-29"
 [[seat]]
 profile = "computer-use"
 variant = "opus"
-backend = "claude"
+backends = ["claude"]
 provider = "anthropic"
 model = "opus-5.5"
 effort = "medium"

@@ -2,9 +2,10 @@
 
 import unittest
 
-from fixture import FIXTURE
+from fixture import FIXTURE, edit, scratch
 
-from routing_profiles import RouteRefusal, resolve, routes_view, seats_view, validate_selection
+from routing_profiles import RouteRefusal, data_problems, resolve, routes_view, seats_view, validate_selection
+import stores
 
 NOW = 2_000_000_000
 
@@ -36,6 +37,22 @@ class ResolveTest(unittest.TestCase):
                           "pi": ("orbit-flash-0101", "max", "flat-pool"),
                           "claude": ("claude-atlas-2", "medium", "northwind-plan")})
         self.assertEqual(answers["claude"]["profile"], "implement:atlas")
+
+    def test_one_seat_row_serves_each_backend_it_names(self):
+        """Claim: a route that several backends serve is one seat row naming
+        them, so editing that row's effort changes the answer on every one of
+        those backends and needs no other row. Rejects per-backend copies that
+        must be kept in agreement by hand."""
+        root = scratch(self)
+        self.assertEqual({backend: resolve(root, "survey", backend)["effort"] for backend in ("codex", "pi")},
+                         {"codex": "high", "pi": "high"})
+        edit(root, stores.POLICY, 'model = "ts-3-core"\neffort = "high"\nstability = "stable"\n'
+             'when = "Surveys from a Tessel or pi session."', 'model = "ts-3-core"\neffort = "max"\n'
+             'stability = "stable"\nwhen = "Surveys from a Tessel or pi session."')
+        edit(root, stores.POLICY, '[[seat_rank]]\nmodel = "ts-3-core"\neffort = "high"\npool = "tessel-plan"\nrank = 1\n\n', "")
+        self.assertEqual(data_problems(root), [])
+        self.assertEqual({backend: resolve(root, "survey", backend)["effort"] for backend in ("codex", "pi")},
+                         {"codex": "max", "pi": "max"})
 
     def test_a_named_variant_wins_over_the_default(self):
         """Claim: --variant selects that seat. Rejects ignoring the caller's choice."""

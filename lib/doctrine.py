@@ -35,15 +35,15 @@ def render(root: pathlib.Path) -> str:
     lines = [(root / PRINCIPLES).read_text().rstrip(), ""]
     lines += ["## Profiles and seats", "",
               f"Rendered from `{stores.POLICY}` at route version {data.version}. A seat without a variant answers "
-              "an unnamed request on its backend; a variant marked default answers one on a backend the profile's "
+              "an unnamed request on its backends; a variant marked default answers one on a backend the profile's "
               "own seats do not serve.", ""]
     for profile in policy.get("profile", []):
         lines += [f"### {profile['id']}", "", profile["purpose"] + ".", ""]
         if profile.get("escalation_sources"):
             lines += [f"Directed selections may borrow the stable seats of: {', '.join(profile['escalation_sources'])}.", ""]
         seats = [seat for seat in policy.get("seat", []) if seat["profile"] == profile["id"]]
-        lines += _table(("variant", "backend", "model · effort", "stability", "when", "why", "since"), [
-            (seat.get("variant", "") + (" (default)" if seat.get("default") else ""), seat["backend"],
+        lines += _table(("variant", "backends", "model · effort", "stability", "when", "why", "since"), [
+            (seat.get("variant", "") + (" (default)" if seat.get("default") else ""), ", ".join(seat["backends"]),
              f"{seat['model']} · {seat['effort']}", seat["stability"], seat["when"], seat["why"], seat["since"])
             for seat in seats])
         fallbacks = [rule for rule in policy.get("fallback", []) if rule["profile"] == profile["id"]]
