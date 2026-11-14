@@ -196,10 +196,11 @@ FILE AND READ FIELD EVIDENCE
       Filter notes, live by default, ordered by occurrence count, latest
       occurrence date, then id. Dates and evidence accompany each occurrence.
   agent-routing card MODEL [--json]
-      Print seats, prohibited tiers and scoped guards, then live evidence in
-      recurrence and recency order. Sections are Seats, Prohibited, Guards,
-      Weaknesses, Strengths, Observations and measurements, then inherited
-      evidence. Empty sections say none. A predecessor naming this model as
+      Print seats, review seats, prohibited tiers and scoped guards, then
+      live evidence in recurrence and recency order. Sections are Seats,
+      Review seats (each purpose the model reads for, with its author lab,
+      backend and effort), Prohibited, Guards, Weaknesses, Strengths,
+      Observations and measurements, then inherited evidence. Empty sections say none. A predecessor naming this model as
       its catalog successor contributes evidence under "Inherited from
       PREDECESSOR, unverified for this model".
 
@@ -224,11 +225,18 @@ Seats
                                                  Northwind session.
   implement:atlas-high  claude  high             Implementation that needs the
                                                  head model's standing tier.
+  review:atlas          claude  xhigh   default  Review from a Northwind
+                                                 session.
   implement:bounded     claude  medium           experimental · Explicit
                                                  comparison with a fixed
                                                  deadline.
-  review:atlas          claude  xhigh   default  Review from a Northwind
-                                                 session.
+Review seats
+  clearance   for any  claude  xhigh  Independent review from a Northwind
+                                      session.
+  findings    for any  claude  xhigh  Candidate defects from a Northwind
+                                      session.
+  exhaustive  for any  claude  xhigh  A whole-surface read from a Northwind
+                                      session.
 Prohibited
   max: Fixture ban: the top tier buys nothing over xhigh.
 Guards
@@ -595,9 +603,9 @@ WHAT BINDS BEFORE ANY QUERY
 READ THE POLICY
   agent-routing doctrine     the principles, then every profile's seats with
                              their when, why and since and the guards on
-                             them, the guards on unseated tiers, the bans,
-                             fences, pools and the catalog, rendered from the
-                             stores
+                             them, the review seats by purpose, the guards on
+                             unseated tiers, the bans, fences, pools and the
+                             catalog, rendered from the stores
   agent-routing mechanism    the delegation mechanism canon (DELEGATION.md)
   agent-routing models       the catalog
   agent-routing profiles     the policy

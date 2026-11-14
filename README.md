@@ -106,7 +106,7 @@ route_version: b31715eb8626 -> 298e8fdfce1f
 stale consumers: none
 ```
 
-A card puts seats and guard instructions before field evidence:
+A card puts seats, review seats and guard instructions before field evidence:
 
 ```sh
 agent-routing card nw-swift-2
@@ -117,6 +117,8 @@ nw-swift-2 · northwind
 Seats
   extract:swift  claude  high  default  Fixed-shape calls from a Northwind
                                         session.
+Review seats
+  none
 Prohibited
   none
 Guards

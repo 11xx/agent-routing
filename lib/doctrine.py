@@ -10,6 +10,16 @@ import stores
 PRINCIPLES = "doctrine/principles.md"
 
 
+REVIEW_PURPOSE_TEXT = {
+    "findings": "Candidate defects for someone else to adjudicate: a seat at or above the author's tier, its own "
+                "lab included, except the same model at a lower effort.",
+    "clearance": "The independent read of a change, the one that may clear review debt: a seat outside the "
+                 "author's lab, at or above the author's floor and the clearance floor.",
+    "exhaustive": "A whole-surface read chosen for capability, not independence: a seat among its backend's "
+                  "highest-ranked review routes, the author's own lab and model included; it never clears.",
+}
+
+
 def _valid(root: pathlib.Path, *, standing: bool) -> stores.Data:
     data = stores.load(root)
     problems = list(data.problems) or (stores.standing_problems(root, data) if standing else [])
@@ -73,6 +83,17 @@ def render(root: pathlib.Path) -> str:
                 f"from {rule['from_provider']} to {rule['backend']}" + (f" --variant {rule['variant']}"
                                                                          if rule.get("variant") else "")
                 for rule in fallbacks) + "."]
+        lines.append("")
+    lines += ["## Review seats by purpose", "",
+              "The reader each review purpose answers, by author lab and backend: a lab's own row, else its "
+              "`any` row. Ranks, floors and labs bound what a seat may be; frontier and ladder are computed "
+              "from ranks.", ""]
+    for purpose in stores.REVIEW_PURPOSES:
+        rows = [row for row in policy.get("review_seat", []) if row["purpose"] == purpose]
+        lines += [f"### {purpose}", "", REVIEW_PURPOSE_TEXT[purpose], ""]
+        lines += _table(("author lab", "backend", "model · effort", "when", "why", "since"), [
+            (row["author_family"], row["backend"], f"{row['model']} · {row['effort']}", row["when"], row["why"],
+             row["since"]) for row in rows]) if rows else ["No seat: every request refuses."]
         lines.append("")
     unseated = [guard for number, guard in enumerate(guards) if number not in shown]
     if unseated:

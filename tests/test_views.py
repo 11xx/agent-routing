@@ -48,6 +48,24 @@ class ClaudeAgentsTest(unittest.TestCase):
         self.assertEqual({pin["consumer"] for pin in bundle["pins"]}, {"harness-agents"})
 
 
+class ReviewSeatDoctrineTest(unittest.TestCase):
+    def test_doctrine_renders_review_seats_by_purpose(self):
+        """Claim: the doctrine renders each review purpose with what it
+        requires and its seats by author lab and backend, with when, why and
+        since, in the order clearance follows findings and exhaustive comes
+        last. Rejects a doctrine that drops the review seats or files one
+        under the wrong purpose."""
+        text = doctrine.render(ROOT)
+        section = text[text.index("## Review seats by purpose"):]
+        headings = [section.index(f"### {purpose}") for purpose in ("findings", "clearance", "exhaustive")]
+        self.assertEqual(headings, sorted(headings))
+        clearance = section[headings[1]:headings[2]]
+        self.assertIn("| any | codex | ts-3-prime · xhigh | Independent review on the Tessel window. | The strong Tessel "
+                      "tier clears other labs' work. | 2030-01-03 |", clearance)
+        self.assertNotIn("orbit-flash", clearance)
+        self.assertIn("| any | pi | orbit-flash · max | A whole-surface read from pi. |", section[headings[2]:])
+
+
 class DoctrineTest(unittest.TestCase):
     def test_doctrine_renders_principles_then_the_stores(self):
         """Claim: the doctrine is the principles file followed by every

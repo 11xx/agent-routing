@@ -98,6 +98,12 @@ def card(result, width, data):
         prefix = "  " + "  ".join(item.ljust(size) for item, size in zip(columns, widths)) + "  "
         entries += wrapped(description, width, prefix)
     section(lines, "Seats", entries)
+    review = [[row["purpose"], f"for {row['author_family']}", row["backend"], row["effort"]]
+              for row in result.get("review_seats", [])]
+    widths = [max(len(columns[index]) for columns in review) for index in range(4)] if review else []
+    section(lines, "Review seats", [line for columns, row in zip(review, result.get("review_seats", []))
+                                    for line in wrapped(row["when"], width, "  " + "  ".join(
+                                        item.ljust(size) for item, size in zip(columns, widths)) + "  ")])
     section(lines, "Prohibited", [line for row in result["prohibited"]
                                  for line in wrapped(row["reason"], width, f"  {row['effort']}: ")])
     guards = []

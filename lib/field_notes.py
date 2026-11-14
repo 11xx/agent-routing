@@ -116,6 +116,7 @@ def card(data, records, model):
     predecessors = {row["id"] for row in data.catalog.get("model", []) if row.get("successor") == model}
     return {"model": model,
             "seats": [row for row in data.policy.get("seat", []) if row["model"] == model],
+            "review_seats": [row for row in data.policy.get("review_seat", []) if row["model"] == model],
             "prohibited": [row for row in data.catalog.get("tier", [])
                            if row["model"] == model and row.get("prohibited")],
             "guards": [row for row in data.policy.get("guard", []) if row["model"] == model],

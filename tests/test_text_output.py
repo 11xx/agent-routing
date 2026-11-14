@@ -66,6 +66,24 @@ class TextOutputTest(GitStoreTest):
             self.assertEqual(json.loads(self.cli("card", "nw-atlas-2", "--json")), expected)
         self.assertEqual(self.texts(), before)
 
+    def test_card_lists_the_purposes_a_model_holds_a_review_seat_for(self):
+        """Claim: a card names, after its seats, each review purpose the model
+        holds a seat for with its author lab, backend, effort and when, and
+        says none for a model that holds no review seat. Rejects a card that
+        hides which review purposes a model serves."""
+        data, result = text_fixture.card_result()
+        lines = data_edits.render(result, width=100, data=data).splitlines()
+        start, end = lines.index("Review seats"), lines.index("Prohibited")
+        self.assertLess(lines.index("Seats"), start)
+        self.assertEqual([line.split()[:5] for line in lines[start + 1:end]],
+                         [["clearance", "for", "any", "claude", "xhigh"], ["findings", "for", "any", "claude", "xhigh"],
+                          ["exhaustive", "for", "any", "claude", "xhigh"]])
+        self.assertIn("A whole-surface read from a Northwind session.", lines[end - 1])
+        self.assertEqual([row["purpose"] for row in result["review_seats"]], ["clearance", "findings", "exhaustive"])
+        swift = dict(schema="agent-routing-card/1", **field_notes.card(data, [], "nw-swift-2"))
+        swift_lines = data_edits.render(swift, data=data).splitlines()
+        self.assertEqual(swift_lines[swift_lines.index("Review seats") + 1], "  none")
+
     def test_notes_coordinates_liveness_and_dates(self):
         """Claim: note entries lead with coordinates, recurrence and dates and mark dispositions; rejects raw objects or silently live retired notes."""
         data, records = text_fixture.sample()
