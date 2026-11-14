@@ -1,6 +1,7 @@
 """Argument and output adapters for the store-edit library."""
 
 import argparse
+import functools
 import json
 
 import data_edits
@@ -31,6 +32,8 @@ class RaisingParser(argparse.ArgumentParser):
         pass
 
 
+# Built once per process: parsing reads a parser and never changes it.
+@functools.cache
 def parser(*, raising=False):
     root = (RaisingParser if raising else argparse.ArgumentParser)(prog="agent-routing", description=__doc__)
     commands = root.add_subparsers(dest="verb", required=True)
