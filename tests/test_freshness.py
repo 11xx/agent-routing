@@ -3,7 +3,7 @@
 import contextlib
 from unittest.mock import patch
 
-from test_page import PageServerTest
+from test_page import SEAT, PageServerTest
 import data_edits
 import routing_page
 import stores
@@ -65,3 +65,30 @@ class FreshnessTest(PageServerTest):
         self.unchanged(texts, head)
         state = data_edits.apply(self.root, "pool-rank", dry_run=True, **dict(MOVED, rank=6))["state"]
         self.assertEqual(data_edits.apply(self.root, "pool-rank", expect=state, **dict(MOVED, rank=6))["state"], state)
+
+    def test_an_undo_confirms_only_the_commit_it_previewed(self):
+        """Claim: an undo previewed before later verb edits is refused at
+        confirmation even when those edits restore the same store bytes,
+        and an undo naming its commit refuses once that commit is no longer
+        the latest verb edit. Rejects freshness by store bytes alone, which
+        would undo a different commit than the one previewed."""
+        self.verb(*SEAT)
+        seat = self.git("rev-parse", "HEAD")
+        status, named = self.edit(["undo", "--commit", seat, "--why", "Back to max."])
+        self.assertEqual((status, named["result"]["undone_commit"]), (200, seat))
+        status, unnamed = self.edit(["undo", "--why", "Back to max."])
+        self.assertEqual(status, 200)
+        texts = self.texts()
+        scope = ["nw-swift-2", "--effort", "high"]
+        self.verb("set-guard", *scope, "--rule", "Name the fixture deadline.", "--why", "A probe needs a bound.")
+        self.verb("retire-guard", *scope, "--why", "The probe ended.")
+        self.assertEqual(self.texts(), texts)
+        head = self.git("rev-parse", "HEAD")
+        for argv, preview in ((["undo", "--commit", seat, "--why", "Back to max."], named),
+                              (["undo", "--why", "Back to max."], unnamed)):
+            status, answer = self.edit(argv, confirm=True, expect=preview["stamp"])
+            self.assertEqual((status, answer.get("stale")), (409, True), answer)
+        self.unchanged(texts, head)
+        with self.assertRaisesRegex(data_edits.StaleState, f"the latest verb edit is {head[:12]}, not {seat[:12]}"):
+            data_edits.apply(self.root, "undo", target=seat, why="Back to max.")
+        self.unchanged(texts, head)

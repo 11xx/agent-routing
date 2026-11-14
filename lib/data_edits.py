@@ -502,6 +502,10 @@ def undo_candidate(root, before, opts, today):
     if latest is None:
         raise stores.StoreError("no edit made by a routing verb to undo")
     commit = latest["commit"]
+    if opts.get("target"):
+        named = git(root, "rev-parse", "--verify", "--end-of-options", f"{opts['target']}^{{commit}}").decode().strip()
+        if named != commit:
+            raise StaleState(f"the latest verb edit is {commit[:12]}, not {named[:12]}; preview the undo again")
     after_edit = {name: git(root, "show", f"{commit}:{name}").decode() for name in PATHS}
     previous = {name: git(root, "show", f"{commit}^:{name}").decode() for name in PATHS}
     candidate = dict(before)

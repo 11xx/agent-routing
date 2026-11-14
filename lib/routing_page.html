@@ -1076,7 +1076,7 @@ function historyView() {
   const undo = latest ? h("div", { dataset: { anchor: "undo" } }, h("button", { type: "button", class: "act", onclick: () => editor("undo", "undo", {
     title: `undo ${latest.commit.slice(0, 12)}`, meta: latest.subject.replace(/^data: /, ""),
     fields: [{ name: "why", label: "why", value: "", hint: "The reason for reverting it, recorded in the commit." }],
-    actions: [{ label: "Preview undo", danger: true, require: ["why"], argv: vals => ["undo", "--why", vals.why] }] }) },
+    actions: [{ label: "Preview undo", danger: true, require: ["why"], argv: vals => ["undo", "--commit", latest.commit, "--why", vals.why] }] }) },
     `Undo the latest verb edit, ${latest.subject.replace(/^data: /, "")}`)) : null;
   return h("div", { class: "panel" }, h("h2", {}, "Edits to the stores, newest first"), undo,
     h("div", { class: "history" }, items.length ? items : h("span", { class: "empty" }, "none")),

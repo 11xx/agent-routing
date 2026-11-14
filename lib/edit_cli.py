@@ -118,6 +118,9 @@ def parser(*, raising=False):
             p.add_argument("--liveness", choices=("live", "inactive", "all"), default="live")
         if verb == "log":
             p.add_argument("--limit", type=int, default=20)
+        if verb == "undo":
+            p.add_argument("--commit", dest="target", metavar="REV",
+                           help="refuse unless REV is the latest verb edit, the one a preview named")
     return root
 
 
