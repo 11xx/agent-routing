@@ -1,5 +1,10 @@
 """An edit of pool ranks lists exactly the directed selections whose classification validate changes."""
 
+import concurrent.futures
+import pathlib
+import shutil
+import tempfile
+
 from test_page import SEAT, PageServerTest
 import data_edits
 import stores
@@ -47,22 +52,32 @@ class ReclassifyTest(PageServerTest):
         and pool of the fixture; a selection validate refuses either way is
         not listed. Rejects a list from the classifier alone, which counts a
         tier its backend cannot run."""
-        base, texts = answers(self.root), self.texts()
-        for argv in (TOP, SAGE):
+        scratch = tempfile.TemporaryDirectory(dir=self.root.parent)
+        self.addCleanup(scratch.cleanup)
+        copies, results = [], []
+        def keep():
+            copy = pathlib.Path(scratch.name) / str(len(copies))
+            shutil.copytree(self.root / "data", copy / "data")
+            copies.append(copy)
+        keep()
+        for argv in (SAGE, TOP):
             status, preview = self.edit(argv)
             self.assertEqual(status, 200, preview)
             status, answer = self.edit(argv, confirm=True, expect=preview["stamp"])
             self.assertEqual(status, 200, answer)
-            expected = changed(base, answers(self.root))
+            results.append((argv[:2], preview["result"], answer["result"]))
+            keep()
+        with concurrent.futures.ProcessPoolExecutor(len(copies)) as pool:
+            swept = list(pool.map(answers, copies))
+        for (verb, previewed, committed), before, after in zip(results, swept, swept[1:]):
+            expected = changed(before, after)
             self.assertTrue(expected)
-            self.assertEqual((listed(preview["result"]), listed(answer["result"])), (expected, expected), argv[:2])
-            data_edits.apply(self.root, "undo", why="Back to the fixture's ranks.")
-            self.assertEqual(self.texts(), texts)
+            self.assertEqual((listed(previewed), listed(committed)), (expected, expected), verb)
         refused = ("survey", "pi", "ts-3-prime", "xhigh", "tessel-plan")
         with self.assertRaises(RouteRefusal) as raised:
             validate_selection(self.root, *refused, "Probe the refusal.", allow_experimental=True)
         self.assertEqual(raised.exception.kind, "unsupported-effort")
-        self.assertNotIn(refused, [row[0] for row in listed(self.edit(TOP)[1]["result"])])
+        self.assertNotIn(refused, [row[0] for row in listed(answer["result"])])
 
     def test_the_text_and_the_page_say_what_moved_or_that_nothing_did(self):
         """Claim: text names each reclassified selection with its direction,
