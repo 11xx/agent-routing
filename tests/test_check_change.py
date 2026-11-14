@@ -1,8 +1,10 @@
 """bin/check-change holds a change to its declarations, the base's invariants and its tests.
 
-Each test copies this repository's code, without this suite, into a scratch
-Git repository whose base commit lists one invariant and holds a one-test
-suite, adds the change's commits, and runs the gate there against that base.
+Each test copies the gate alone into a scratch Git repository whose base
+commit holds one module, lists one invariant and holds a one-file suite, adds
+the change's commits, and runs the gate there against that base. The scratch
+never holds this suite, so a gate run inside a test never runs the suite
+that contains it.
 """
 
 import json
@@ -14,7 +16,7 @@ import tempfile
 import unittest
 
 REPOSITORY = pathlib.Path(__file__).resolve().parent.parent
-COPIED = ("bin", "lib", "templates")
+GATE = "bin/check-change"
 IDENTITY = {"GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@localhost",
             "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@localhost"}
 GUARD = '[[invariant]]\nname = "guard"\ncommand = "test ! -e broken"\n'
@@ -29,15 +31,11 @@ class CheckChangeTest(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.cache = pathlib.Path(temporary.name) / "cache"
         self.repo = pathlib.Path(temporary.name) / "repo"
-        listed = subprocess.run(["git", "-C", str(REPOSITORY), "ls-files", "--cached", "--others",
-                                 "--exclude-standard", "--", *COPIED], capture_output=True, text=True, check=True)
-        for name in listed.stdout.splitlines():
-            source = REPOSITORY / name
-            if source.is_file():
-                (self.repo / name).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(source, self.repo / name)
+        (self.repo / "bin").mkdir(parents=True)
+        shutil.copy2(REPOSITORY / GATE, self.repo / GATE)
         self.git("init", "--quiet", "--initial-branch=master")
         self.base = self.commit("chore: establish the base", {"checks/invariants.toml": GUARD,
+                                                                 "lib/module.py": "VALUE = 1\n",
                                                                  "tests/test_suite.py": SUITE})
 
     def git(self, *args, stdin=None):
@@ -70,11 +68,10 @@ class CheckChangeTest(unittest.TestCase):
         Rejects a gate that lets code land with nothing to witness it."""
         self.commit("docs: note the fixture\n", {"NOTES.md": "A prose change.\n"})
         self.assertEqual(self.check().returncode, 0)
-        source = self.repo / "lib" / "quota_routing.py"
-        commit = self.commit("feat: touch the quota code\n", {"lib/quota_routing.py": source.read_text() + "\n"})
+        commit = self.commit("feat: touch the module\n", {"lib/module.py": "VALUE = 2\n"})
         result = self.check()
         self.assertEqual(result.returncode, 1, result.stdout)
-        self.assertIn(f"{commit[:12]} 'feat: touch the quota code' touches lib/quota_routing.py", result.stderr)
+        self.assertIn(f"{commit[:12]} 'feat: touch the module' touches lib/module.py", result.stderr)
         self.assertEqual(self.receipt()["failure"]["phase"], "declarations")
 
     def test_a_fourth_witness_is_refused(self):
