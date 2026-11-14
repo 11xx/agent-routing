@@ -83,6 +83,21 @@ class LadderTest(LadderCase):
         self.assertEqual([version.get("id") for version in versions[1:]], [f"v-{self.first}", f"v-{second}"])
         self.assertEqual(versions[2]["effective_from"], "2030-01-05T00:00:00Z")
 
+    def test_version_dates_must_increase(self):
+        """Claim: a ladder whose versions repeat or reverse an effective_from
+        instant is refused. Rejects two tables in force at one instant, or a
+        history that runs backwards."""
+        edit(self.root, stores.CATALOG, HIGH, RAISED)
+        self.commit("2030-01-05T00:00:00Z")
+        ladder = review_ladder.export(self.root, history=True)
+        review_ladder.validate(ladder)
+        for instant in (ladder["version"][1]["effective_from"], "2030-01-02T00:00:00Z"):
+            with self.subTest(instant=instant):
+                broken = {**ladder, "version": [*ladder["version"][:2],
+                                                {**ladder["version"][2], "effective_from": instant}]}
+                with self.assertRaisesRegex(ValueError, "effective_from must increase"):
+                    review_ladder.validate(broken)
+
 
 class DatedAssessmentTest(LadderCase):
     def test_a_dated_assessment_reads_the_table_in_force_then(self):
@@ -111,15 +126,16 @@ class DatedAssessmentTest(LadderCase):
         self.assertEqual(caught.exception.kind, "invalid-accepted")
 
     def test_the_accepted_ref_selects_the_history_for_export_and_assessment(self):
-        """Claim: a table committed only on a branch is absent from the
-        default accepted history and present when that branch is named, for
-        both the export and the dated assessment. Rejects reading a branch or
-        the working tree as accepted."""
+        """Claim: asked from a feature checkout, a table committed only on
+        that branch is absent from the default accepted history, which is the
+        default branch, and present when the branch is named, for both the
+        export and the dated assessment. Rejects reading HEAD, a branch or the
+        working tree as accepted."""
         self.git("checkout", "--quiet", "-b", "feature")
         edit(self.root, stores.CATALOG, HIGH, RAISED)
         branch = self.commit("2030-01-05T00:00:00Z")
-        self.git("checkout", "--quiet", "main")
-        edit(self.root, stores.CATALOG, HIGH, 'model = "nw-atlas-2"\neffort = "high"\nrank = 1')
+        edit(self.root, stores.CATALOG, RAISED, 'model = "nw-atlas-2"\neffort = "high"\nrank = 1')
+        self.assertEqual((self.git("rev-parse", "HEAD"), self.git("rev-parse", "main")), (branch, self.first))
         later = "2030-01-06T00:00:00Z"
         self.assertEqual((self.tier(later), self.tier(later, accepted="feature")), (2, 3))
         self.assertEqual(review_ladder.export(self.root)["version"][0]["id"], f"v-{self.first}")

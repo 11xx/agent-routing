@@ -68,6 +68,23 @@ class AssessTest(unittest.TestCase):
                                           "reviewer", "route_version", "schema"])
         self.assertEqual((answer["schema"], answer["independence"]), ("agent-routing-assessment/1", "eligible"))
 
+    def test_schema_one_refuses_a_findings_purpose(self):
+        """Claim: --schema 1 with --purpose findings is refused as
+        invalid-purpose. Rejects a schema-1 answer, which carries
+        independence alone, standing in for a findings read."""
+        with self.assertRaises(RouteRefusal) as caught:
+            assess_review(FIXTURE, "nw-atlas-2#xhigh", ["ts-3-core#max"], schema=1, purpose="findings")
+        self.assertEqual(caught.exception.kind, "invalid-purpose")
+
+    def test_an_unseated_reviewer_is_marked_and_still_clears(self):
+        """Claim: a reviewer no review seat holds carries the informational
+        reviewer-unseated qualifier, and it neither blocks independence nor
+        clearance. Rejects hiding that the reviewer holds no seat, or letting
+        that fact refuse a read the floors allow."""
+        answer = assess_review(FIXTURE, "nw-sage-2#medium", ["ts-3-core#max"])
+        self.assertEqual((answer["qualifiers"], answer["independence"], answer["clears"]),
+                         (["reviewer-unseated"], "eligible", True))
+
     def test_findings_and_clearance_are_separate_answers(self):
         """Claim: a same-family reviewer above the author's floor finds but
         never clears, and the answers do not depend on the purpose asked.

@@ -183,6 +183,29 @@ class ValidateTest(unittest.TestCase):
                                    "fixture reason")
         self.assertEqual((named["selection_kind"], named["direction"]), ("operator-directed", "same"))
 
+    def test_an_upgrade_above_an_experimental_baseline_stays_experimental(self):
+        """Claim: when the profile's own route on the backend is
+        experimental, a seated upgrade above it is experimental and
+        operator-directed, and needs --allow-experimental. Rejects promoting
+        a selection to a stable escalation from a baseline that is itself a
+        trial."""
+        root = scratch(self)
+        edit(root, stores.POLICY, 'model = "nw-atlas-2"\neffort = "medium"\nstability = "stable"',
+             'model = "nw-atlas-2"\neffort = "medium"\nstability = "experimental"')
+        edit(root, stores.POLICY, '[[seat]]\nprofile = "plan"\nvariant = "sage"',
+             '[[seat]]\nprofile = "plan"\nvariant = "atlas"\nbackends = ["claude"]\nprovider = "northwind-plan"\n'
+             'model = "nw-atlas-2"\neffort = "medium"\nstability = "stable"\nwhen = "Planning at medium."\n'
+             'why = "Keeps the tier stably seated."\nsince = "2030-01-03"\n\n'
+             '[[seat]]\nprofile = "plan"\nvariant = "sage"')
+        self.assertEqual(data_problems(root), [])
+        with self.assertRaises(RouteRefusal) as caught:
+            validate_selection(root, "implement", "claude", "nw-atlas-2", "high", "northwind-plan", "fixture reason")
+        self.assertEqual(caught.exception.kind, "stability")
+        answer = validate_selection(root, "implement", "claude", "nw-atlas-2", "high", "northwind-plan",
+                                    "fixture reason", allow_experimental=True)
+        self.assertEqual((answer["stability"], answer["selection_kind"], answer["direction"]),
+                         ("experimental", "operator-directed", "upgrade"))
+
     def test_an_unseated_tuple_needs_an_opt_in_and_stays_experimental(self):
         """Claim: a tuple neither the profile nor an escalation source seats
         is refused with the seated efforts listed, and with
