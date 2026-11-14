@@ -21,6 +21,7 @@ class ConsumerLintTest(unittest.TestCase):
         settings.parent.mkdir(parents=True)
         settings.write_text(json.dumps({"$route": "implement"}) + "\n")
         sources = [{"id": "settings", "path": str(settings), "checks": ["roster-literals", "pi-route"]}]
+        self.sources = sources
         self.harness = self.code / "agent-harness"
         self.harness.write_text(f"#!/usr/bin/env python3\nprint({json.dumps(sources)!r})\n")
         self.harness.chmod(0o700)
@@ -59,6 +60,24 @@ class ConsumerLintTest(unittest.TestCase):
         result = self.lint()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("instructions: missing expected delegation sources: settings", result.stdout + result.stderr)
+
+    def test_an_accessor_that_fails_or_misreports_is_a_failure(self):
+        """Claim: an accessor command that fails, prints invalid JSON or
+        prints something other than a list fails the lint naming the
+        accessor, and one reporting more sources than the floor passes.
+        Rejects a lint that reads a broken accessor as having no sources."""
+        extra = [*self.sources, {"id": "extra", "path": self.sources[0]["path"], "checks": ["roster-literals"]}]
+        self.harness.write_text(f"#!/usr/bin/env python3\nprint({json.dumps(extra)!r})\n")
+        self.assertEqual(self.lint().returncode, 0)
+        for body, message in (("raise SystemExit('no surfaces')", "failed: no surfaces"),
+                              ("print('not json')", "invalid delegation source JSON"),
+                              ("print('{}')", "delegation source output must be a JSON array")):
+            with self.subTest(message=message):
+                self.harness.write_text(f"#!/usr/bin/env python3\n{body}\n")
+                result = self.lint()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("instructions: ", result.stdout + result.stderr)
+                self.assertIn(message, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

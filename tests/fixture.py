@@ -9,7 +9,11 @@ built once per process and removed when the process exits.
 """
 
 import atexit
+import contextlib
+import io
+import os
 import pathlib
+import runpy
 import shutil
 import sys
 import tempfile
@@ -47,6 +51,27 @@ def edit(root: pathlib.Path, store: str, old: str, new: str) -> None:
     if text.count(old) != 1:
         raise AssertionError(f"{store}: expected one {old!r}, found {text.count(old)}")
     path.write_text(text.replace(old, new))
+
+
+def run_command(script: pathlib.Path, argv: list[str], environment: dict | None = None) -> tuple[int, str, str]:
+    """One command run in-process as its own __main__: its exit code, stdout and stderr."""
+    out, err = io.StringIO(), io.StringIO()
+    saved = sys.argv, dict(os.environ)
+    sys.argv = [str(script), *argv]
+    os.environ.update(environment or {})
+    code = 0
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            runpy.run_path(str(script), run_name="__main__")
+    except SystemExit as exit_:
+        code = exit_.code if isinstance(exit_.code, int) else 0 if exit_.code is None else 1
+        if isinstance(exit_.code, str):
+            err.write(exit_.code)
+    finally:
+        sys.argv = saved[0]
+        os.environ.clear()
+        os.environ.update(saved[1])
+    return code, out.getvalue(), err.getvalue()
 
 
 ROOT = build(pathlib.Path(tempfile.mkdtemp(prefix="agent-routing-fixture-")))
