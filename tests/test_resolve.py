@@ -167,6 +167,64 @@ class ValidateTest(unittest.TestCase):
                                     allow_experimental=True, caller="orbit-flash#low")
         self.assertIsNone(answer["confirmation"]["benefit"])
 
+    def test_a_seated_upgrade_is_a_stable_operator_escalation(self):
+        """Claim: a selection the profile seats stably above its baseline, or
+        that an escalation source seats, is stable and reported as an
+        operator escalation upward from the profile's own route. Rejects an
+        upgrade recorded as ordinary, or a borrowed seat refused."""
+        for model, effort in (("nw-atlas-2", "high"), ("nw-sage-2", "high")):
+            with self.subTest(model=model):
+                answer = validate_selection(FIXTURE, "implement", "claude", model, effort, "northwind-plan",
+                                            "fixture reason")
+                self.assertEqual((answer["stability"], answer["selection_kind"], answer["direction"],
+                                  answer["baseline"]),
+                                 ("stable", "operator-escalation", "upgrade", "nw-atlas-2#medium"))
+        named = validate_selection(FIXTURE, "implement", "claude", "nw-atlas-2", "medium", "northwind-plan",
+                                   "fixture reason")
+        self.assertEqual((named["selection_kind"], named["direction"]), ("operator-directed", "same"))
+
+    def test_an_unseated_tuple_needs_an_opt_in_and_stays_experimental(self):
+        """Claim: a tuple neither the profile nor an escalation source seats
+        is refused with the seated efforts listed, and with
+        --allow-experimental it is experimental with its direction against
+        the baseline. Rejects promoting an unseated tier to stable."""
+        refusal = self.refusal("implement", "codex", "ts-3-core", "low", "tessel-plan")
+        self.assertEqual((refusal["kind"], refusal["override"]), ("stability", "--allow-experimental"))
+        self.assertIn("seated efforts for 'ts-3-core' on 'implement'/'codex'/'tessel-plan': max", refusal["message"])
+        answer = validate_selection(FIXTURE, "implement", "codex", "ts-3-core", "low", "tessel-plan",
+                                    "fixture reason", allow_experimental=True)
+        self.assertEqual((answer["stability"], answer["direction"]), ("experimental", "downgrade"))
+
+    def test_operator_named_permits_explicit_only_but_keeps_bans_and_fences(self):
+        """Claim: --operator-named admits an explicit-only or experimental
+        tuple the operator named, recording that, and still refuses a
+        prohibited tier and a fenced profile. Rejects a named tuple that
+        waives a ban."""
+        answer = validate_selection(FIXTURE, "implement", "claude", "nw-swift-2", "max", "northwind-plan",
+                                    "fixture reason", operator_named=True)
+        self.assertEqual((answer["operator_named"], answer["stability"]), (True, "experimental"))
+        self.assertEqual(self.refusal("implement", "claude", "nw-atlas-2", "max", "northwind-plan",
+                                      operator_named=True)["kind"], "prohibited")
+        self.assertIn("fence", self.refusal("review", "pi", "orbit-trial", "high", "flat-pool", operator_named=True))
+
+    def test_a_role_exception_seats_a_fenced_model_only_on_a_variant(self):
+        """Claim: a variant with a nonblank role_exception may seat a model
+        fenced off its profile, and resolve reports the exception; the same
+        seat without the reason is refused by the validator. Rejects an
+        exception that is silent, or a fence a bare seat walks through."""
+        root = scratch(self)
+        seat = ('[[seat]]\nprofile = "review"\nvariant = "trial-read"\nbackends = ["pi"]\nprovider = "flat-pool"\n'
+                'model = "orbit-trial"\neffort = "high"\nstability = "experimental"\n{exception}'
+                'when = "A trial read beside the reviewer of record."\nwhy = "Fixture trial."\nsince = "2030-01-03"\n\n')
+        edit(root, stores.POLICY, '[[fallback]]\nprofile = "review"',
+             seat.format(exception="") + '[[fallback]]\nprofile = "review"')
+        self.assertTrue(any("cannot serve profile 'review'" in problem for problem in data_problems(root)))
+        edit(root, stores.POLICY, 'stability = "experimental"\nwhen = "A trial read',
+             'stability = "experimental"\nrole_exception = "A candidate reader, never the verdict."\nwhen = "A trial read')
+        self.assertEqual(data_problems(root), [])
+        answer = resolve(root, "review", "pi", variant_id="trial-read", allow_experimental=True)
+        self.assertEqual(answer["role_exception"], "A candidate reader, never the verdict.")
+
     def test_an_effort_the_backend_cannot_express_is_refused(self):
         """Claim: an effort outside a backend's support for that model (here
         pi's effort_support row) is refused. Rejects a route the harness would
@@ -174,6 +232,45 @@ class ValidateTest(unittest.TestCase):
         with self.assertRaises(RouteRefusal) as caught:
             validate_selection(FIXTURE, "implement", "pi", "ts-3-core", "medium", "tessel-plan", "fixture reason")
         self.assertIn("medium", caught.exception.payload()["message"])
+
+
+class CallerTest(unittest.TestCase):
+    def confirmation(self, profile, backend, caller, provider=None, **options):
+        return resolve(FIXTURE, profile, backend, caller=caller, caller_provider=provider, **options)["confirmation"]
+
+    def summary(self, *args, **options):
+        answer = self.confirmation(*args, **options)
+        return answer["offer_to_user"], answer["reasons"], answer["rank_comparison"], answer["pool_comparison"]
+
+    def test_a_higher_rank_or_a_scarcer_pool_is_offered(self):
+        """Claim: a selection ranked above the caller's seat in its pool, or
+        drawn from a pool declared scarcer than the caller's, is an offer with
+        its reason. Rejects spending more than the caller's seat unasked."""
+        self.assertEqual(self.summary("implement", "claude", "nw-swift-2#high", variant_id="atlas-high"),
+                         (True, ["above-caller-seat"], "above", "same"))
+        self.assertEqual(self.summary("implement", "claude", "ts-3-core#low", "tessel-plan"),
+                         (True, ["scarcer-pool"], "unranked", "scarcer"))
+
+    def test_lower_seats_are_ordinary_and_unknown_comparisons_stay_unknown(self):
+        """Claim: a lower rank in the same pool is a known ordinary move,
+        while a less scarce pool, an unordered pool and an unranked caller
+        tier compare as unknown. Rejects inventing a cross-pool tier cost."""
+        self.assertEqual(self.summary("implement", "claude", "nw-atlas-2#high"), (False, [], "below", "same"))
+        self.assertEqual(self.summary("implement", "codex", "nw-atlas-2#high"), (None, [], "unranked", "less-scarce"))
+        self.assertEqual(self.summary("implement", "claude", "orbit-flash#low"), (None, [], "unranked", "unranked"))
+        self.assertEqual(self.summary("implement", "claude", "nw-atlas-2#low"), (None, [], "unranked", "same"))
+
+    def test_an_ambiguous_or_invalid_caller_is_refused(self):
+        """Claim: a caller model several pools serve needs --caller-provider,
+        a provider that does not serve it is refused, and a caller needs an
+        effort. Rejects guessing the caller's pool."""
+        cases = {("ts-3-core#max", None): "invalid-caller", ("nw-atlas-2#high", "tessel-plan"): "invalid-caller",
+                 ("nw-atlas-2", None): "unknown-coordinate", (None, "tessel-plan"): "invalid-caller"}
+        for (caller, provider), kind in cases.items():
+            with self.subTest(caller=caller, provider=provider):
+                with self.assertRaises(RouteRefusal) as caught:
+                    resolve(FIXTURE, "implement", "claude", caller=caller, caller_provider=provider)
+                self.assertEqual(caught.exception.payload()["kind"], kind)
 
 
 if __name__ == "__main__":
