@@ -124,6 +124,8 @@ button.act:disabled { opacity: .5; cursor: default; }
 .preview .arrow { color: var(--muted); padding: 0 .3rem; }
 .preview .footer { margin-top: .45rem; color: var(--muted); font-size: .88em; }
 .preview .notice { margin-top: .45rem; padding: .35rem .55rem; border-radius: 6px; background: var(--warn-bg); color: var(--warn); }
+.preview details.reclassified { font-size: .88em; }
+.preview details.reclassified summary { cursor: pointer; }
 .preview .stale { color: var(--warn); }
 .preview details { margin-top: .4rem; font-size: .85em; color: var(--muted); }
 .preview pre { white-space: pre-wrap; word-break: break-all; margin: .3rem 0 0; }
@@ -600,6 +602,15 @@ function drawPreview(ed, answer) {
     "stale consumers:", result.stale_consumers.map(row => h("div", {}, `${row.consumer} (${row.path}): `, h("code", {}, row.refresh)))]
     : "stale consumers: none"));
   if (result.notice) parts.push(h("div", { class: "notice" }, result.notice));
+  if (result.classification_changes) {
+    const rows = result.classification_changes;
+    const kind = row => `${row.direction} (${row.stability}, ${row.selection_kind})`;
+    parts.push(rows.length ? h("details", { class: "notice reclassified", open: rows.length <= 8 },
+      h("summary", {}, `${rows.length} directed selection${rows.length === 1 ? "" : "s"} reclassified by the pool ranks`),
+      rows.map(row => h("div", {}, `${row.profile} on ${row.backend}: `, h("code", {}, `${row.model} ${row.effort}`),
+        ` ${kind(row.before)} → ${kind(row.after)}`)))
+      : h("div", { class: "footer" }, "directed selections reclassified: none"));
+  }
   if (result.undone_commit) parts.push(h("div", { class: "footer" }, "undoes ", h("code", {}, result.undone_commit.slice(0, 12))));
   if (result.record_id) parts.push(h("div", { class: "footer" }, "appends ", h("code", {}, result.record_id)));
   const commitButton = h("button", { type: "button", class: "act primary commit", onclick: () => commit(ed) }, "Commit");

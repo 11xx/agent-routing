@@ -150,6 +150,14 @@ def edit(result, width):
         lines += wrapped(f"stale {row['consumer']} ({row['path']}): {row['refresh']}", width, indent="  ")
     if not result["stale_consumers"]:
         lines.append("stale consumers: none")
+    if "classification_changes" in result:
+        def kind(row):
+            return f"{row['direction']} ({row['stability']}, {row['selection_kind']})"
+        changed = result["classification_changes"]
+        lines.append("directed selections reclassified:" if changed else "directed selections reclassified: none")
+        for row in changed:
+            lines += wrapped(f"{row['model']} {row['effort']} via {row['pool']}: {kind(row['before'])} → "
+                             f"{kind(row['after'])}", width, f"  {row['profile']} on {row['backend']}: ", "    ")
     for key in ("notice", "record_id", "undone_commit", "commit"):
         if result.get(key):
             lines += wrapped(str(result[key]), width, f"{key}: ")

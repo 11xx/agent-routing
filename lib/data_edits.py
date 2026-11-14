@@ -112,6 +112,48 @@ def require_one(rows, where, **key):
     return found[0]
 
 
+def selection_classes(texts, pools):
+    """How validate classifies each directed selection drawing on these pools, in one data set.
+
+    Every profile and backend it serves, by every routable, unprohibited tier
+    the backend reaches through the pool: the direction against the
+    profile's own seat, the stability and the selection kind.
+    """
+    import routing_profiles as routes
+
+    loaded = stores.Data.from_texts(texts)
+    by_model = loaded.by_model()
+    classes = {}
+    for profile in loaded.profiles:
+        served = dict.fromkeys(backend for route in [profile, *profile.get("variant", [])]
+                               for backend in route.get("backends", []))
+        for backend in served:
+            for reach in loaded.catalog.get("reach", []):
+                model = by_model.get(reach["model"])
+                if (reach["backend"] != backend or reach["provider"] not in pools or model is None
+                        or model.get("status") in routes.UNROUTABLE_MODEL_STATUSES):
+                    continue
+                for tier in model["effort"]:
+                    if tier.get("prohibited"):
+                        continue
+                    answer = routes.classify_selection(loaded, profile, backend, model["id"], tier["effort"],
+                                                       reach["provider"])
+                    classes[profile["id"], backend, model["id"], tier["effort"], reach["provider"]] = {
+                        key: answer[key] for key in ("direction", "stability", "selection_kind")}
+    return classes
+
+
+def classification_changes(before, after, changes):
+    """The directed selections whose classification an edit of pool ranks changes, in the pools it touches."""
+    pools = {row[side]["pool"] for row in changes if row["table"] == "seat_rank" for side in ("before", "after")
+             if row[side]}
+    if not pools:
+        return None
+    old, new = selection_classes(before, pools), selection_classes(after, pools)
+    return [dict(profile=key[0], backend=key[1], model=key[2], effort=key[3], pool=key[4], before=old[key],
+                 after=new[key]) for key in old if key in new and old[key] != new[key]]
+
+
 def seated_tiers(catalog, policy):
     """Each (model, effort, pool) a stable route seats, by the definition validation ranks."""
     import routing_profiles as routes
@@ -591,6 +633,9 @@ def apply(root, verb, **opts):
         result = dict(schema="agent-routing-edit/1", verb=verb, dry_run=dry, state=observed, changes=changes,
                       old_route_version=stores.route_version(comparison), new_route_version=stores.route_version(candidate),
                       stale_consumers=stale_consumers(comparison, candidate, root), commit=None, **extra)
+        reclassified = classification_changes(comparison, candidate, changes)
+        if reclassified is not None:
+            result["classification_changes"] = reclassified
         if any(row["table"] == "tier" and row["before"] and row["after"]
                and any(row["before"].get(key) != row["after"].get(key) for key in ("rank", "floor")) for row in changes):
             result["notice"] = "Rank changes move Arc assurance at once; clearance changes when Arc next imports the ladder."
