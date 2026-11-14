@@ -1,6 +1,7 @@
 """The capability ladder read from Git history, over a scratch repository of the fixture data."""
 
 import os
+import re
 import subprocess
 import unittest
 from unittest import mock
@@ -160,6 +161,22 @@ class DatedAssessmentTest(LadderCase):
                                        as_of="2030-01-04T00:00:00Z")["route_version"], before)
         self.assertNotEqual(assess_review(self.root, "nw-atlas-2#high", ["ts-3-core#max"],
                                           as_of="2030-01-06T00:00:00Z")["route_version"], before)
+
+    def test_a_revision_whose_seats_name_one_backend_each_is_still_read(self):
+        """Claim: an accepted revision whose policy wrote a route as one seat
+        row per backend, `backend = "..."`, reads as the same capability table
+        and dates assessments like any other. Rejects a ladder that projects
+        such a revision as an empty table and refuses every read across it."""
+        path = self.root / stores.POLICY
+        text = path.read_text().replace('backends = ["codex", "pi"]\nprovider = "tessel-plan"',
+                                        'backends = ["codex"]\nprovider = "tessel-plan"')
+        survey = text[text.index('[[seat]]\nprofile = "survey"'):text.index("[[seat_rank]]")]
+        text = text.replace(survey, survey + survey.replace('backends = ["codex"]', 'backends = ["pi"]'))
+        path.write_text(re.sub(r'backends = \["(\w+)"\]', r'backend = "\1"', text))
+        self.commit("2030-01-04T00:00:00Z")
+        versions = review_ladder.export(self.root, history=True)["version"]
+        self.assertEqual([version.get("id") for version in versions[1:]], [f"v-{self.first}"])
+        self.assertEqual(self.tier("2030-01-05T00:00:00Z"), 2)
 
     def test_a_shallow_clone_exports_its_current_table_but_not_history(self):
         """Claim: a shallow clone still exports the current version from the

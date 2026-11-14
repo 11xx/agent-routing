@@ -93,10 +93,34 @@ def project_data(data: "stores.Data") -> list[dict]:
     return sorted(models, key=lambda row: row["model"])
 
 
+def recorded(texts: dict[str, str]) -> "stores.Data":
+    """The data a revision's stores declare.
+
+    A policy that wrote a route as one seat row per backend, each naming
+    `backend`, is read as the one row naming every `backends` it served.
+    Data with problems is refused rather than read as an empty table.
+    """
+    policy = stores.parse_toml(texts[stores.POLICY], stores.POLICY)
+    seats = policy.get("seat")
+    if isinstance(seats, list) and any(isinstance(row, dict) and "backend" in row for row in seats):
+        routes: dict[tuple, dict] = {}
+        for row in seats:
+            row = dict(row)
+            backend = row.pop("backend", None)
+            route = routes.setdefault((row.get("profile"), row.get("variant")), {**row, "backends": []})
+            route["backends"].append(backend)
+        policy["seat"] = list(routes.values())
+        texts = {**texts, stores.POLICY: stores.emit_policy(policy)}
+    data = stores.Data.from_texts(texts)
+    if data.problems:
+        raise ValueError("; ".join(data.problems))
+    return data
+
+
 def table_at(root: pathlib.Path, texts: dict[str, str]) -> list[dict]:
     """The capability table a revision's data declares."""
     if is_stores(texts):
-        return project_data(stores.Data.from_texts(texts))
+        return project_data(recorded(texts))
     module = historical(root)
     manifest, profiles, _ = legacy_manifests(texts)
     return module.project(manifest, profiles, historical=module.legacy(manifest))

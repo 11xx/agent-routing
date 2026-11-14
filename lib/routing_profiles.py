@@ -1381,7 +1381,8 @@ def assess_review(
 
 def _assessment_at(root: pathlib.Path, reviewer: str, authors: list[str], as_of: str, *,
                    purpose: str, schema: int, accepted: str | None = None) -> dict:
-    from review_ladder import EVIDENCE, evidence_at, is_stores, legacy_manifests, read_at, table_at, table_problems
+    from review_ladder import (EVIDENCE, evidence_at, is_stores, legacy_manifests, read_at, recorded, table_at,
+                               table_problems)
 
     try:
         revision, texts = read_at(root, as_of, accepted)
@@ -1393,8 +1394,8 @@ def _assessment_at(root: pathlib.Path, reviewer: str, authors: list[str], as_of:
     except ValueError as error:
         raise RouteRefusal("historical-ladder", str(error)) from error
     if is_stores(texts):
-        recorded = stores.Data.from_texts(texts)
-        profiles, pool_rows, review = recorded.profiles, recorded.pools, recorded.policy.get("review")
+        revision_data = recorded(texts)
+        profiles, pool_rows, review = revision_data.profiles, revision_data.pools, revision_data.policy.get("review")
     else:
         manifest, profile_document, delegation = legacy_manifests(texts)
         profiles, pool_rows = profile_document.get("profile", []), delegation.get("pool", [])

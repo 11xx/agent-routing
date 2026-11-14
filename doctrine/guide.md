@@ -185,7 +185,9 @@ ASSESS A REVIEW
 
   A dated answer reads the stores at the pinned revision; a revision before the
   stores existed is read through the ladder's recorded reconstruction of the
-  routing files it held. route_version binds the pinned data, the ladder's
+  routing files it held. A revision whose policy wrote a route as one seat row
+  per backend reads as the one route those rows share, and a revision whose
+  stores have problems is refused rather than read as an empty table. route_version binds the pinned data, the ladder's
   design record at that revision (or its absence), and the projected
   capability table. Dates before the numeric record refuse with ladder-gap;
   invalid or timezone-less instants are refused. Dated reads validate the
