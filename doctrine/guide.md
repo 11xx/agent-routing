@@ -83,11 +83,13 @@ THE STORES
   NUL byte. Notes do not move it.
 
 EDIT POLICY OR CATALOG
-  All edit commands take --dry-run, --expect STATE and --json. Catalog and
-  policy edits require --why TEXT (one or two sentences); a seat's or
-  guard's stored why is one sentence, at most 240 characters. Repeat
-  --because NOTE_ID to cite motivating notes in the commit body; guards
-  also retain them in because.
+  All edit commands take --dry-run, --expect STATE and --json, and all but
+  commit take --date YYYY-MM-DD, the date the edit records: a seat's or
+  guard's since, a note's or note event's date. Without it an edit records
+  today. Catalog and policy edits require --why TEXT (one or two
+  sentences); a seat's or guard's stored why is one sentence, at most 240
+  characters. Repeat --because NOTE_ID to cite motivating notes in the
+  commit body; guards also retain them in because.
 
   set-seat PROFILE --backend BACKEND [--backend BACKEND...] [--variant NAME]
     --model MODEL --effort EFFORT [--provider PROVIDER]
@@ -123,8 +125,12 @@ EDIT POLICY OR CATALOG
   own order on the pool forbids that place, N is the nearest rank it
   allows, which also reverses the comparisons with every tier ranked
   between the two places. Any edit that changes pool ranks lists, as
-  classification_changes, each directed selection in those pools whose
-  validate direction, stability or kind it changes, or says none does.
+  classification_changes, each directed selection in those pools that
+  validate --allow-experimental answers both before and after the edit
+  with a different direction, stability or kind, or says none does. Every
+  profile, backend and reached tier in those pools is asked of validate
+  itself, on copies of the stores before and after; a selection it
+  refuses either way, for any reason, is not listed.
   default-seat PROFILE --variant NAME [--backend BACKEND...] --why TEXT
       Make that variant the unnamed request's default on all its backends.
       Multi-backend rows default together. An overlapping primary is retained
@@ -180,9 +186,10 @@ EDIT POLICY OR CATALOG
   commit that changed a data path, read in the same lock hold the edit is
   computed from. --expect STATE runs the edit only from that state: inside
   its lock hold, before computing anything, an edit whose stores or data
-  history moved since is refused as stale and writes nothing. A preview's
-  state passed to --expect makes the confirmation the edit the preview
-  showed, or no edit.
+  history moved since is refused as stale and writes nothing. The result's
+  date is the date the edit recorded. A preview's state passed to --expect,
+  and its date to --date, make the confirmation the edit the preview
+  showed, on any day, or no edit.
 
   agent-routing commit --why TEXT [--because NOTE_ID...] [--dry-run] [--json]
     Validate and canonicalize hand edits, then commit only data paths. Other
@@ -211,9 +218,10 @@ EDIT POLICY OR CATALOG
   pool ranks, each reclassified directed selection as profile on backend:
   model effort via pool: direction (stability, kind) → direction
   (stability, kind). Notes leave route_version unchanged. --json emits one
-  agent-routing-edit/1 object with verb, dry_run, state, changes,
-  old_route_version, new_route_version, stale_consumers and commit (null
-  for dry runs); changes name store, table, before and after. An edit of
+  agent-routing-edit/1 object with verb, dry_run, state, date (except for
+  commit), changes, old_route_version, new_route_version, stale_consumers
+  and commit (null for dry runs); changes name store, table, before and
+  after. An edit of
   pool ranks adds classification_changes, rows of profile, backend, model,
   effort, pool, and before and after, each with direction, stability and
   selection_kind. Errors use agent-routing-edit-error/1 with verb and
@@ -228,7 +236,8 @@ FILE AND READ FIELD EVIDENCE
     --claim SENTENCE --cause brief|executor|integration|unknown --evidence REF
     [--metrics JSON] [--date YYYY-MM-DD] [--dry-run] [--json]
       Append one canonical note with the next id. Metrics are a nonempty
-      object of finite numbers and strings. The date defaults to today.
+      object of finite numbers and strings. The date, as for every edit,
+      defaults to today.
   agent-routing again NOTE_ID --evidence REF [--date YYYY-MM-DD]
       Append one recurrence. No reason is required.
   agent-routing retract NOTE_ID --reason TEXT [--date YYYY-MM-DD]
@@ -293,8 +302,12 @@ EDIT FROM A PAGE
   the state the preview was computed from. Confirmed, it runs for real with
   that stamp as --expect, so a store byte or data commit that lands after
   the preview, from any writer, makes it answer stale (409) and write
-  nothing. The page's undo names the commit its preview undoes. A refusal
-  answers {"error": MESSAGE} in the validator's or parser's words.
+  nothing. The page confirms with the preview's date as --date, so a
+  preview confirmed after midnight records the date it showed. The page's
+  undo stays bound to the commit it was opened for; once another verb edit
+  is the latest, it says so, names that edit, and previews its undo on
+  request. A refusal answers {"error": MESSAGE} in the validator's or
+  parser's words.
 
 READABLE TEXT VIEWS
   Text uses the terminal width, or 80 columns for redirected output. Seat

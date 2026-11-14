@@ -86,11 +86,13 @@ files by rename, and makes one signed-as-configured Git commit containing
 only data paths. `--why` records the reason; repeat `--because NOTE_ID` to
 cite field evidence. `--dry-run` validates and previews without writing, and
 `--json` emits one result object for callers. Every result carries the
-`state` it was computed from, the store bytes and the last data commit;
-`--expect STATE` refuses, writing nothing, once either has moved, so a
-preview's state makes the real run that same edit or none. An edit that
-changes pool ranks lists each directed selection whose classification
-`validate` changes, or says none changes.
+`state` it was computed from, the store bytes and the last data commit,
+and the `date` it recorded; `--expect STATE` refuses, writing nothing,
+once the stores or their history have moved, and `--date` records a given date instead of
+today, so a preview's state and date make the real run that same edit or
+none. An edit that changes pool ranks lists each directed selection that
+`validate` answers before and after it with a different classification,
+or says none changes.
 
 The invented fixture shows the fields a preview changes:
 
@@ -188,8 +190,10 @@ with the route versions and stale consumers, then run for real on one
 confirmation, so it validates, commits and undoes exactly as the verb does.
 A confirmation runs from the state its preview was computed from, checked
 in the edit's own lock hold, and is refused when any writer changed a store
-byte or committed data since; an undo confirms only the commit its preview
-named. A response arriving after the form changed, or after a newer
+byte or committed data since, and it records the date its preview showed.
+An undo confirms only the commit it was opened for; once another edit is
+the latest, the page says so and offers that edit's undo. A response
+arriving after the form changed, or after a newer
 preview, is dropped, so Commit sends what the editor shows. Seat
 choices list what a backend reaches, with the reason beside each tier it
 cannot hold. A tier its pool has not ranked shows that pool's order and
