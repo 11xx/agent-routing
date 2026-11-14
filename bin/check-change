@@ -17,11 +17,15 @@ target branch `arc show --json` reports.
   `tests/FILE.py::Class.test_name` or `none (REASON)`, at most MAX_WITNESSES
   distinct names. Each runs once within WITNESS_LIMIT; a failure, an error, a
   skip or no test run fails it. A commit touching lib/, bin/, templates/,
-  tests/ or checks/ (Markdown aside) names a witness or `none (REASON)`.
+  tests/ or checks/ (Markdown aside) names a witness or `none (REASON)` in
+  its final trailer block.
 
 The whole run fits BUDGET; an overrun fails and names its phase. Every check
 runs with a private HOME, TMPDIR and XDG directories, removed afterwards. Each
 run writes one JSON receipt under $XDG_CACHE_HOME/agent-routing/checks/.
+
+The tests read the invented data set under tests/fixtures/data, so a data edit
+never breaks one. `python3 -m unittest discover -s tests` runs them alone.
 """
 
 import argparse
