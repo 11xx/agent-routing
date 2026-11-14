@@ -11,6 +11,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 
 import stores  # noqa: E402
+from routing_profiles import RouteRefusal, dumps, resolve  # noqa: E402
 
 
 def consumer_code_root():
@@ -135,23 +136,13 @@ def configured_consumers():
 
 
 def resolved_route(pin):
-    """What the resolver returns for the profile a pinned definition claims."""
-    command = [
-        str(ROOT / "bin" / "agent-routing"),
-        "resolve",
-        pin["profile"],
-        "--backend",
-        pin["backend"],
-        "--json",
-    ]
-    if pin.get("variant") is not None:
-        command.extend(["--variant", pin["variant"]])
-    if pin.get("allow_experimental"):
-        command.append("--allow-experimental")
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
-    if result.returncode != 0:
-        raise SystemExit(f"cannot resolve pin {pin['path']}: {result.stderr.strip() or result.stdout.strip()}")
-    return json.loads(result.stdout)
+    """What `agent-routing resolve` answers for the profile a pinned definition claims."""
+    try:
+        return resolve(ROOT, pin["profile"], pin["backend"], variant_id=pin.get("variant"),
+                       allow_experimental=bool(pin.get("allow_experimental")))
+    except RouteRefusal as refusal:
+        raise SystemExit(f"cannot resolve pin {pin['path']}: agent-routing: cannot resolve profile "
+                         f"{pin['profile']!r} for backend {pin['backend']!r}: {refusal}\n{dumps(refusal.payload())}")
 
 
 def main():
