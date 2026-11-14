@@ -53,10 +53,10 @@ since = "2026-08-23"
 
 [[guard]]
 model = "opus-5.5"
-rule = "Probe a harness route that forces tool_choice before relying on it."
-why = "Forced tool_choice (any or tool) returns a 400 on this model."
+rule = "Probe a harness route that forces tool_choice or disables thinking before relying on it."
+why = "Forced tool_choice (any or tool) returns a 400 on this model, and thinking cannot be disabled at any effort."
 since = "2026-09-22"
-because = ["n0004"]
+because = ["n0003", "n0004"]
 
 [[guard]]
 model = "sonnet-5.5"
@@ -113,11 +113,27 @@ because = ["n0091"]
 
 [[guard]]
 model = "haiku-5.5"
+effort = "high"
+profile = "explore"
+rule = "Cover each load-bearing fact with overlapping scouts, and treat a fact one scout alone states as a lead to verify."
+why = "Two of five scouts misread one validator that the scouts covering it from other angles read correctly."
+since = "2026-10-09"
+because = ["n0095"]
+
+[[guard]]
+model = "haiku-5.5"
 effort = "max"
 rule = "Run max only as a bounded explicit trial, never as a default or an escalation."
 why = "No field evidence makes it either, and on one draft it cost 1.51 times xhigh for the same repair."
 since = "2026-10-07"
 because = ["n0099"]
+
+[[guard]]
+model = "fable-5.2"
+rule = "Raise its ranks only on review evidence, never on an aggregator score."
+why = "The index reads it above Opus 5.5 at every effort, but no independent pass@1 or review arc measures it."
+since = "2026-11-09"
+because = ["n0048"]
 
 [[guard]]
 model = "gpt-daybreak-blue"
@@ -217,6 +233,27 @@ since = "2026-08-28"
 because = ["n0180"]
 
 [[guard]]
+model = "glm-5.3-flash"
+rule = "Never put it on a critical path without a first-artifact watchdog."
+why = "Three of seven long-brief dispatches never reached the model, one holding its socket for two hours."
+since = "2026-08-29"
+because = ["n0184"]
+
+[[guard]]
+model = "glm-5.3-flash"
+rule = "Count a run with no first artifact after ninety seconds as dead; rerouting it is not a retry."
+why = "A healthy run writes its session file in about nine seconds, and a run that wrote nothing has nothing to repeat."
+since = "2026-08-29"
+because = ["n0184"]
+
+[[guard]]
+model = "glm-5.3-flash"
+rule = "Read its lone amend as weak evidence, and take a stance-diverse panel for signal."
+why = "All seven of its independent discussion positions came back amend, and the hedge has not been retested."
+since = "2026-08-23"
+because = ["n0186"]
+
+[[guard]]
 model = "gemini-3.8-flash"
 rule = "Activate it only through a pi probe for reachability and the effort lever, then a review arc, then a seat decision."
 why = "It is benchmarked but unprobed, and no pool serves it."
@@ -225,14 +262,14 @@ because = ["n0146", "n0249"]
 
 [[guard]]
 model = "gpt-6.1-sol"
-rule = "Every write brief names exact targets, a scope ceiling, abort conditions, a sandbox and no tests or refactors beyond those listed."
+rule = "Every write brief names exact targets with a stop when one is absent, a scope ceiling, abort conditions, a sandbox and no tests or refactors beyond those listed."
 why = "The Sol line turns ambiguity into overbuild or into working around a missing target, and it still circumvents explicit restrictions in 23.5% of the vendor's cases."
 since = "2026-09-29"
 because = ["n0106", "n0107", "n0226"]
 
 [[guard]]
 model = "gpt-6.1-sol"
-rule = "Give a long execute arc a no-progress stop condition in its brief."
+rule = "Give a long execute arc a no-progress stop condition and a report back in its brief."
 why = "It follows its process rules even when they stop all progress and does not ask for help."
 since = "2026-09-29"
 because = ["n0223"]
