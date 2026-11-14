@@ -10,8 +10,9 @@ target branch `arc show --json` reports.
 - Invariants: the entries of checks/invariants.toml, read from BASE, plus the
   candidate's entries under names BASE lacks, so a change cannot drop the
   invariant that covers what it breaks. Together they get INVARIANT_LIMIT.
-- Tests: every test under tests/ runs once in one process. A failure, an
-  error, a skip, an unexpected success or an empty suite fails it.
+- Tests: every test module under tests/ runs once, all modules concurrently,
+  each in its own process. A failure, an error, a skip, an unexpected success
+  or a suite with no test fails it.
 - Witnesses: the `Witness:` trailers of BASE..HEAD, each
   `tests/FILE.py::Class.test_name` or `none (REASON)`, at most MAX_WITNESSES
   distinct names. Each runs once within WITNESS_LIMIT; a failure, an error, a
@@ -64,10 +65,10 @@ print(json.dumps({"run": result.testsRun, "failures": len(result.failures), "err
 """
 
 
-# Runs every test under the directory it is given and reports its counts on the last line of stdout.
+# Runs one test module of the directory it is given and reports its counts on the last line of stdout.
 SUITE = """
 import json, sys, unittest
-suite = unittest.defaultTestLoader.discover(sys.argv[1], top_level_dir=sys.argv[1])
+suite = unittest.defaultTestLoader.discover(sys.argv[1], pattern=sys.argv[2], top_level_dir=sys.argv[1])
 result = unittest.TextTestRunner(stream=sys.stderr, verbosity=1).run(suite)
 print(json.dumps({"run": result.testsRun, "failures": len(result.failures), "errors": len(result.errors),
                   "skipped": len(result.skipped), "expected_failures": len(result.expectedFailures),
@@ -242,6 +243,51 @@ class Run:
             raise Refusal(phase, f"the run overran its {BUDGET:g}s budget in the {phase} phase at {name}")
         return row, output
 
+    def execute_all(self, phase, entries, limit):
+        """Run checks concurrently, each in its own process group; kill every group at the shared limit."""
+        limit = min(limit, self.remaining())
+        if limit <= 0:
+            raise Refusal(phase, f"the run's {BUDGET:g}s budget is spent before the {phase} phase")
+        before = resource.getrusage(resource.RUSAGE_CHILDREN)
+        started = time.monotonic()
+        deadline = started + limit
+        logs = pathlib.Path(self.environment["TMPDIR"])
+        running = []
+        for number, (name, command) in enumerate(entries):
+            log = (logs / f"{phase}-{number}.log").open("w+")
+            running.append((name, log, subprocess.Popen(command, cwd=ROOT, env=self.environment, stdout=log,
+                                                        stderr=subprocess.STDOUT, text=True,
+                                                        start_new_session=True)))
+        results = []
+        try:
+            for name, log, process in running:
+                try:
+                    status = process.wait(timeout=max(deadline - time.monotonic(), 0))
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait()
+                    status = None
+                log.seek(0)
+                row = {"phase": phase, "name": name, "wall": round(time.monotonic() - started, 3),
+                       "exit_status": status}
+                self.receipt["checks"].append(row)
+                results.append((row, log.read()))
+        finally:
+            for _, log, process in running:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                if process.poll() is None:
+                    process.wait()
+                log.close()
+        after = resource.getrusage(resource.RUSAGE_CHILDREN)
+        self.receipt[f"{phase}_cpu"] = round(after.ru_utime - before.ru_utime + after.ru_stime - before.ru_stime, 3)
+        overrun = next((row["name"] for row, _ in results if row["exit_status"] is None), None)
+        if overrun is not None and self.remaining() <= 0:
+            raise Refusal(phase, f"the run overran its {BUDGET:g}s budget in the {phase} phase at {overrun}")
+        return results
+
     def phase(self, name, body):
         started = time.monotonic()
         self.receipt["phases"][name] = {"status": "running"}
@@ -290,15 +336,24 @@ class Run:
                 raise Refusal("invariants", f"invariant {entry['name']} failed ({row['exit_status']})\n{output}")
 
     def tests(self):
-        if not (ROOT / "tests").is_dir():
-            raise Refusal("tests", "the candidate has no tests/ directory")
-        row, output = self.execute("tests", "tests/", [sys.executable, "-c", SUITE, str(ROOT / "tests")],
-                                   self.remaining())
-        row["counts"] = counts = counts_of(row, output)
-        if row["exit_status"] is None:
-            raise Refusal("tests", f"the test suite overran the run's {BUDGET:g}s budget\n{output}")
-        if not passed(counts):
-            raise Refusal("tests", f"the test suite did not pass: {counts or 'no result'}\n{output}")
+        directory = ROOT / "tests"
+        modules = sorted(path.name for path in directory.glob("test_*.py")) if directory.is_dir() else []
+        if not modules:
+            raise Refusal("tests", "the candidate has no test module under tests/")
+        results = self.execute_all("tests", [(f"tests/{name}", [sys.executable, "-c", SUITE, str(directory), name])
+                                             for name in modules], self.remaining())
+        totals = {}
+        for row, output in results:
+            row["counts"] = counts = counts_of(row, output)
+            if row["exit_status"] is None:
+                raise Refusal("tests", f"{row['name']} overran the run's {BUDGET:g}s budget\n{output}")
+            if counts is None or any(counts[key] for key in counts if key != "run"):
+                raise Refusal("tests", f"the test suite did not pass: {row['name']}: {counts or 'no result'}\n{output}")
+            for key, value in counts.items():
+                totals[key] = totals.get(key, 0) + value
+        self.receipt["test_counts"] = totals
+        if not passed(totals):
+            raise Refusal("tests", f"the test suite did not pass: {totals}")
 
     def witnesses(self, names):
         for name in names:
