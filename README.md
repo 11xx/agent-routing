@@ -135,8 +135,9 @@ Inherited, unverified for this model
   none
 ```
 
-`set-seat`, `remove-seat` and `default-seat` edit seats; `prohibit`, `allow`
-and `rank` edit tiers; `set-fallback` and `remove-fallback` edit recovery
+`set-seat`, `remove-seat` and `default-seat` edit seats, and `set-seat
+--pool-rank N` places a newly seated tier in its pool's order; `pool-rank`
+reorders a seated tier; `prohibit`, `allow` and `rank` edit tiers; `set-fallback` and `remove-fallback` edit recovery
 routes; `set-review-seat` and `remove-review-seat` edit the reader for a review
 purpose; `set-guard` and `retire-guard` edit standing instructions;
 `add-model` and `supersede-model` cover small catalog changes. The guide
@@ -181,7 +182,9 @@ with the route versions and stale consumers, then run for real on one
 confirmation, so it validates, commits and undoes exactly as the verb does.
 A confirmation is refused when the stores moved after its preview. Seat
 choices list what a backend reaches, with the reason beside each tier it
-cannot hold. The page watches the stores, so an edit a verb makes elsewhere
+cannot hold. A tier its pool has not ranked shows that pool's order and
+asks for a place, filled with the suggested one, and the seat edit writes
+the rank in the same commit. The page watches the stores, so an edit a verb makes elsewhere
 appears within seconds and the rows it changed flash once; what is being
 typed stays. What only a terminal does, the page names as a command.
 

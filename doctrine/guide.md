@@ -90,13 +90,35 @@ EDIT POLICY OR CATALOG
 
   set-seat PROFILE --backend BACKEND [--backend BACKEND...] [--variant NAME]
     --model MODEL --effort EFFORT [--provider PROVIDER]
-    [--stability stable|probationary|experimental] --when SENTENCE --why TEXT
+    [--stability stable|probationary|experimental] [--pool-rank N]
+    --when SENTENCE --why TEXT
       Create or update the seat identified by profile and optional variant.
       Backends replace the row's backend list. Provider can be omitted only
       when every backend has exactly one common reach provider. An existing
       stability is retained unless supplied; new seats default to stable.
+      A stable seat's tier needs a pool rank on the seat's provider (below).
+      On a tier that pool has not ranked, --pool-rank N writes that
+      [[seat_rank]] row in the same commit; without it the edit is refused
+      with the pool's order and a suggested N. On a ranked tier --pool-rank
+      changes the rank.
   remove-seat PROFILE [--variant NAME] --why TEXT
       Remove that seat. A default backend must retain a resolvable default.
+  pool-rank MODEL EFFORT --pool PROVIDER --rank N --why TEXT
+      Change one seated tier's pool rank and nothing else. A tier with no
+      rank on that pool gains one with the set-seat edit that seats it.
+
+  A pool rank ([[seat_rank]]) orders the tiers stable seats hold inside one
+  pool, by provider; it is not capability. validate reads it to call a
+  directed selection an upgrade, lateral or downgrade against the profile's
+  own seat in the same pool, and a stable upgrade an operator escalation;
+  a caller confirmation compares the selection with the caller's seat by
+  it. Within one model and pool it never falls as effort rises. Every edit
+  keeps ranks on exactly the seated tiers: one that leaves a tier with no
+  stable seat drops its rank in the same commit and lists the removed row.
+  The suggested N keeps the place the seat's previous tier held on the same
+  pool, so directed selections compare with the moved seat as before;
+  otherwise it is 1, the bottom of the pool, where the tier outranks
+  nothing. Either is held inside the model's own order on that pool.
   default-seat PROFILE --variant NAME [--backend BACKEND...] --why TEXT
       Make that variant the unnamed request's default on all its backends.
       Multi-backend rows default together. An overlapping primary is retained
@@ -154,6 +176,8 @@ EDIT POLICY OR CATALOG
   agent-routing log [--limit N] [--json]
     Show the stores' Git history, including hand commits, newest first. Each
     line carries a short hash, date, verb, row and the reason's first sentence.
+    --json emits agent-routing-history/1 whose edits carry commit, date
+    (YYYY-MM-DD), subject and body.
   agent-routing undo --why TEXT [--dry-run] [--json]
     Revert the latest Routing-edit commit as a new verb commit. Disjoint later
     edits are retained; overlapping edits refuse. Catalog and policy regain
@@ -163,7 +187,9 @@ EDIT POLICY OR CATALOG
 
   Every edit names the store, table and row, then prints only changed fields
   as field: old → new. Added rows list their fields; removed rows are named
-  as removed. The footer carries old and new route_version, commit id, and
+  as removed. A row pairs with its earlier version only when both have the
+  same identity; a seat move that drops one pool rank and adds another
+  lists one seat_rank row removed and one added. The footer carries old and new route_version, commit id, and
   affected generated consumers with refresh commands. Notes
   leave route_version unchanged. --json emits one agent-routing-edit/1 object
   with verb, dry_run, changes, old_route_version, new_route_version,
@@ -226,10 +252,13 @@ EDIT FROM A PAGE
   --json results. /api/stores is the parsed catalog and policy with each
   model's lab; /api/version is the route version and a digest of all three
   stores, which the page polls to notice an edit made elsewhere.
-  /api/choices?profile=P&backend=B... lists every tier the backends reach
-  through one provider, each with the reasons resolve or validation would
-  refuse it; with for=review_seat&backend=B it lists the review profile's
-  stable routes there.
+  /api/choices?profile=P[&variant=V]&backend=B... lists every tier the
+  backends reach through one provider, withholding each that resolve
+  refuses with its reasons. For the seat profile and variant name, a stable
+  one, each choice carries pool_rank: its current rank on its pool, or the
+  rank set-seat would suggest and why; "pools" holds each pool's order.
+  With for=review_seat&backend=B it lists the review profile's stable
+  routes there.
 
   /api/edit takes {"argv": [VERB, ARG...], "confirm": BOOL, "expect": DIGEST}.
   argv is an edit verb with its arguments, parsed by the verb's own parser
