@@ -142,16 +142,19 @@ class EditTest(GitStoreTest):
                 self.assertEqual(self.texts(), before)
 
     def test_dry_run_writes_nothing(self):
-        """Claim: dry run validates and reports without any file or Git write; rejects a hidden commit or lock creation."""
+        """Claim: dry run validates and reports without any file or Git write beyond the empty lock file every
+        reader opens; rejects a hidden commit, index or temporary write."""
+        lock = pathlib.Path(".git") / "routing-data.lock"
         def snapshot():
             return {str(path.relative_to(self.root)): path.read_bytes()
-                    for path in self.root.rglob("*") if path.is_file()}
+                    for path in self.root.rglob("*") if path.is_file() and path.relative_to(self.root) != lock}
         before = snapshot()
         result = self.seat(dry_run=True)
         self.assertTrue(result["dry_run"])
         self.assertIsNone(result["commit"])
         self.assertNotEqual(result["old_route_version"], result["new_route_version"])
         self.assertEqual(snapshot(), before)
+        self.assertEqual((self.root / lock).read_bytes(), b"")
 
     def test_undo_restores_bytes_and_answers(self):
         """Claim: undo restores previous policy bytes and resolution in a new commit; rejects a reset or incomplete inverse."""

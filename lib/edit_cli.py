@@ -39,6 +39,8 @@ def parser(*, raising=False):
         p.add_argument("--json", action="store_true")
         if verb in EDITS:
             p.add_argument("--dry-run", action="store_true")
+            p.add_argument("--expect", metavar="STATE",
+                           help="refuse unless the stores and their edit history are in this state, a preview's `state`")
             if verb not in {"note", "again", "retract", "supersede"}:
                 p.add_argument("--why", required=True)
                 p.add_argument("--because", action="append", default=[])
@@ -159,7 +161,8 @@ def main(root, argv=None):
         return 0
     except (OSError, ValueError, TypeError, KeyError) as error:
         if as_json:
-            print(json.dumps(dict(schema="agent-routing-edit-error/1", verb=verb, error=str(error))))
+            print(json.dumps(dict(schema="agent-routing-edit-error/1", verb=verb, error=str(error),
+                                  **({"stale": True} if isinstance(error, data_edits.StaleState) else {}))))
         else:
             import sys
             print(f"agent-routing: {error}", file=sys.stderr)

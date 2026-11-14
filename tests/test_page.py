@@ -20,7 +20,9 @@ NOTE = ["note", "--model", "orbit-flash", "--kind", "observation", "--area", "la
 BAN = ["prohibit", "ts-3-core", "max", "--reason", "The tier is unreliable.", "--why", "Reject a seated tier."]
 
 
-class PageTest(GitStoreTest):
+class PageServerTest(GitStoreTest):
+    """A page server on a private fixture checkout, and requests to it."""
+
     def setUp(self):
         super().setUp()
         self.server = routing_page.PageServer(self.root)
@@ -82,6 +84,8 @@ class PageTest(GitStoreTest):
         self.assertEqual(self.git("rev-parse", "HEAD"), head)
         self.assertEqual(self.git("status", "--porcelain"), "")
 
+
+class PageTest(PageServerTest):
     def test_nothing_is_served_without_the_launch_token(self):
         """Claim: the page, every read and the write each need this
         launch's token: the page takes it from its query, the API only from

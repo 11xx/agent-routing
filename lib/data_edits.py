@@ -9,6 +9,7 @@ import contextlib
 import copy
 import datetime
 import difflib
+import hashlib
 import os
 import pathlib
 import re
@@ -31,8 +32,34 @@ def git(root, *args, input=None, env=None):
     return run.stdout
 
 
+class StaleState(stores.StoreError):
+    """The stores or their edit history moved since the state an edit was asked to start from."""
+
+
 def read_texts(root):
     return {name: (root / name).read_bytes().decode("utf-8") for name in PATHS}
+
+
+def state(root, texts):
+    """The stores' bytes and the last commit that changed them, as one digest.
+
+    An edit computed from one state, previewed or confirmed, is the same edit
+    only from that state: the bytes decide row edits, and the history decides
+    what undo reverts. A caller reads it under the store lock.
+    """
+    digest = hashlib.sha256()
+    for name in PATHS:
+        digest.update(name.encode() + b"\0" + texts[name].encode() + b"\0")
+    digest.update(git(root, "log", "-1", "--format=%H", "--", *PATHS).strip())
+    return digest.hexdigest()[:16]
+
+
+def observe(root):
+    """The route version and the state of the stores, read together under the shared lock."""
+    root = pathlib.Path(root).resolve()
+    with stores.store_lock(root, exclusive=False):
+        texts = read_texts(root)
+        return {"route_version": stores.route_version(texts), "state": state(root, texts)}
 
 
 def candidate_problems(texts):
@@ -499,14 +526,19 @@ def apply(root, verb, **opts):
     if not note_verb:
         opts["why"] = why_text(opts.get("why"))
     today = datetime.date.today().isoformat()
-    # A dry run does not even create a lock file or a temporary index.
-    with (contextlib.nullcontext() if dry else stores.store_lock(root)):
+    expect = opts.pop("expect", None)
+    # One lock hold covers the state read, its check against `expect`, the
+    # candidate and, unless this is a dry run, the write and the commit.
+    with stores.store_lock(root, exclusive=not dry):
         if git(root, "rev-parse", "--show-toplevel").decode().strip() != str(root):
             raise stores.StoreError("edit root must be the Git checkout root")
+        before = read_texts(root)
+        observed = state(root, before)
+        if expect is not None and expect != observed:
+            raise StaleState("the stores or their edit history moved since the preview; preview the edit again")
         dirty = git(root, "status", "--porcelain", "--untracked-files=all", "--", *PATHS)
         if dirty and verb != "commit":
             raise stores.StoreError("data paths have uncommitted changes; use `agent-routing commit --why TEXT` or discard them")
-        before = read_texts(root)
         candidate = dict(before)
         because = list(dict.fromkeys(opts.get("because") or []))
         records = stores.parse_notes(before[stores.NOTES])
@@ -552,7 +584,7 @@ def apply(root, verb, **opts):
         paths = [name for name in PATHS if committed[name] != candidate[name]]
         if not paths:
             raise stores.StoreError("edit makes no change")
-        result = dict(schema="agent-routing-edit/1", verb=verb, dry_run=dry, changes=changes,
+        result = dict(schema="agent-routing-edit/1", verb=verb, dry_run=dry, state=observed, changes=changes,
                       old_route_version=stores.route_version(comparison), new_route_version=stores.route_version(candidate),
                       stale_consumers=stale_consumers(comparison, candidate, root), commit=None, **extra)
         if any(row["table"] == "tier" and row["before"] and row["after"]

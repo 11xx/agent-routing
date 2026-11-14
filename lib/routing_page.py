@@ -14,14 +14,12 @@ catalog's reach rows.
 
 from __future__ import annotations
 
-import hashlib
 import hmac
 import http.server
 import json
 import pathlib
 import secrets
 import shlex
-import threading
 import urllib.parse
 
 import data_edits
@@ -46,14 +44,9 @@ class Refused(Exception):
 
 
 def stamp(root: pathlib.Path) -> dict:
-    """The route version and a digest of all three stores, so a note filed elsewhere is noticed too."""
-    with stores.store_lock(root, exclusive=False):
-        texts = {name: (root / name).read_bytes() for name in (stores.CATALOG, stores.POLICY, stores.NOTES)}
-    digest = hashlib.sha256()
-    for name, data in texts.items():
-        digest.update(name.encode() + b"\0" + data + b"\0")
-    decoded = {name: data.decode("utf-8") for name, data in texts.items()}
-    return {"route_version": stores.route_version(decoded), "stamp": digest.hexdigest()[:16]}
+    """The route version and the stores' state, which moves with any store byte or data commit."""
+    observed = data_edits.observe(root)
+    return {"route_version": observed["route_version"], "stamp": observed["state"]}
 
 
 def verb_result(root: pathlib.Path, argv: list[str]) -> dict:
@@ -165,7 +158,6 @@ class PageServer(http.server.ThreadingHTTPServer):
         super().__init__(("127.0.0.1", 0), Handler)
         self.root = pathlib.Path(root).resolve()
         self.token = token or secrets.token_urlsafe(24)
-        self.edit_lock = threading.Lock()
 
     @property
     def port(self) -> int:
@@ -217,18 +209,22 @@ class PageServer(http.server.ThreadingHTTPServer):
             verb, _, args = edit_cli.arguments(argv, raising=True)
         except edit_cli.UsageError as error:
             raise Refused(422, str(error), command=command) from None
+        # A preview reports the state it was computed from; a confirmation is the
+        # same edit only from that state, which the edit checks under its own lock.
         args["dry_run"] = not confirm
-        with self.edit_lock:
-            if confirm:
-                current = stamp(self.root)["stamp"]
-                if body.get("expect") != current:
-                    raise Refused(409, "the stores changed since this preview; preview it again",
-                                  command=command, stale=True)
-            try:
-                result = edit_cli.execute(self.root, verb, args)[0]
-            except (OSError, ValueError, TypeError, KeyError) as error:
-                raise Refused(422, str(error), command=command) from None
-            return {"result": result, "command": command, **stamp(self.root)}
+        args["expect"] = None
+        if confirm:
+            if not isinstance(body.get("expect"), str) or not body["expect"]:
+                raise Refused(409, "a confirmation names the state its preview saw; preview the edit first",
+                              command=command, stale=True)
+            args["expect"] = body["expect"]
+        try:
+            result = edit_cli.execute(self.root, verb, args)[0]
+        except data_edits.StaleState as error:
+            raise Refused(409, str(error), command=command, stale=True) from None
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            raise Refused(422, str(error), command=command) from None
+        return {"result": result, "command": command, "stamp": result["state"]}
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
