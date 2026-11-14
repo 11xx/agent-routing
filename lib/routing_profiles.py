@@ -74,7 +74,14 @@ class RouteRefusal(ValueError):
 
 
 def data(root: pathlib.Path) -> stores.Data:
-    return stores.load(root)
+    """The stores at `root`; a refusal naming every problem when they cannot be projected."""
+    try:
+        loaded = stores.load(root)
+    except stores.StoreError as error:
+        raise RouteRefusal("manifest-invalid", str(error)) from None
+    if loaded.problems:
+        raise RouteRefusal("manifest-invalid", "; ".join(loaded.problems))
+    return loaded
 
 
 def route_version(root: pathlib.Path) -> str:
@@ -432,16 +439,19 @@ def clearance_floor(root: pathlib.Path) -> int:
 
 def structural_problems(root: pathlib.Path) -> list[str]:
     """Every structural problem of the stores at `root`, computed once per loaded revision."""
-    loaded = data(root)
+    try:
+        loaded = stores.load(root)
+    except stores.StoreError as error:
+        return [str(error)]
+    if loaded.problems:
+        return list(loaded.problems)
     if loaded.structural is None:
         loaded.structural = tuple(_structural_problems(root, loaded))
     return list(loaded.structural)
 
 
 def _structural_problems(root: pathlib.Path, loaded: stores.Data) -> list[str]:
-    problems = stores.catalog_problems(loaded.catalog) + stores.policy_problems(loaded.policy, loaded.catalog)
-    if problems:
-        return problems
+    problems = []
     profiles = loaded.profiles
     models = loaded.models
     by_model = {model["id"]: model for model in models}
@@ -1872,14 +1882,17 @@ def data_problems(root: pathlib.Path) -> list[str]:
     from price_export import price_problems
 
     try:
-        loaded = data(root)
+        loaded = stores.load(root)
     except stores.StoreError as error:
         return [str(error)]
     problems = stores.canonical_problems(root)
     try:
-        problems += stores.note_problems(stores.load_notes(root), loaded.catalog)
+        notes = stores.load_notes(root)
+        problems += stores.note_problems(notes, loaded.catalog)
     except stores.StoreError as error:
         problems.append(str(error))
+    if loaded.problems:
+        return problems + list(loaded.problems)
     structural = structural_problems(root)
     if structural:
         return problems + structural

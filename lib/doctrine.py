@@ -10,6 +10,13 @@ import stores
 PRINCIPLES = "doctrine/principles.md"
 
 
+def _valid(root: pathlib.Path) -> stores.Data:
+    data = stores.load(root)
+    if data.problems:
+        raise stores.StoreError("; ".join(data.problems))
+    return data
+
+
 def _cell(value) -> str:
     return str(value).replace("|", "\\|") if value not in (None, "") else "—"
 
@@ -23,7 +30,7 @@ def _table(header: tuple[str, ...], rows: list[tuple]) -> list[str]:
 def render(root: pathlib.Path) -> str:
     """The principles, then every profile with its seats, the bans, the pools and the catalog."""
     root = pathlib.Path(root)
-    data = stores.load(root)
+    data = _valid(root)
     policy, catalog = data.policy, data.catalog
     lines = [(root / PRINCIPLES).read_text().rstrip(), ""]
     lines += ["## Profiles and seats", "",
@@ -82,7 +89,7 @@ def render(root: pathlib.Path) -> str:
 
 def delegation(root: pathlib.Path) -> str:
     """The backend, reachability and pool rows, in the stores' own canonical form."""
-    data = stores.load(pathlib.Path(root))
+    data = _valid(pathlib.Path(root))
     catalog = {name: data.catalog.get(name, []) for name in ("backend", "reach", "effort_support")}
     blocks = [stores._row(name, stores.CATALOG_TABLES[name], row)
               for name in ("backend", "reach", "effort_support") for row in catalog[name]]

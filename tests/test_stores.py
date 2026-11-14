@@ -1,7 +1,9 @@
 """The stores' emitter, parser and validator over the fixture data."""
 
+import copy
 import hashlib
 import json
+import re
 import unittest
 
 from fixture import FIXTURE, ROOT, edit, scratch
@@ -87,6 +89,9 @@ class ValidatorTest(unittest.TestCase):
         root = scratch(self)
         edit(root, stores.CATALOG, 'model = "ts-3-core"\neffort = "high"\nrank = 1',
              'model = "ts-3-core"\neffort = "high"\nrank = "one"')
+        self.assertIn("data/catalog.toml [[tier]] model=ts-3-core effort=high: rank must be an integer, not 'one'",
+                      routing_profiles.data_problems(root))
+        root = scratch(self)
         edit(root, stores.POLICY, 'when = "Specified implementation from pi."',
              'when = "Specified implementation from pi. It also explains itself."')
         with (root / stores.NOTES).open("a") as notes:
@@ -94,13 +99,84 @@ class ValidatorTest(unittest.TestCase):
                         '"claim": "x", "cause": "unknown", "evidence": "x"}\n')
         problems = routing_profiles.data_problems(root)
         for expected in (
-                "data/catalog.toml [[tier]] model=ts-3-core effort=high: rank must be an integer, not 'one'",
                 "data/policy.toml [[seat]] profile=implement variant=flat backend=pi: when is one sentence "
                 "of at most 240 characters",
                 "data/notes.jsonl note 'n0001': id is used twice",
                 "data/notes.jsonl note 'n0001': model 'nobody' is not a catalog model",
                 "data/notes.jsonl note 'n0001': kind must be one of strength, weakness, observation, measurement"):
             self.assertIn(expected, problems)
+
+    def test_every_malformed_shape_is_a_diagnostic_never_an_exception(self):
+        """Claim: for every table and key of both stores, a wrong scalar type,
+        a table where an array of tables belongs, a missing required key and
+        an unknown key each yield a problem naming the store and table, and
+        nothing is projected from the malformed data. Rejects projecting raw
+        rows before their shape is known, which raised TypeError,
+        AttributeError and KeyError instead of naming the row."""
+        documents = {stores.CATALOG: (stores.CATALOG_TABLES, {}),
+                     stores.POLICY: (stores.POLICY_TABLES, stores.POLICY_SETTINGS)}
+        pristine = {name: stores.parse_toml((FIXTURE / name).read_text(), name) for name in documents}
+        checked = 0
+        for store, (tables, settings) in documents.items():
+            for table, spec in [*tables.items(), *settings.items()]:
+                setting = table in settings
+                self.assertIn(table, pristine[store], f"the fixture has no {table} rows to mutate")
+                cases = [("container", None, ("must be a table" if setting else "must be an array of tables")),
+                         ("unknown", "colour", "unknown key 'colour'")]
+                for key, _, required in spec:
+                    cases.append(("type", key, f"{key} must be"))
+                    if required:
+                        cases.append(("missing", key, f"{key} is required"))
+                for mutation, key, expected in cases:
+                    docs = copy.deepcopy(pristine)
+                    rows = docs[store][table]
+                    row = rows if setting else rows[0]
+                    if mutation == "container":
+                        docs[store][table] = [rows] if setting else rows[0]
+                    elif mutation == "unknown":
+                        row["colour"] = "red"
+                    elif mutation == "type":
+                        row[key] = {"nested": 1}
+                    else:
+                        row.pop(key, None)
+                    with self.subTest(store=store, table=table, mutation=mutation, key=key):
+                        data = stores.Data(docs[stores.CATALOG], docs[stores.POLICY], "fixture")
+                        prefix = f"{store}: [{table}]" if setting and mutation == "container" else (
+                            f"{store} [{table}]" if setting else f"{store}: [[{table}]]" if mutation == "container"
+                            else f"{store} [[{table}]]")
+                        self.assertTrue(any(problem.startswith(prefix) and expected in problem
+                                            for problem in data.problems), data.problems)
+                        self.assertEqual((data.models, data.profiles), ([], []))
+                        checked += 1
+        self.assertGreater(checked, 150)
+
+    def test_the_reviewers_malformed_inputs_are_refused_by_row(self):
+        """Claim: aliases written as a number, a [tier] table in place of
+        [[tier]] rows, and a reach row without its backend_model are each
+        named by lint and refused by resolve as manifest-invalid. Rejects the
+        TypeError, AttributeError and KeyError those inputs raised."""
+        cases = [(stores.CATALOG, 'aliases = ["northwind-atlas-2"]', "aliases = 3",
+                  "data/catalog.toml [[model]] id=nw-atlas-2: aliases must be a list of distinct nonblank strings, "
+                  "not 3"),
+                 (stores.CATALOG, None, None, "data/catalog.toml: [[tier]] must be an array of tables"),
+                 (stores.CATALOG, 'provider = "flat-pool"\nbackend_model = "orbit-flash-0101"\n',
+                  'provider = "flat-pool"\n',
+                  "data/catalog.toml [[reach]] model=orbit-flash backend=pi provider=flat-pool: backend_model is "
+                  "required")]
+        for store, old, new, expected in cases:
+            with self.subTest(expected=expected):
+                root = scratch(self)
+                if old is None:
+                    text = re.sub(r"\[\[tier\]\]\n(?:[^\n]+\n)+\n?", "", (root / store).read_text())
+                    (root / store).write_text(text + '\n[tier]\nmodel = "orbit-trial"\neffort = "high"\n'
+                                              'rank = 1\nfloor = 1\n')
+                else:
+                    edit(root, store, old, new)
+                self.assertIn(expected, routing_profiles.data_problems(root))
+                with self.assertRaises(routing_profiles.RouteRefusal) as caught:
+                    routing_profiles.resolve(root, "implement", "codex")
+                self.assertEqual(caught.exception.kind, "manifest-invalid")
+                self.assertIn(expected, str(caught.exception))
 
     def test_a_seat_on_an_unreachable_model_is_refused(self):
         """Claim: a seat whose model has no reach row for its backend and

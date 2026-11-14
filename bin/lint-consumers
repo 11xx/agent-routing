@@ -11,7 +11,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 
 import stores  # noqa: E402
-from routing_profiles import RouteRefusal, dumps, resolve  # noqa: E402
+from routing_profiles import RouteRefusal, data, dumps, resolve  # noqa: E402
 
 
 def consumer_code_root():
@@ -40,7 +40,7 @@ def files_under(path):
 
 
 def configured_consumers():
-    config = stores.load(ROOT).policy
+    config = data(ROOT).policy
     repositories = {row["id"]: row["name"] for row in config.get("repository", [])}
     consumers = []
     by_id = {}
@@ -146,8 +146,12 @@ def resolved_route(pin):
 
 
 def main():
-    models = stores.load(ROOT).models
-    profiles = stores.load(ROOT).profiles
+    try:
+        loaded = data(ROOT)
+    except RouteRefusal as refusal:
+        print(f"lint-consumers: the routing data is invalid: {refusal}")
+        return 2
+    models, profiles = loaded.models, loaded.profiles
     literals = {model["id"] for model in models}
     for profile in profiles:
         for route in [profile, *profile.get("variant", [])]:

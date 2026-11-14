@@ -6,8 +6,9 @@ Each TOML store is a flat list of row tables plus a few tables of scalars.
 `emit` writes one canonical form: a fixed key order per table, rows in the
 order given, and every row naming a model or profile directly after it, so a
 hand edit and a verb edit produce the same diff. `problems` checks the whole
-data set and names the offending row. `load` projects the stores into the
-route and tier records the resolver works on.
+data set and names the offending row. `load` checks each store's raw shape
+first and projects the stores into the route and tier records the resolver
+works on only when that shape is sound.
 """
 
 from __future__ import annotations
@@ -268,11 +269,18 @@ class Data:
         self.policy = policy
         self.version = version
         self.structural: tuple[str, ...] | None = None
-        self.models = project_models(catalog, policy)
-        self.profiles = project_profiles(catalog, policy)
-        self.backends = project_backends(catalog)
-        self.pools = [dict(row) for row in policy.get("pool", [])]
-        self.families = project_families(catalog)
+        self.problems = shape_problems(catalog, CATALOG_TABLES, CATALOG) + shape_problems(
+            policy, POLICY_TABLES, POLICY, POLICY_SETTINGS)
+        if not self.problems:
+            self.problems = catalog_problems(catalog) + policy_problems(policy, catalog)
+        self.models, self.profiles, self.backends, self.pools, self.families = [], [], [], [], []
+        if not self.problems:
+            self.models = project_models(catalog, policy)
+            self.profiles = project_profiles(catalog, policy)
+            self.backends = project_backends(catalog)
+            self.pools = [dict(row) for row in policy.get("pool", [])]
+            self.families = project_families(catalog)
+
 
     @classmethod
     def from_texts(cls, texts: dict[str, str]) -> "Data":
@@ -452,7 +460,8 @@ def label(table: str, row: dict) -> str:
             "profile": ("id",), "seat": ("profile", "variant", "backend"), "fallback": ("profile", "backend"),
             "seat_rank": ("model", "effort", "pool"), "repository": ("id",), "accessor": ("id",),
             "consumer": ("id",), "proxy": ("consumer", "path"), "pin": ("consumer", "path")}.get(table, ())
-    parts = [f"{key}={row[key]}" for key in keys if isinstance(row, dict) and key in row]
+    parts = [f"{key}={row[key]}" if isinstance(row[key], str) else f"{key}={row[key]!r}"
+             for key in keys if isinstance(row, dict) and key in row]
     return f"[[{table}]] " + " ".join(parts) if parts else f"[[{table}]]"
 
 
@@ -477,6 +486,8 @@ def shape_problems(document: dict, tables: dict, store: str, settings: dict | No
             continue
         for row in rows:
             problems += _key_problems(f"{store} {label(name, row)}", spec, row)
+    if "schema" in document and not _typed("str", document["schema"]):
+        problems.append(f"{store}: schema must be {_KIND_TEXT['str']}")
     return problems
 
 
@@ -502,6 +513,8 @@ _KIND_TEXT = {"str": "a nonblank unpadded string", "int": "an integer", "num": "
 def catalog_problems(catalog: dict) -> list[str]:
     store = CATALOG
     problems = shape_problems(catalog, CATALOG_TABLES, store)
+    if problems:
+        return problems
     if catalog.get("schema") != CATALOG_SCHEMA:
         problems.append(f"{store}: schema must be {CATALOG_SCHEMA!r}")
     models = {row.get("id") for row in catalog.get("model", [])}
@@ -593,6 +606,8 @@ def catalog_problems(catalog: dict) -> list[str]:
 def policy_problems(policy: dict, catalog: dict) -> list[str]:
     store = POLICY
     problems = shape_problems(policy, POLICY_TABLES, store, POLICY_SETTINGS)
+    if problems:
+        return problems
     if policy.get("schema") != POLICY_SCHEMA:
         problems.append(f"{store}: schema must be {POLICY_SCHEMA!r}")
     models = {row.get("id") for row in catalog.get("model", [])}
@@ -661,7 +676,8 @@ def policy_problems(policy: dict, catalog: dict) -> list[str]:
 
 def note_problems(notes: list[dict], catalog: dict) -> list[str]:
     problems = []
-    models = {row.get("id") for row in catalog.get("model", [])}
+    rows = catalog.get("model")
+    models = {row.get("id") for row in rows if isinstance(row, dict)} if isinstance(rows, list) else set()
     ids: set = set()
     previous = None
     for note in notes:
@@ -691,7 +707,10 @@ def canonical_problems(root: pathlib.Path) -> list[str]:
     for name, emit in ((CATALOG, emit_catalog), (POLICY, emit_policy)):
         text = (root / name).read_text()
         try:
-            written = emit(parse_toml(text, name))
+            document = parse_toml(text, name)
+            if _store_shape_problems(name, document):
+                continue
+            written = emit(document)
         except StoreError as error:
             problems.append(_named(name, error))
             continue
@@ -706,6 +725,12 @@ def canonical_problems(root: pathlib.Path) -> list[str]:
         except StoreError as error:
             problems.append(_named(NOTES, error))
     return problems
+
+
+def _store_shape_problems(name: str, document: dict) -> list[str]:
+    if name == CATALOG:
+        return shape_problems(document, CATALOG_TABLES, CATALOG)
+    return shape_problems(document, POLICY_TABLES, POLICY, POLICY_SETTINGS)
 
 
 def _named(store: str, error: StoreError) -> str:
@@ -723,7 +748,11 @@ def format_stores(root: pathlib.Path) -> list[str]:
         if not path.exists():
             continue
         text = path.read_text()
-        written = emit(parse(text))
+        document = parse(text)
+        shape = _store_shape_problems(name, document) if name != NOTES else []
+        if shape:
+            raise StoreError("; ".join(shape))
+        written = emit(document)
         if written != text:
             path.write_text(written)
             changed.append(name)

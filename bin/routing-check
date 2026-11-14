@@ -12,7 +12,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 
-from routing_profiles import UNROUTABLE_MODEL_STATUSES, data, prohibited_efforts  # noqa: E402
+from routing_profiles import UNROUTABLE_MODEL_STATUSES, RouteRefusal, data, prohibited_efforts  # noqa: E402
 
 
 def main(argv):
@@ -20,7 +20,11 @@ def main(argv):
         print("usage: agent-routing check <model> [effort]", file=sys.stderr)
         return 2
     model_id, effort = argv[0], (argv[1] if len(argv) > 1 else None)
-    loaded = data(ROOT)
+    try:
+        loaded = data(ROOT)
+    except RouteRefusal as refusal:
+        print(f"agent-routing check: {refusal}", file=sys.stderr)
+        return 2
     models = loaded.models
     aliases = {}
     for profile in loaded.profiles:
