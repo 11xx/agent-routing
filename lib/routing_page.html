@@ -769,8 +769,12 @@ function newSeat(profile) {
 
 // --- review -------------------------------------------------------------------
 
+// Backends where the review profile has a stable route: the only places a review seat can name a reader.
+const reviewBackends = () => new Set(S.seats.seats.filter(seat => seat.profile === "review" && seat.stability === "stable").map(seat => seat.backend));
+
 function reviewView() {
   const backends = backendIds();
+  const readable = reviewBackends();
   const rows = [];
   for (const purpose of Object.keys(S.stores.purposes)) {
     const seats = policy("review_seat").filter(row => row.purpose === purpose);
@@ -783,8 +787,8 @@ function reviewView() {
         index === families.length - 1 ? h("button", { type: "button", class: "add", onclick: () => newReviewSeat(purpose) }, "+ lab") : null);
       const cells = backends.map(backend => {
         const row = seats.find(item => item.author_family === family && item.backend === backend);
-        if (!row) return h("td", {}, h("button", { type: "button", class: "add", "aria-label": `add a ${purpose} seat for ${family} on ${backend}`,
-          onclick: () => editReviewSeat({ purpose, author_family: family, backend }) }, "+"));
+        if (!row) return h("td", {}, readable.has(backend) ? h("button", { type: "button", class: "add", "aria-label": `add a ${purpose} seat for ${family} on ${backend}`,
+          onclick: () => editReviewSeat({ purpose, author_family: family, backend }) }, "+") : h("span", { class: "empty" }, "·"));
         const key = reviewKey(purpose, family, backend);
         return h("td", {}, chip(row.model, row.effort, { row: key, expanded: S.editors.has(key),
           title: `${row.when}\n${row.why} (since ${row.since})`, onclick: () => editReviewSeat(row) }));
@@ -835,7 +839,7 @@ function newReviewSeat(purpose) {
     title: `${purpose}: a seat for one lab`,
     fields: [
       { name: "family", label: "author lab", type: "select", options: labs.map(lab => [lab, lab]), value: labs[0], keys: ["author_family", "author-family"], onchange: refreshChoices },
-      { name: "backend", label: "backend", type: "select", options: backendIds().map(id => [id, id]), value: backendIds()[0], onchange: refreshChoices },
+      { name: "backend", label: "backend", type: "select", options: [...reviewBackends()].map(id => [id, id]), value: [...reviewBackends()][0], onchange: refreshChoices },
       choiceField(null, ed => `for=review_seat&backend=${encodeURIComponent(values(ed).backend)}`, "the review profile has no stable route on this backend"),
       { name: "when", label: "when", value: "" },
       { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },
