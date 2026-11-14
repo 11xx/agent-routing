@@ -163,6 +163,28 @@ deployment and pushes nothing.
 Rolling provider ids keep a checkpoint-specific `build` on the catalog row;
 field notes name the build, provider, harness and effort they observed.
 
+## The page
+
+```sh
+agent-routing page            # prints http://127.0.0.1:PORT/?token=…
+```
+
+The page shows who holds each seat by profile and backend, the review seats
+by purpose, each model's tiers, guards and field notes, and the edit log, with
+one colour per lab on every model chip. It listens on the loopback address at
+a free port behind a token made for that launch, and refuses a foreign Host
+and a cross-origin write. It fetches nothing from the network.
+
+It holds no routing rule of its own. A change made on the page is an edit
+verb's arguments: run first as `--dry-run` and shown as the verb's field diff
+with the route versions and stale consumers, then run for real on one
+confirmation, so it validates, commits and undoes exactly as the verb does.
+A confirmation is refused when the stores moved after its preview. Seat
+choices list what a backend reaches, with the reason beside each tier it
+cannot hold. The page watches the stores, so an edit a verb makes elsewhere
+appears within seconds and the rows it changed flash once; what is being
+typed stays. What only a terminal does, the page names as a command.
+
 ## Checking a change
 
 `bin/check-change` is the gate. It checks the committed head of a clean

@@ -206,6 +206,39 @@ FILE AND READ FIELD EVIDENCE
       its catalog successor contributes evidence under "Inherited from
       PREDECESSOR, unverified for this model".
 
+EDIT FROM A PAGE
+  agent-routing page [--no-open]
+    Serve one HTML page for this checkout on 127.0.0.1 at a free port, print
+    its address with a token made for this launch, and open it in a browser
+    unless --no-open. It serves until interrupted and fetches nothing from
+    the network. The page shows seats by profile and backend, review seats by
+    purpose, each model's tiers, guards and notes, and the edit log, and it
+    edits them in place through the verbs above.
+
+  Every request carries the launch token: the page in its ?token= query, the
+  API only in an X-Routing-Token header. A request whose Host is not this
+  loopback address and port is refused, and a write is a JSON POST whose
+  Origin is the page's own.
+
+  Reads return what the views compute: /api/seats is seats --json,
+  /api/routes is routes --json, and /api/card?model=M, /api/notes (model,
+  kind, area, liveness) and /api/log?limit=N are the card, notes and log
+  --json results. /api/stores is the parsed catalog and policy with each
+  model's lab; /api/version is the route version and a digest of all three
+  stores, which the page polls to notice an edit made elsewhere.
+  /api/choices?profile=P&backend=B... lists every tier the backends reach
+  through one provider, each with the reasons resolve or validation would
+  refuse it; with for=review_seat&backend=B it lists the review profile's
+  stable routes there.
+
+  /api/edit takes {"argv": [VERB, ARG...], "confirm": BOOL, "expect": DIGEST}.
+  argv is an edit verb with its arguments, parsed by the verb's own parser
+  and run by the verb's own code. Unconfirmed, it runs as --dry-run and
+  answers {"result": agent-routing-edit/1, "command", "route_version",
+  "stamp"}. Confirmed with the stamp of its preview, it runs for real; once
+  the stores have moved, it is refused as stale (409) and writes nothing. A
+  refusal answers {"error": MESSAGE} in the validator's or parser's words.
+
 READABLE TEXT VIEWS
   Text uses the terminal width, or 80 columns for redirected output. Seat
   columns align across the model's own rows. Variants read profile:variant;
