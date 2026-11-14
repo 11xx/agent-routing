@@ -313,12 +313,17 @@ async function refresh() {
   }
   banner(null, null, "load");
   const previous = S.sigs;
-  if (S.stamp !== version.stamp) for (const ed of S.editors.values()) if (ed.pending) markStale(ed);
+  const moved = S.stamp !== version.stamp ? [...S.editors.values()].filter(ed => ed.pending || ed.onMoved) : [];
   S.stamp = version.stamp;
   S.stores = stores; S.seats = seats; S.routes = routes;
   if (S.model && !modelRow(S.model)) S.model = null;
   if (S.model) await loadCard();
   if (S.view === "history") await loadLog();
+  // A preview the stores moved under is stale; its action, or a notice already shown, says what to do now.
+  for (const ed of moved) {
+    if (ed.onMoved) ed.onMoved(ed);
+    else if (ed.pending) (ed.pending.action.stale || markStale)(ed);
+  }
   const problems = stores.standing_problems || [];
   banner(problems.length ? "warn" : null, problems.length ?
     `Guards or notes have problems no route decision reads:\n${problems.join("\n")}` : null, "standing");
@@ -536,6 +541,7 @@ function clearErrors(ed) {
 // Any input, a cancel or a newer preview invalidates every preview request still in flight.
 function clearPreview(ed, focus) {
   ed.generation = (ed.generation || 0) + 1;
+  ed.onMoved = null;
   ed.pending = null;
   ed.preview.hidden = true;
   ed.preview.replaceChildren();
@@ -1109,6 +1115,7 @@ function undoEditor(latest) {
 function undoMoved(ed) {
   const target = ed.spec.target, latest = latestVerbEdit();
   ed.pending = null;
+  ed.onMoved = undoMoved;
   if (latest && latest.commit === target.commit) {
     ed.preview.replaceChildren(h("div", { class: "stale" }, "The stores changed underneath this preview. Press enter to preview it again."));
     ed.preview.hidden = false;
