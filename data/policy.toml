@@ -1,4 +1,4 @@
-# What routing decides from: pools, fences, guards, profiles, seats, fallbacks, ranks and consumer pins.
+# What routing decides from: pools, fences, profiles, seats, fallbacks, ranks and consumer pins; and the guards no decision reads.
 # Written in canonical form; `agent-routing format` rewrites a hand edit into it.
 
 schema = "agent-routing-policy/1"

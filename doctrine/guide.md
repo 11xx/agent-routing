@@ -35,8 +35,12 @@ THE STORES
   a one-sentence reason.
 
   `lint` checks each store's raw shape (tables, key types, required and
-  unknown keys) before anything reads it; every verb refuses data with a
-  problem as manifest-invalid, naming the store and row.
+  unknown keys) before anything reads it; every verb refuses a problem in
+  what it decides from as manifest-invalid, naming the store and row. Guards
+  and notes are outside that path both ways: no deciding verb reads them, and
+  a fault in one never makes resolve, validate, assess, frontier,
+  admit-review, check, routes, seats or ladder refuse. `lint`, `format`,
+  `doctrine` and the change gate validate them.
 
   Each store is written in one canonical form: fixed key order, each model's
   rows (tiers, prices, reach) after the model and each profile's seats and

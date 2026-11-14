@@ -43,7 +43,8 @@ The catalog and policy hold short, flat rows. A seat names the backends it
 serves and says in one sentence `when` it applies, `why` it holds and `since`
 when. A guard is a standing instruction for using a tier: one-sentence `rule`
 and `why`, with the notes it rests on. Leads follow guards; no verb that
-selects, validates or refuses a route reads them. Anything longer is a
+selects, validates or refuses a route reads them, and a fault in a guard or a
+note is lint's to name, never a refused route. Anything longer is a
 principle, a note, or nothing. `agent-routing doctrine` renders the principles
 and the stores together, so the readable policy cannot drift from the data.
 

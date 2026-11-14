@@ -1903,12 +1903,7 @@ def data_problems(root: pathlib.Path) -> list[str]:
         loaded = stores.load(root)
     except stores.StoreError as error:
         return [str(error)]
-    problems = stores.canonical_problems(root)
-    try:
-        notes = stores.load_notes(root)
-        problems += stores.note_problems(notes, loaded.catalog) + stores.guard_note_problems(loaded.policy, notes)
-    except stores.StoreError as error:
-        problems.append(str(error))
+    problems = stores.canonical_problems(root) + stores.standing_problems(root, loaded)
     if loaded.problems:
         return problems + list(loaded.problems)
     structural = structural_problems(root)

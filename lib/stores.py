@@ -6,9 +6,12 @@ Each TOML store is a flat list of row tables plus a few tables of scalars.
 `emit` writes one canonical form: a fixed key order per table, rows in the
 order given, and every row naming a model or profile directly after it, so a
 hand edit and a verb edit produce the same diff. `problems` checks the whole
-data set and names the offending row. `load` checks each store's raw shape
-first and projects the stores into the route and tier records the resolver
-works on only when that shape is sound.
+data set and names the offending row. `load` checks the raw shape of what
+routing decides from first and projects the stores into the route and tier
+records the resolver works on only when that shape is sound. The guards and
+the notes are outside the deciding path both ways: no decision reads them, and
+`standing_problems`, which lint and the doctrine report, is the only check
+that does.
 """
 
 from __future__ import annotations
@@ -96,6 +99,9 @@ POLICY_TABLES = {
             ("profile", "str", True), ("variant", "str", False), ("backend", "str", True),
             ("generated", "bool", False), ("allow_experimental", "bool", False)),
 }
+# Policy tables no decision reads: a fault in one is lint's to report and never refuses a route.
+STANDING_TABLES = ("guard",)
+DECIDING_TABLES = {name: spec for name, spec in POLICY_TABLES.items() if name not in STANDING_TABLES}
 POLICY_LAYOUT = (("pool", "family_exception", "fence", "guard"), "profile", ("seat", "fallback"),
                  ("seat_rank", "repository", "accessor", "consumer", "proxy", "pin"))
 NOTE_KEYS = (("id", "str", True), ("date", "date", True), ("model", "str", True), ("effort", "str", False),
@@ -105,7 +111,7 @@ NOTE_KEYS = (("id", "str", True), ("date", "date", True), ("model", "str", True)
 HEADERS = {
     CATALOG: "# Facts about models: families, backends, models, tiers, prices and reachability.\n"
              "# Written in canonical form; `agent-routing format` rewrites a hand edit into it.\n",
-    POLICY: "# What routing decides from: pools, fences, guards, profiles, seats, fallbacks, ranks and consumer pins.\n"
+    POLICY: "# What routing decides from: pools, fences, profiles, seats, fallbacks, ranks and consumer pins; and the guards no decision reads.\n"
             "# Written in canonical form; `agent-routing format` rewrites a hand edit into it.\n",
 }
 
@@ -273,7 +279,7 @@ class Data:
         self.version = version
         self.structural: tuple[str, ...] | None = None
         self.problems = shape_problems(catalog, CATALOG_TABLES, CATALOG) + shape_problems(
-            policy, POLICY_TABLES, POLICY, POLICY_SETTINGS)
+            _deciding(policy), DECIDING_TABLES, POLICY, POLICY_SETTINGS)
         if not self.problems:
             self.problems = catalog_problems(catalog) + policy_problems(policy, catalog)
         self.models, self.profiles, self.backends, self.pools, self.families = [], [], [], [], []
@@ -291,6 +297,10 @@ class Data:
 
     def by_model(self) -> dict[str, dict]:
         return {model["id"]: model for model in self.models}
+
+
+def _deciding(policy: dict) -> dict:
+    return {name: value for name, value in policy.items() if name not in STANDING_TABLES}
 
 
 @functools.lru_cache(maxsize=64)
@@ -608,7 +618,7 @@ def catalog_problems(catalog: dict) -> list[str]:
 
 def policy_problems(policy: dict, catalog: dict) -> list[str]:
     store = POLICY
-    problems = shape_problems(policy, POLICY_TABLES, store, POLICY_SETTINGS)
+    problems = shape_problems(_deciding(policy), DECIDING_TABLES, store, POLICY_SETTINGS)
     if problems:
         return problems
     if policy.get("schema") != POLICY_SCHEMA:
@@ -652,15 +662,6 @@ def policy_problems(policy: dict, catalog: dict) -> list[str]:
             problems.append(f"{where}: its backends reach {row.get('model')!r} under different backend models; "
                             "split it into one seat per backend model")
         problems += _sentence_problems(where, row)
-    for row in policy.get("guard", []):
-        where = f"{store} {label('guard', row)}"
-        if row.get("model") not in models:
-            problems.append(f"{where}: model is not a catalog model")
-        elif "effort" in row and not _rows(catalog, "tier", model=row.get("model"), effort=row.get("effort")):
-            problems.append(f"{where}: {row.get('model')!r} has no {row.get('effort')!r} tier")
-        if "profile" in row and row.get("profile") not in profiles:
-            problems.append(f"{where}: profile is not a policy profile")
-        problems += _sentence_problems(where, row, ("rule", "why"))
     for row in policy.get("fallback", []):
         if row.get("profile") not in profiles:
             problems.append(f"{store} {label('fallback', row)}: profile is not a policy profile")
@@ -688,23 +689,56 @@ def _sentence_problems(where: str, row: dict, keys=("when", "why")) -> list[str]
             if isinstance(row.get(key), str) and (len(row[key]) > 240 or ". " in row[key])]
 
 
-def guard_note_problems(policy: dict, notes: list[dict]) -> list[str]:
-    """Each guard's `because` names notes that exist."""
-    ids = {note.get("id") for note in notes}
-    return [f"{POLICY} {label('guard', row)}: because names {note!r}, which is not a note"
-            for row in (policy.get("guard") if isinstance(policy.get("guard"), list) else []) if isinstance(row, dict)
-            for note in (row.get("because") if isinstance(row.get("because"), list) else []) if note not in ids]
+def _keys(document: dict, table: str, *keys: str) -> set:
+    """The string values of `keys` across a table's rows, read without trusting its shape."""
+    rows = document.get(table)
+    return {tuple(row[key] for key in keys) for row in (rows if isinstance(rows, list) else [])
+            if isinstance(row, dict) and all(isinstance(row.get(key), str) for key in keys)}
+
+
+def guard_problems(policy: dict, catalog: dict, notes: list[dict] | None) -> list[str]:
+    """Each guard's shape, then the tier and profile it scopes, its sentences and the notes it cites."""
+    guards = {name: policy[name] for name in STANDING_TABLES if name in policy}
+    problems = shape_problems(guards, {name: POLICY_TABLES[name] for name in STANDING_TABLES}, POLICY)
+    if problems:
+        return problems
+    models, tiers = _keys(catalog, "model", "id"), _keys(catalog, "tier", "model", "effort")
+    profiles = _keys(policy, "profile", "id")
+    ids = None if notes is None else _keys({"note": notes}, "note", "id")
+    for row in policy.get("guard", []):
+        where = f"{POLICY} {label('guard', row)}"
+        if (row["model"],) not in models:
+            problems.append(f"{where}: model is not a catalog model")
+        elif "effort" in row and (row["model"], row["effort"]) not in tiers:
+            problems.append(f"{where}: {row['model']!r} has no {row['effort']!r} tier")
+        if "profile" in row and (row["profile"],) not in profiles:
+            problems.append(f"{where}: profile is not a policy profile")
+        problems += _sentence_problems(where, row, ("rule", "why"))
+        problems += [f"{where}: because names {note!r}, which is not a note"
+                     for note in row.get("because", []) if ids is not None and (note,) not in ids]
+    return problems
+
+
+def standing_problems(root: pathlib.Path, data: "Data") -> list[str]:
+    """Problems in what no decision reads: the field notes and the guards citing them."""
+    try:
+        notes = load_notes(root)
+    except StoreError as error:
+        return [str(error)] + guard_problems(data.policy, data.catalog, None)
+    return note_problems(notes, data.catalog) + guard_problems(data.policy, data.catalog, notes)
 
 
 def note_problems(notes: list[dict], catalog: dict) -> list[str]:
     problems = []
-    rows = catalog.get("model")
-    models = {row.get("id") for row in rows if isinstance(row, dict)} if isinstance(rows, list) else set()
+    models = {model for model, in _keys(catalog, "model", "id")}
     ids: set = set()
     previous = None
     for note in notes:
         where = f"{NOTES} note {note.get('id')!r}"
-        problems += _key_problems(where, NOTE_KEYS, note)
+        shape = _key_problems(where, NOTE_KEYS, note)
+        problems += shape
+        if shape:
+            continue
         if note.get("id") in ids:
             problems.append(f"{where}: id is used twice")
         ids.add(note.get("id"))
@@ -716,9 +750,9 @@ def note_problems(notes: list[dict], catalog: dict) -> list[str]:
             problems.append(f"{where}: cause must be one of {', '.join(NOTE_CAUSES)}")
         if "effort" in note and note["effort"] not in EFFORTS:
             problems.append(f"{where}: effort must be one of {', '.join(EFFORTS)}")
-        if note.get("id") is not None and previous is not None and str(note["id"]) <= previous:
+        if previous is not None and note["id"] <= previous:
             problems.append(f"{where}: ids increase down the file")
-        previous = str(note.get("id"))
+        previous = note["id"]
     return problems
 
 

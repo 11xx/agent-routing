@@ -110,9 +110,11 @@ class ValidatorTest(unittest.TestCase):
         """Claim: for every table and key of both stores, a wrong scalar type,
         a table where an array of tables belongs, a missing required key and
         an unknown key each yield a problem naming the store and table, and
-        nothing is projected from the malformed data. Rejects projecting raw
-        rows before their shape is known, which raised TypeError,
-        AttributeError and KeyError instead of naming the row."""
+        nothing is projected from malformed deciding data, while a malformed
+        guard is named by guard_problems and leaves the projection whole.
+        Rejects projecting raw rows before their shape is known, which raised
+        TypeError, AttributeError and KeyError instead of naming the row, and
+        a guard fault that takes routing down."""
         documents = {stores.CATALOG: (stores.CATALOG_TABLES, {}),
                      stores.POLICY: (stores.POLICY_TABLES, stores.POLICY_SETTINGS)}
         pristine = {name: stores.parse_toml((FIXTURE / name).read_text(), name) for name in documents}
@@ -144,9 +146,13 @@ class ValidatorTest(unittest.TestCase):
                         prefix = f"{store}: [{table}]" if setting and mutation == "container" else (
                             f"{store} [{table}]" if setting else f"{store}: [[{table}]]" if mutation == "container"
                             else f"{store} [[{table}]]")
+                        standing = table in stores.STANDING_TABLES
+                        problems = (stores.guard_problems(docs[stores.POLICY], docs[stores.CATALOG], [])
+                                    if standing else data.problems)
                         self.assertTrue(any(problem.startswith(prefix) and expected in problem
-                                            for problem in data.problems), data.problems)
-                        self.assertEqual((data.models, data.profiles), ([], []))
+                                            for problem in problems), problems)
+                        self.assertEqual((not data.problems, bool(data.models and data.profiles)),
+                                         (standing, standing))
                         checked += 1
         self.assertGreater(checked, 150)
 
