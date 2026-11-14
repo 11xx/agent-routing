@@ -132,6 +132,7 @@ class PageTest(GitStoreTest):
         self.verb(*NOTE)
         self.assertEqual(self.read("/api/notes"), self.verb("notes"))
         self.assertEqual(self.read("/api/log?limit=5"), self.verb("log", "--limit", "5"))
+        self.assertRegex(self.read("/api/log?limit=1")["edits"][0]["date"], r"^\d{4}-\d{2}-\d{2}$")
         loaded = stores.load(self.root)
         view = self.read("/api/stores")
         self.assertEqual([view["catalog"], view["policy"], view["models"], view["route_version"]],
@@ -237,30 +238,38 @@ class PageTest(GitStoreTest):
         self.assertEqual(status, 409)
         self.unchanged(texts, head)
 
-    def test_seat_choices_withhold_what_the_resolver_refuses(self):
+    def test_seat_choices_offer_unranked_tiers_with_their_pools_order(self):
         """Claim: the seat choices for a profile and backends list every
-        tier those backends reach, withholding prohibited, unstable, fenced
-        and unsupported-effort tiers with the resolver's reason, and every
-        offered choice previews as a valid seat; review seat choices are the
-        review profile's stable routes on the backend. Rejects a picker that
-        offers what validation then refuses or hides why a tier is not
-        offered."""
-        choices = {(row["model"], row["effort"]): row
-                   for row in self.read("/api/choices?profile=implement&backend=pi")["choices"]}
+        tier those backends reach; an unranked tier is offered with the
+        place its pool rank would take and the pool's current order, and
+        only tiers resolve refuses (prohibited, unstable, fenced, beyond
+        the backend's efforts) are withheld, with the resolver's reason.
+        Every offered choice previews as a valid seat at its suggested
+        rank and every withheld one is refused. Rejects a picker that hides
+        unranked tiers or offers what validation then refuses."""
+        answer = self.read("/api/choices?profile=implement&backend=codex")
+        choices = {(row["model"], row["effort"]): row for row in answer["choices"]}
+        self.assertEqual(choices["ts-3-prime", "high"]["pool_rank"],
+                         {"current": None, "suggested": 2, "basis": "keeps the place ts-3-core max held"})
+        self.assertTrue(choices["ts-3-prime", "high"]["offered"])
+        self.assertEqual(choices["ts-3-core", "max"]["pool_rank"]["current"], 2)
+        self.assertEqual(answer["pools"]["tessel-plan"][:2], [{"model": "ts-3-core", "effort": "low", "rank": 1},
+                                                              {"model": "ts-3-core", "effort": "high", "rank": 1}])
         self.assertTrue(choices["ts-3-prime", "max"]["reasons"][0].startswith("prohibited: Fixture ban"))
-        self.assertIn("unsupported effort 'xhigh'", choices["ts-3-prime", "xhigh"]["reasons"][0])
-        self.assertIn("experimental tier", choices["orbit-trial", "high"]["reasons"])
-        self.assertTrue(choices["orbit-flash", "max"]["offered"])
+        pi = {(row["model"], row["effort"]): row
+              for row in self.read("/api/choices?profile=implement&variant=flat&backend=pi")["choices"]}
+        self.assertIn("unsupported effort 'xhigh'", pi["ts-3-prime", "xhigh"]["reasons"][0])
+        self.assertIn("experimental tier", pi["orbit-trial", "high"]["reasons"])
+        self.assertEqual(pi["ts-3-prime", "low"]["pool_rank"]["basis"], "starts at the bottom of the pool, outranking nothing")
         review = {(row["model"], row["effort"]): row
                   for row in self.read("/api/choices?profile=review&backend=pi")["choices"]}
         self.assertIn("cannot serve profile 'review'", review["orbit-trial", "high"]["reasons"][0])
-        offered = [row for row in choices.values() if row["offered"]]
-        self.assertTrue(offered)
-        for row in offered:
+        for row in pi.values():
+            rank = row["pool_rank"]
             argv = [*SEAT[:6], "--model", row["model"], "--effort", row["effort"], "--provider", row["provider"],
-                    *SEAT[10:]]
+                    *(["--pool-rank", str(rank["suggested"])] if rank and rank["current"] is None else []), *SEAT[10:]]
             status, answer = self.edit(argv)
-            self.assertEqual(status, 200, (row, answer))
+            self.assertEqual(status, 200 if row["offered"] else 422, (row, answer))
         readers = self.read("/api/choices?for=review_seat&backend=claude")["choices"]
         self.assertEqual([(row["model"], row["effort"]) for row in readers], [("nw-atlas-2", "xhigh")])
         self.assertEqual(self.request("GET", "/api/choices?profile=implement&backend=nowhere")[0], 400)

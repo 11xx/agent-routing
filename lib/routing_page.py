@@ -24,6 +24,7 @@ import shlex
 import threading
 import urllib.parse
 
+import data_edits
 import doctrine
 import edit_cli
 import routing_profiles as routes
@@ -75,13 +76,14 @@ def store_view(root: pathlib.Path) -> dict:
             "route_version": loaded.version}
 
 
-def seat_choices(root: pathlib.Path, profile: str, backends: list[str]) -> list[dict]:
-    """Every tier the backends reach through one provider, with the reasons the resolver or validation refuses one.
+def seat_choices(root: pathlib.Path, profile: str, backends: list[str], variant: str | None = None) -> dict:
+    """Every tier the backends reach through one provider, and the pools' orders those tiers would join.
 
-    The reasons are the resolver's refusals for the model, its pool, the tier
-    and the backends' effort support, and validation's rule that a seated tier
-    carries a seat_rank for its pool. Validation of the whole candidate on
-    preview stays the authority.
+    A choice is withheld with the resolver's own refusals for the model, its
+    pool, the tier and the backends' effort support. A stable seat on a tier
+    its pool has not ranked carries the place the edit would give it, which
+    `set-seat --pool-rank` writes in the same commit. Validation of the whole
+    candidate on preview stays the authority.
     """
     loaded = routes.data(root)
     by_model, by_pool = loaded.by_model(), {pool["provider"]: pool for pool in loaded.pools}
@@ -91,6 +93,9 @@ def seat_choices(root: pathlib.Path, profile: str, backends: list[str]) -> list[
         raise Refused(400, f"name at least one catalog backend; unknown: {', '.join(unknown) or 'none named'}")
     lab_of = labs(loaded)["lab_of"]
     reach = loaded.catalog.get("reach", [])
+    previous = next((row for row in loaded.policy.get("seat", [])
+                     if row["profile"] == profile and row.get("variant") == variant), None)
+    ranked_seat = previous is None or previous.get("stability") == "stable"
     choices = []
     for row in reach:
         if row["backend"] != backends[0] or row["model"] not in by_model:
@@ -107,15 +112,18 @@ def seat_choices(root: pathlib.Path, profile: str, backends: list[str]) -> list[
                 reasons.append(f"prohibited: {tier['reason']}")
             if tier.get("status"):
                 reasons.append(f"{tier['status']} tier")
-            if routes._tier_rank(loaded.models, model["id"], tier["effort"], row["provider"]) is None:
-                reasons.append(f"seated on pool {row['provider']!r} without a seat_rank")
             reasons += [error.message for backend in backends
                         if (error := routes.backend_effort_refusal(backend_rows[backend], profile, model["id"],
                                                                    tier["effort"])) is not None]
+            placement = (data_edits.pool_placement(loaded.policy, previous, model["id"], tier["effort"], row["provider"])
+                         if ranked_seat else None)
             choices.append({"model": model["id"], "effort": tier["effort"], "provider": row["provider"],
                             "lab": lab_of[model["id"]], "rank": tier["rank"], "floor": tier["floor"],
-                            "offered": not reasons, "reasons": reasons})
-    return choices
+                            "pool_rank": placement, "offered": not reasons, "reasons": reasons})
+    pools = {choice["provider"]: [{key: row[key] for key in ("model", "effort", "rank")}
+                                  for row in data_edits.pool_order(loaded.policy, choice["provider"])]
+             for choice in choices}
+    return {"choices": choices, "pools": pools}
 
 
 def review_choices(root: pathlib.Path, backend: str) -> list[dict]:
@@ -184,7 +192,7 @@ class PageServer(http.server.ThreadingHTTPServer):
         if path == "/api/choices":
             if one("for") == "review_seat":
                 return {"choices": review_choices(root, one("backend") or "")}
-            return {"choices": seat_choices(root, one("profile") or "", query.get("backend", []))}
+            return seat_choices(root, one("profile") or "", query.get("backend", []), one("variant"))
         raise Refused(404, f"no such page resource: {path}")
 
     # --- the one write -----------------------------------------------------

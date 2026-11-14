@@ -159,10 +159,11 @@ table.tiers { border-collapse: collapse; font-size: .92em; }
 .guard { padding: .35rem .5rem; border-left: 3px solid var(--line); margin: .3rem 0; }
 .guard .rule { font-weight: 500; }
 .guard .why { color: var(--muted); font-size: .9em; }
-.history .entry { display: grid; grid-template-columns: 7.5rem 6.5rem 1fr; gap: .2rem .8rem; padding: .45rem .3rem;
+.history .entry { display: grid; grid-template-columns: 7.5rem 5.8rem 6.5rem 1fr; gap: .2rem .8rem; padding: .45rem .3rem;
   border-top: 1px solid var(--faint); }
 .history .entry:first-child { border-top: 0; }
-.history .reason { color: var(--muted); grid-column: 3; font-size: .9em; }
+.history .reason { color: var(--muted); grid-column: 4; font-size: .9em; }
+.history .date { color: var(--muted); }
 @media (max-width: 600px) { .history .entry { grid-template-columns: 1fr; } .history .reason { grid-column: 1; } }
 .verb { font-family: var(--mono); font-size: .82em; }
 .terminal { margin-top: 2rem; color: var(--muted); font-size: .85em; border-top: 1px solid var(--faint); padding-top: .7rem; }
@@ -257,7 +258,8 @@ function rowName(table, row) {
   if (table === "review_seat") return `review seat ${row.purpose} for ${row.author_family} on ${row.backend}`;
   if (table === "note" || table === "event") return `${table} ${row.id || ""}${row.model ? " for " + row.model : ""}`;
   if (table === "fallback") return `fallback ${row.profile} from ${row.from_provider} on ${row.backend}`;
-  const keys = { guard: ["model", "effort", "profile"], tier: ["model", "effort"], reach: ["model", "backend", "provider"] }[table]
+  const keys = { guard: ["model", "effort", "profile"], tier: ["model", "effort"], reach: ["model", "backend", "provider"],
+    seat_rank: ["model", "effort", "pool"] }[table]
     || ["id", "model", "profile", "provider", "path"];
   return [table, ...keys.filter(key => key in row).map(key => row[key])].join(" ");
 }
@@ -419,7 +421,8 @@ function fieldNode(ed, field) {
     if (field.onchange) field.onchange(ed);
   });
   if (field.type === "select" || field.type === "choice") input.addEventListener("change", () => clearPreview(ed));
-  return h("div", { class: "field", dataset: { field: field.name } },
+  ed.wrappers = ed.wrappers || {};
+  return ed.wrappers[field.name] = h("div", { class: "field", hidden: !!field.hidden, dataset: { field: field.name } },
     field.type === "checks" ? h("span", { class: "label" }, field.label) : h("label", { for: id }, field.label),
     input, ed.hints[field.name], error);
 }
@@ -452,19 +455,43 @@ async function loadChoices(ed, field, select) {
   if (current && !found) options.unshift(h("option", { value: JSON.stringify([current.model, current.effort, current.provider]), selected: true },
     `${current.model} · ${current.effort}   (current, not among this backend's reachable tiers)`));
   if (!options.length) options.push(h("option", { value: "", disabled: true, selected: true }, field.none || "nothing reachable"));
-  const unranked = answer.choices.some(choice => choice.reasons.some(reason => reason.endsWith("without a seat_rank")));
-  const hint = ed.hints[field.name];
-  hint.textContent = unranked ? "A tier seated on a pool needs a seat_rank there, which no verb writes: add a [[seat_rank]] row to data/policy.toml, then agent-routing commit --why." : "";
-  hint.hidden = !unranked;
+  ed.choices = new Map(answer.choices.map(choice => [JSON.stringify([choice.model, choice.effort, choice.provider]), choice]));
+  ed.pools = answer.pools || {};
   const before = select.value;
   select.replaceChildren(...options);
   if (before && [...select.options].some(option => option.value === before && !option.disabled)) select.value = before;
   select.disabled = false;
+  placeRank(ed);
+}
+
+// A stable seat's tier has a place in its pool's order; show the order and the place this edit gives it.
+function placeRank(ed) {
+  const wrapper = ed.wrappers.pool_rank;
+  if (!wrapper) return;
+  const held = ed.inputs.holds.value;
+  const choice = ed.choices && ed.choices.get(held);
+  const placement = choice && choice.pool_rank;
+  wrapper.hidden = !placement;
+  ed.rankCurrent = placement ? placement.current : null;
+  if (!placement) return;
+  if (ed.rankFor !== held) { ed.inputs.pool_rank.value = placement.suggested; ed.rankFor = held; }
+  const order = (ed.pools[choice.provider] || []).map(row => `${row.model} ${row.effort} ${row.rank}`).join(" · ") || "nothing ranked yet";
+  ed.hints.pool_rank.hidden = false;
+  ed.hints.pool_rank.textContent = `${choice.provider}, lowest first: ${order}. ` + (placement.current === null
+    ? `${choice.model} ${choice.effort} is unranked there; ${placement.suggested} ${placement.basis}.`
+    : `${choice.model} ${choice.effort} holds ${placement.current}; change it to reorder.`)
+    + " A pool rank orders tiers inside one pool for directed selections; it is not capability.";
+}
+
+function poolRankArgs(vals, ed) {
+  if (vals.pool_rank === undefined || (ed.rankCurrent !== null && String(ed.rankCurrent) === vals.pool_rank)) return [];
+  return ["--pool-rank", vals.pool_rank];
 }
 
 function values(ed) {
   const out = {};
   for (const [name, input] of Object.entries(ed.inputs)) {
+    if (ed.wrappers[name] && ed.wrappers[name].hidden) continue;
     if (input.classList.contains("checks")) out[name] = [...input.querySelectorAll("input:checked")].map(box => box.value);
     else out[name] = input.value.trim();
   }
@@ -517,7 +544,7 @@ function markStale(ed) {
 function showError(ed, message) {
   clearErrors(ed);
   const words = message.split("\n").map(line => line.replace(/^data\/\S+ \[\[[^\]]+\]\][^:]*:\s*/, "")).join("\n");
-  for (const field of ed.spec.fields) {
+  for (const field of [...ed.spec.fields].sort((a, b) => !!b.first - !!a.first)) {
     const names = [field.name, ...(field.keys || [])];
     if (names.some(name => new RegExp(`(^|[^\\w-])(--)?${name.replace(/[-_]/g, "[-_]")}([^\\w-]|$)`).test(words))) {
       const el = ed.errors[field.name];
@@ -544,7 +571,7 @@ async function preview(ed, action) {
     }
   }
   let argv;
-  try { argv = action.argv(vals); } catch (error) { showError(ed, error.message); return; }
+  try { argv = action.argv(vals, ed); } catch (error) { showError(ed, error.message); return; }
   const answer = await api("/api/edit", { argv, confirm: false });
   if (!answer.ok) { showError(ed, answer.error); return; }
   ed.pending = { argv, stamp: answer.stamp, action };
@@ -703,19 +730,23 @@ function seatChip(profile, seat) {
     seat.stability !== "stable" ? h("span", { class: "mark" }, seat.stability) : null);
 }
 
-function choiceField(current, query, none) {
-  return { name: "holds", label: "holds", type: "choice", current, query, none, keys: ["model", "effort", "provider", "rank"] };
+function choiceField(current, query, none, keys = ["model", "effort", "provider"]) {
+  return { name: "holds", label: "holds", type: "choice", current, query, none, keys, onchange: placeRank };
 }
+
+const poolRankField = () => ({ name: "pool_rank", label: "pool rank", type: "number", value: "", hidden: true, first: true,
+  keys: ["seat_rank"] });
 
 function chosen(vals) {
   if (!vals.holds) throw new Error("Choose what holds the seat.");
   return JSON.parse(vals.holds);
 }
 
-function seatQuery(profile) {
+function seatQuery(profile, variant) {
   return ed => {
     const backends = values(ed).backends;
-    return backends.length ? `profile=${encodeURIComponent(profile)}&` + backends.map(b => `backend=${encodeURIComponent(b)}`).join("&") : null;
+    return backends.length ? `profile=${encodeURIComponent(profile)}&` + (variant ? `variant=${encodeURIComponent(variant)}&` : "")
+      + backends.map(b => `backend=${encodeURIComponent(b)}`).join("&") : null;
   };
 }
 
@@ -725,11 +756,11 @@ function refreshChoices(ed) {
 }
 
 function setSeatArgv(profile, variantOf) {
-  return vals => {
+  return (vals, ed) => {
     const [model, effort, provider] = chosen(vals);
     const variant = variantOf(vals);
     return ["set-seat", profile, ...(variant ? ["--variant", variant] : []), ...vals.backends.flatMap(b => ["--backend", b]),
-      "--model", model, "--effort", effort, "--provider", provider, "--when", vals.when, "--why", vals.why];
+      "--model", model, "--effort", effort, "--provider", provider, ...poolRankArgs(vals, ed), "--when", vals.when, "--why", vals.why];
   };
 }
 
@@ -745,7 +776,8 @@ function editSeat(row) {
     facts: [["when", row.when], ["why", row.why]],
     fields: [
       { name: "backends", label: "backends", type: "checks", options: backendIds(), value: row.backends, onchange: refreshChoices },
-      choiceField({ model: row.model, effort: row.effort, provider: row.provider }, seatQuery(row.profile)),
+      choiceField({ model: row.model, effort: row.effort, provider: row.provider }, seatQuery(row.profile, row.variant)),
+      poolRankField(),
       { name: "when", label: "when", value: row.when },
       { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },
     ],
@@ -760,6 +792,7 @@ function newSeat(profile) {
       { name: "variant", label: "variant", value: "", mono: true },
       { name: "backends", label: "backends", type: "checks", options: backendIds(), value: [], onchange: refreshChoices },
       choiceField(null, seatQuery(profile), "tick a backend to see what it reaches"),
+      poolRankField(),
       { name: "when", label: "when", value: "" },
       { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },
     ],
@@ -823,7 +856,8 @@ function editReviewSeat(row) {
     facts: exists ? [["when", row.when], ["why", row.why]] : [],
     fields: [
       choiceField(exists ? { model: row.model, effort: row.effort } : null,
-        () => `for=review_seat&backend=${encodeURIComponent(row.backend)}`, "the review profile has no stable route on this backend"),
+        () => `for=review_seat&backend=${encodeURIComponent(row.backend)}`, "the review profile has no stable route on this backend",
+        ["model", "effort", "rank"]),
       { name: "when", label: "when", value: exists ? row.when : "" },
       { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },
     ],
@@ -840,7 +874,8 @@ function newReviewSeat(purpose) {
     fields: [
       { name: "family", label: "author lab", type: "select", options: labs.map(lab => [lab, lab]), value: labs[0], keys: ["author_family", "author-family"], onchange: refreshChoices },
       { name: "backend", label: "backend", type: "select", options: [...reviewBackends()].map(id => [id, id]), value: [...reviewBackends()][0], onchange: refreshChoices },
-      choiceField(null, ed => `for=review_seat&backend=${encodeURIComponent(values(ed).backend)}`, "the review profile has no stable route on this backend"),
+      choiceField(null, ed => `for=review_seat&backend=${encodeURIComponent(values(ed).backend)}`, "the review profile has no stable route on this backend",
+        ["model", "effort", "rank"]),
       { name: "when", label: "when", value: "" },
       { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },
     ],
@@ -883,10 +918,12 @@ function cardView() {
 }
 
 function tiersTable(model) {
-  return h("table", { class: "tiers" }, h("thead", {}, h("tr", {}, ["effort", "rank", "floor", "stability", ""].map(text => h("th", {}, text)))),
+  return h("table", { class: "tiers" }, h("thead", {}, h("tr", {}, ["effort", "rank", "floor", "pool rank", "stability", ""].map(text => h("th", {}, text)))),
     h("tbody", {}, model.effort.map(tier => h("tr", { class: "tier", tabindex: "0", dataset: { anchor: `tier:${model.id}:${tier.effort}`, row: `tier:${model.id}:${tier.effort}` },
       onclick: () => editTier(model, tier), onkeydown: event => { if (event.key === "Enter") { event.preventDefault(); editTier(model, tier); } } },
-      h("td", {}, tier.effort), h("td", {}, tier.rank), h("td", {}, tier.floor), h("td", { class: "fallback" }, tier.status || "stable"),
+      h("td", {}, tier.effort), h("td", {}, tier.rank), h("td", {}, tier.floor),
+      h("td", { class: "fallback" }, Object.entries(tier.seat_rank || {}).map(([pool, rank]) => `${pool} ${rank}`).join(", ") || "·"),
+      h("td", { class: "fallback" }, tier.status || "stable"),
       h("td", { class: "ban" }, tier.prohibited ? `prohibited: ${tier.reason}` : "")))));
 }
 
@@ -899,6 +936,15 @@ function editTier(model, tier) {
     { name: "floor", label: "floor", type: "number", value: tier.floor, hint: "The least reviewer rank this tier's work needs." },
   ];
   if (!tier.prohibited) fields.push({ name: "reason", label: "ban reason", value: "", hint: "Only for Prohibit: one sentence, kept on the tier." });
+  const pools = Object.entries(tier.seat_rank || {});
+  if (pools.length) {
+    fields.push({ name: "pool", label: "pool", type: "select", options: pools.map(([pool]) => [pool, pool]), value: pools[0][0],
+      onchange: ed => { ed.inputs.pool_rank.value = tier.seat_rank[values(ed).pool]; } });
+    fields.push({ name: "pool_rank", label: "pool rank", type: "number", value: pools[0][1], first: true, keys: ["seat_rank"],
+      hint: "This tier's place in the pool's order for directed selections; not capability. Only for Preview pool rank." });
+    actions.splice(1, 0, { label: "Preview pool rank", require: ["pool_rank", "why"],
+      argv: vals => ["pool-rank", model.id, tier.effort, "--pool", vals.pool, "--rank", vals.pool_rank, "--why", vals.why] });
+  }
   fields.push({ name: "why", label: "why", value: "", hint: "The reason for this edit, recorded in the commit." });
   editor(`tier:${model.id}:${tier.effort}`, `tier:${model.id}:${tier.effort}`, {
     title: `${model.id} · ${tier.effort}`, meta: tier.prohibited ? `prohibited: ${tier.reason}` : (tier.status || "stable"), fields, actions });
@@ -1023,7 +1069,7 @@ function historyView() {
     const because = (edit.body.match(/^Because: (.+)$/m) || [])[1];
     const reason = paragraphs.length > 2 || (paragraphs.length === 2 && !trailer(edit.body)) ? paragraphs[1] : "";
     return h("div", { class: "entry", dataset: { anchor: `edit:${edit.commit}` } },
-      h("code", {}, edit.commit.slice(0, 12)), h("span", { class: "verb" }, trailer(edit.body) || "hand edit"),
+      h("code", {}, edit.commit.slice(0, 12)), h("span", { class: "date" }, edit.date), h("span", { class: "verb" }, trailer(edit.body) || "hand edit"),
       h("span", {}, edit.subject.replace(/^data: /, "")),
       reason || because ? h("span", { class: "reason" }, reason, because ? ` · because ${because}` : "") : null);
   });
