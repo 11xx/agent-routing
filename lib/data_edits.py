@@ -269,9 +269,13 @@ def row_changes(before, after):
                 continue
             removed = [row for row in old if row not in new]
             added = [row for row in new if row not in old]
-            for i in range(max(len(removed), len(added))):
-                result.append(dict(store=name, table=table, before=removed[i] if i < len(removed) else None,
-                                   after=added[i] if i < len(added) else None))
+            # A row that changed keeps its identity; rows with different identities are a removal and an addition.
+            for row in removed:
+                twin = next((other for other in added if stores.label(table, other) == stores.label(table, row)), None)
+                if twin is not None:
+                    added.remove(twin)
+                result.append(dict(store=name, table=table, before=row, after=twin))
+            result += [dict(store=name, table=table, before=None, after=row) for row in added]
     return result
 
 
