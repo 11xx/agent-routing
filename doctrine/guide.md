@@ -12,7 +12,11 @@ THE STORES
                       backends, models with status and successor, tiers with
                       rank, floor, stability and bans, API prices, surcharges,
                       time-of-day windows, Codex credits, reachability per
-                      backend and provider, and per-backend effort support
+                      backend and provider, and per-backend effort support.
+                      A model whose provider id rolls forward can record the
+                      `build` and `build_date` it is expected to be; a field
+                      note's evidence names the build, provider, harness and
+                      effort it observed.
   data/policy.toml    what the resolver, validate, assess, frontier and
                       admit-review decide from: review clearance, admission
                       thresholds, pools, family exceptions, fences, profiles,
@@ -315,8 +319,10 @@ EDIT FROM A PAGE
   a newer preview was asked for, is dropped, so Commit sends what the editor
   shows. A stable seat on a tier its pool has not ranked shows that pool's
   order and asks for a place, filled with the suggested one. When the polled
-  state moves, the rows the edit changed flash once and what is being typed
-  stays. What only a terminal does, the page names as a command.
+  state moves, the page redraws and flashes once the seats, review seats,
+  guards, catalog tiers and note summaries that changed; an open form keeps
+  what is typed while its row remains. What only a terminal does, the page
+  names as a command.
 
 READABLE TEXT VIEWS
   Text uses the terminal width, or 80 columns for redirected output. Seat
@@ -739,9 +745,10 @@ KEEP CONSUMERS HONEST
   the checks each gets, and its [[accessor]] rows the commands that report a
   consumer's instruction and agent sources. `roster-literals` rejects a
   catalog id on any line. `agent-frontmatter` rejects a `model:` line in a
-  Markdown agent definition unless a [[proxy]] or [[pin]] row names that
-  file with the same model, and a file so named keeps the effort its row
-  records. A sibling repository is looked for beside this one's canonical
+  Markdown source unless the file is named by a [[proxy]] or [[pin]] row, or
+  is a definition `emit claude-agents` renders, and carries that model; an
+  `effort:` line in such a file must equal the recorded effort, and a
+  generated file must equal its rendering. A sibling repository is looked for beside this one's canonical
   checkout, found through Git's common directory so a worktree resolves the
   same siblings; AGENT_CODE_ROOT names another directory.
 

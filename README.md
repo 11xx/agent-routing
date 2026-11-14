@@ -10,9 +10,9 @@ on a tier you meant to stop using.
 `agent-routing` keeps that choice as data in one Git repository. A caller
 names the kind of work (a profile such as `implement` or `review`) and the
 CLI it runs on (Claude Code, Codex, Pi or OpenCode), and gets back the
-model, effort and provider that hold that seat. Changing a seat is one
-command that validates the data and commits it, and the next lookup returns
-the new answer.
+model, effort and provider assigned to that work there, which is called a
+seat. Changing a seat is one command that validates the data and commits
+it, and the next lookup returns the new answer.
 
 It does not read the task to choose a profile, and it starts no agent: the
 caller picks the profile and runs the route. The data in this repository is
@@ -23,12 +23,14 @@ edit it into yours.
 
 ```sh
 git clone https://github.com/11xx/agent-routing
+mkdir -p ~/.local/bin
 ln -s "$PWD/agent-routing/bin/agent-routing" ~/.local/bin/agent-routing
 ```
 
-Unix only, with Python 3.12 or later and Git; it uses the standard library
-alone. The command reads the data from the checkout the link points at, and
-every edit is a commit there.
+Unix only. It needs Bash, a `readlink` that takes `-f`, Git, and Python 3.12
+or later as `python3`; the Python code uses the standard library alone. The
+command reads the data from the checkout the link points at, and every edit
+is a commit there.
 
 ## Ask for a route
 
@@ -38,16 +40,15 @@ agent-routing check MODEL EFFORT                         # exits 1 on a prohibit
 agent-routing card MODEL                                 # a model's seats, guards and field notes
 ```
 
-`resolve` prints one JSON object. An instruction file or a launcher that
-carries these commands names no model, so a roster change needs no edit
-there.
+`resolve` prints one JSON object. A caller that resolves a profile when it
+launches gets the current seat without keeping its own copy of the roster.
 
 ## Change the roster
 
 ```sh
 agent-routing set-seat implement --backend codex --model MODEL --effort high \
   --when "Bounded implementation from a written brief." \
-  --why "Level with the tier above on review findings at half the price." \
+  --why "High effort is enough for bounded implementation." \
   --dry-run                                  # preview; drop --dry-run to commit
 
 agent-routing note --model MODEL --kind weakness --area review \
@@ -59,16 +60,18 @@ agent-routing page                                  # the same edits from a loca
 ```
 
 An edit validates all three data files and makes one Git commit of the data.
-It deploys and pushes nothing. Field notes are dated evidence for whoever
-chooses a seat; no routing answer reads them.
+It deploys and pushes nothing. A model and effort seated for the first time
+on a subscription also needs `--pool-rank N`; the refusal shows that
+subscription's order and suggests a place. Field notes are dated evidence
+for whoever chooses a seat; no routing answer reads them.
 
 ## Where the rest is
 
 `agent-routing` with no arguments prints the guide, which is the contract for
-every command, and each command has `--help`. [DELEGATION.md](DELEGATION.md)
-covers how work reaches an executor: roles, briefs and what each CLI needs at
-launch. `bin/check-change` is the gate a change to the code passes, and its
-header says what it checks.
+every command, and `agent-routing --help` lists the commands.
+[DELEGATION.md](DELEGATION.md) covers how work reaches an executor: roles,
+briefs and what each CLI needs at launch. `bin/check-change` is the gate a
+change to the code passes, and its header says what it checks.
 
 [agent-delegate](https://github.com/11xx/agent-delegate) launches runs on
 these routes, [arc](https://github.com/11xx/arc) reads the review ladder, and
