@@ -5,474 +5,99 @@ with one accessor, for every harness and tool on this machine.
 
 ```sh
 agent-routing                         # the routing guide: start here
-agent-routing models                  # the model/effort matrix
-agent-routing profiles                # named task-shape routes
-agent-routing seats --json            # derived bindings and the declared head default
-agent-routing routes --json           # picker routes and prohibited tiers
+agent-routing profiles                # the policy: profiles, seats, pools
+agent-routing models                  # the catalog: models, tiers, prices, reach
 agent-routing resolve implement --backend codex --json
-agent-routing validate --profile plan --backend codex --model gpt-6-astra \
-  --effort medium --provider openai-codex --reason "operator directed" \
-  --allow-experimental --json
-agent-routing delegation              # the mechanism matrix
-agent-routing mechanism               # DELEGATION.md, the mechanism prose canon
-agent-routing check opus-5 xhigh      # exits 1: prohibited
-agent-routing doctrine                # authored prose used by every harness
-agent-routing lint                    # pass@1/cost cells, coverage, routes
-agent-routing lint-consumers          # reject roster pins in active consumers
+agent-routing check <model> <effort>  # exits 1 on a prohibited tier
+agent-routing doctrine                # principles plus the policy, rendered
+agent-routing lint                    # validate the whole data set
 agent-routing prices --format tapes --output ~/.config/tapes/prices.toml
-                                      # API list prices as a tapes price table
 ```
 
-For a tuple the operator named exactly, `validate --operator-named` permits
-explicit-only and experimental selection while preserving bans and backend and
-pool support. Refusals list stable seated efforts for the requested tuple's
-profile and supported routes for its backend. `agent-routing seats --json`
-shows the bindings before a selection; `check` tests prohibition alone.
+The guide (`doctrine/guide.md`, the bare invocation) is the contract for every
+verb.
 
 ## Why it is its own repository
 
-Routing policy is opinionated, personal, and churns on model-era boundaries.
-It was living inside a skills repository, which meant skills appeared to change
-every time a benchmark landed, and a second copy of the mechanism prose lived
-inside `arc` — a tool meant to be usable by any model in any harness, which
-cannot ship a document naming one person's two vendors.
-
-Separating it lets `arc` and `tapes` own no routing opinion at all. Neither
-picks models: `arc` records whatever `--model` string it is handed, and `tapes`
-reports whatever a transcript contains. They are not consumers of this data and
-should not become ones.
-`agent-routing prices --format tapes` keeps that true in the other direction:
-it writes the roster's API list prices in tapes' own `tapes-price-table/2`
-format, which the operator installs where tapes looks for a price table.
-agent-routing produces the file; tapes reads only the file.
+Routing policy is opinionated, personal, and churns whenever a model ships.
+Keeping it here lets `arc` and `tapes` own no routing opinion at all: `arc`
+records whatever `--model` string it is handed, and `tapes` reports whatever a
+transcript contains. `agent-routing prices --format tapes` writes API list
+prices in tapes' own `tapes-price-table/2` format, which the operator installs
+where tapes looks for a price table; tapes reads only that file.
 
 ## What is authoritative
 
-`routing/models.toml`, `routing/profiles.toml`, and
-`routing/delegation.toml` are the machine-readable source of truth.
-`doctrine/model-routing.md` and `DELEGATION.md` are the
-authored prose sources for decisions the manifests cannot usefully express.
-
-Queryable judgment lives inside the manifest as `role`, `character`,
-`weaknesses`, and the `[policy]` block. The authored doctrine carries the
-reader-oriented ordering and context that the manifest cannot express. They
-are two representations of one policy; `agent-routing lint` makes their shared
-model coverage, their pass@1 and cost cells, and route structure a mechanical
-check rather than a remembered synchronisation step.
-
-| path | status |
+| path | holds |
 | :-- | :-- |
-| `routing/*.toml` | machine-readable source of truth — edit here |
-| `doctrine/guide.md` | the routing guide, printed by the bare invocation |
-| `doctrine/model-routing.md` | authored routing doctrine, read on demand via `agent-routing doctrine` |
-| `DELEGATION.md` | authored mechanism prose — how work reaches an executor |
-| `eras/` | history; why a roster changed, kept when the roster moves on |
+| `data/catalog.toml` | facts about models: families, backends, tiers, prices, reachability |
+| `data/policy.toml` | what routing decides from: profiles, seats, pools, fallbacks, fences, admission |
+| `data/notes.jsonl` | dated field notes; no routing decision reads them |
+| `doctrine/principles.md` | the standing principles |
+| `doctrine/guide.md` | the routing guide and verb contracts |
+| `DELEGATION.md` | how work reaches an executor: roles, briefs, launch contracts |
+
+The catalog and policy hold short, flat rows. A seat says in one sentence
+`when` it applies, `why` it holds and `since` when. Anything longer is a
+principle, a note, or nothing. `agent-routing doctrine` renders the principles
+and the stores together, so the readable policy cannot drift from the data.
 
 ## The propagation path
 
-A harness instruction file carries a short pointer to this CLI rather than a copy
-of the roster, so the policy is read when a routing decision is actually in front
-of an agent instead of occupying every context window.
+A harness instruction file carries a short pointer to this CLI rather than a
+copy of the roster, so the policy is read when a routing decision is in front
+of an agent. `agent-harnesses` composes that pointer into each harness's
+instruction file, and its `agent-harness delegation-sources` accessor declares
+the instruction and agent surfaces to `agent-routing lint-consumers`, which
+rejects concrete model ids and static model frontmatter in the consumer
+repositories the policy's `[[consumer]]` and `[[accessor]]` rows name. Sibling
+repositories are found beside the canonical checkout through Git's common
+directory; `AGENT_CODE_ROOT` overrides that location. The lint reads other
+repositories, so it runs on demand.
 
-```
-routing/*.toml             ─→ agent-routing resolve   one caller-selected route
-routing/*.toml             ─→ agent-routing validate  one explicit tuple
-doctrine/guide.md          ─→ agent-routing           the guide, bare invocation
-doctrine/model-routing.md  ─→ agent-routing doctrine  the policy in full
-```
-
-`agent-harnesses` composes that pointer into `~/.claude/CLAUDE.md`,
-`~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and
-`~/.pi/agent/AGENTS.md`. Its `agent-harness delegation-sources` accessor
-declares the instruction and agent surfaces to `agent-routing lint-consumers`;
-nothing downstream embeds the roster, which is what that guard exists to
-enforce.
-
-The doctrine and manifest intentionally are not generated from each other: the
-manifest keeps one queryable row per effort, while the doctrine compresses and
-orders rows for a reader. `agent-routing lint` checks model coverage, route
-structure, and the pass@1 and cost cells the doctrine table restates, so a
-number that drifts is caught before anything reads it.
-
-It does not read the doctrine's prose, nor the table's other columns. A rule
-stated wrongly in sentences is caught by review or not at all, which is why an
-authored change here carries a reviewer rather than only a green gate.
-
-`agent-routing lint-consumers` scans the active delegation surfaces in the two
-direct consumer repositories. It rejects concrete model IDs and static agent
-model frontmatter while leaving tests and historical manifests out of scope.
-The proxy-shell agent aliases are the one deliberate exception: their
-version-agnostic Claude alias is required by Claude's static agent frontmatter,
-and the central delegation manifest records that shell-only policy.
-
-Consumer siblings are found beside the canonical checkout through Git’s common
-directory, including when the lint runs from a linked worktree.
-`AGENT_CODE_ROOT` overrides that location for an isolated consumer tree.
-
-The `[[accessor]]` entry in `routing/consumers.toml` owns a floor,
-`expected_sources`: the source ids its accessor must report. The lint exits
-nonzero, naming the missing ids, when the accessor reports fewer, and when an
-accessor declares no floor, so a harness-side regression cannot shrink what is
-checked. Sources beyond the floor are checked as well.
-
-## Static Claude agent definitions
-
-`agent-routing emit claude-agents` returns `agent-routing-claude-agents/1`:
-a route-version witness, rendered `agents/*.md`, and the `[[pin]]` table derived
-from the same resolved routes. Model aliases stay version-agnostic; efforts
-come from the roster. Stable Claude routes are emitted by default. Experimental
-routes require `--allow-experimental`, and prohibited tiers cannot be emitted.
-
-```sh
-agent-routing emit claude-agents --output-dir ./claude-agent-bundle
-agent-routing emit claude-agents --output-dir ./claude-agent-bundle --check
-agent-routing emit claude-agents --profile implement --variant opus-low
-```
-
-An explicit output directory receives `agents/` and `consumers-pins.toml`.
-The consumer keeps its proxy definitions and adopts the generated agents and
-pin entries it needs. A consumer marked `generated = "claude-agents"` enrolls
-every emitted definition present in its directory; explicit pin entries also
-require their files to exist. A pin marked `generated = true` is checked against the
-whole rendered definition, including its instructions; hand edits fail lint.
-The emitter stages source artifacts. Harness deployment and session loading
-belong to the consumer; runtime settings are not routing outputs.
-
-## Named route profiles
-
-Callers classify work by task shape and pass that choice to the resolver. The
-resolver is a pure local table read: it does not inspect the task, access the
-network, cache results on disk, or choose a profile. A successful response carries
-the concrete route and a hash of the three routing manifests for durable logs.
-`resolve` and `validate` accept the observed `--caller <model>#<effort>`.
-`--caller-provider` selects its pool when membership is ambiguous. Their
-optional `confirmation` advisory compares same-pool ranks and declared pool
-scarcity; an unranked comparison stays explicit. Standing user authorization
-replaces an escalation offer. Routing never turns this advisory into a gate.
-
-Review responses also carry author eligibility constraints:
-
-```sh
-agent-routing resolve extract --backend pi --json
-agent-routing resolve generate --backend pi --allow-experimental --json
-```
-
-Opus 5.5 is stable at low, medium, high and xhigh, and its max tier is
-prohibited. On the Claude backend `implement` defaults to low; `--variant
-opus-medium`, `opus-high` and `opus-xhigh` select the other tiers, each with
-its own native definition. The head model's standing tier is high: `plan`,
-the head default `seats` reports, and `execute` and `design` resolve there.
-First-party review runs at xhigh, the deep-review tier, which `plan --variant
-opus-xhigh` and `design --variant xhigh` also select.
-
-On the Claude backend `explore` and `extract` default to Haiku 5.5 at high, the
-cheap subscription seat for read-only reconnaissance and fixed-shape
-extraction; `explore --variant opus` selects Opus 5.5 high. Haiku is reached
-only through the `claude` backend, never through an API-billed pool.
-
-Profiles stay on one axis: extraction, exploration, candidate generation,
-bounded implementation,
-broad execution, planning, review, design, or an interactive harness default.
-Backend sandboxing, tool fences, output capture, and
-liveness remain adapter behavior in `DELEGATION.md` and the backend skills.
-Probationary and experimental routes fail closed unless the caller explicitly
-passes `--allow-experimental`, a whole profile as much as a variant.
-
-The `computer-use` profile is an explicit experimental desktop-worker route,
-separate from coding implementation. It supports Codex and Pi, defaulting to Sol
-low; `--variant medium` and `--variant high` select explicit comparison tiers
-on either backend. `--variant xhigh` is supported on Codex alone. All require `--allow-experimental`; no failure automatically
-escalates the model.
-
-Claude can run Opus 5.5 for this profile through an explicit `--variant opus`
-or an operator-directed model selection. There is no Claude default for
-`computer-use`; either path requires `--allow-experimental`.
-
-Desktop access and the retained run/resume lifecycle are owned by agent-delegate.
-The route does not restrict CU capabilities or claim a measured cost/quality win.
-
-### Author-aware independent review
-
-For admission using an observed quota snapshot:
-
-```sh
-agent-routing resolve execute --backend codex --usage-file usage.json --json
-agent-routing admit-review --author 'gpt-6.1-sol#xhigh' \
-  --usage-file usage.json --base <base-revision> --head <head-revision> --json
-```
-
-The supplied file holds normalized account-window JSON from `agent-status usage`.
-Routing accesses no account. `execute` follows its declared ordered fallback
-when the starting pool is exhausted, recording `rerouted_from` and
-`pool-exhausted`. Pinned variants, unknown quota and profiles without an
-authorized fallback refuse. Without the file, resolution stays manifest-only.
-
-Review admission selects the current first-party Claude review seat for Codex
-authors only when more than 50 percent remains in its five-hour window. At or
-below 50 percent, unknown availability or no independent seat, its typed
-`review-debt` result carries no route and requires an Arc `independent-review`
-debt. Claude authors keep the independent Codex reviewer. The result binds the
-requested range and read-only, non-persistent execution; the adapter owns
-dispatch, execution fences and recording actual review evidence.
-
-Supply the diff author's model and effort when resolving independent review:
-
-```sh
-agent-routing resolve review --backend claude --author 'gpt-6.1-sol#xhigh' --json
-```
-
-`--author` is valid only for `review`. Roster aliases and backend model IDs are
-canonicalized; `ARC_MODEL` is not read, because the caller may differ from the
-diff author. A model without `#effort` uses its highest declared review floor.
-If any of that model's efforts lacks a floor, supply the recorded effort or
-expect a refusal. Model families must be nonblank strings without
-surrounding whitespace; malformed families invalidate the manifest, and every
-family comparison reads the trimmed value. Unknown author models, efforts, or review floors recommend
-debt rather than inferring eligibility.
-
-A model's `family` in `models.toml` is the lineage it was released in, and a
-`[[family]]` row groups lineages that are one family: its `id` and `aliases`
-are lineages roster models carry, no lineage sits in two rows, and a lineage
-no row names is a family of its own. `openai` groups `gpt-5.6` and `gpt-5.5`.
-This is the one family relation review reads. A review route excludes exactly
-the authors of its reviewer's family, reported as `excluded_author_families`,
-and `assess` calls exactly those pairs `same-family`; a route declares no
-exclusions of its own. This fences the Claude and GPT pools by model family,
-including a model reached through another provider.
-
-A `[[family_exception]]` row in `models.toml` names a `reviewer` model, the
-`authors` of its own family whose work it may clear, and a `note` saying who
-directed it. For those pairs `assess` raises no `same-family` and lists the
-authors under `family_exception`, beside the qualifiers rather than among
-them, so the read is independent and clears when every author's floor and
-`[review].clearance` are met, and a consumer reading the closed qualifier set
-records it as clearing. The same model still raises `same-model` and never
-clears. Review routes keep their
-family exclusions, and lint refuses an excepted reviewer that holds a seat on
-`review`, so such a reviewer is reached only by naming it. Fable 5.2 may clear
-Opus 5.5, Sonnet 5.5 and Haiku 5.5 work this way.
-`review_tier` in `models.toml` sets a seated tier's reviewer tier and author
-floor. An unseated tier may carry `author_floor`, which sets only the author
-requirement and grants no reviewer eligibility. Superseded models with shipped
-implementation history carry floors at least as high as their successors at
-each declared effort; retirement does not remove a diff's review requirement.
-Superseded rows without shipped authorship need no floor. Lint requires `review_tier`
-on every seated tier and refuses either field on the other kind of tier.
-Both fields use the same cross-family scale:
-1 is bounded work, 2 a working technical peer, 3 the high-stakes tier, and 4
-an explicit top effort beyond the offered review seats. These are conservative
-policy floors, independent of benchmark scores and pool-local escalation ranks.
-An unclassified model or effort has no assumed position on this scale.
-
-`--purpose` says what the read is for. The default, `clearance`, requires a
-stable route outside the excluded families with `reviewer_tier >=
-author_tier` and `reviewer_tier` at or above the single clearance floor that
-`routing/models.toml` declares in `[review]`, so the read may discharge review
-debt. `findings` requires only `reviewer_tier >= author_tier`; a route whose
-excluded families hold the author's needs `reviewer_tier > author_tier` and
-must be the route resolved, the backend default or the named `--variant`, so
-a same-family read that finds but does not clear is never reached as a
-fallback, and a cost-gated variant such as Astra is reached only by name.
-The backend default keeps precedence when it serves the purpose; otherwise the
-resolver checks the remaining routes in manifest order on that same backend.
-An explicit `--variant` confines the choice to that variant. It never
-switches backends. Experimental opt-in cannot waive independence, the author
-floor or the clearance floor.
-
-```sh
-agent-routing resolve review --backend codex --author 'gpt-6.1-sol#low' --purpose findings --json
-```
-
-Successful review JSON adds `review` with `author`, `independence`,
-`excluded_author_families`, and `reviewer_tier`; author-aware results also carry
-`author_tier`, `purpose`, the seat's `findings` (`eligible` or `ineligible`)
-and `clears` (true or false), and its assessment `qualifiers`. `independence`
-is `eligible` when the seat is outside the excluded families and at the
-author's tier. Only `clears: true` is coverage that discharges review debt.
-This is route eligibility, not a review verdict or proof that a different
-actor performed the review. For a diff with multiple authors, check every
-author; one coordinate does not certify the others.
-
-Without `--author`, the same concrete route remains available and `review`
-reports `author: null` and `independence: "unverified"`, alongside its family
-exclusions and reviewer tier. Callers must inspect this field before claiming
-independence. Existing consumers that parse only the concrete route fields
-continue to run, but do not establish author eligibility.
-
-If no eligible route exists, resolution exits 1 with empty stdout. The final
-stderr line is an `agent-routing-refusal/1` payload with
-`kind: "review-independence"`, a `reason`, and `recommendation: "record-debt"`.
-Record Arc review debt or wait for eligible capacity according to repository
-policy; debt never overrides a changes-requested verdict. Non-review routes
-keep their concrete output contract.
-
-### Assessing a read
-
-```sh
-agent-routing assess --reviewer 'deepseek-flash#max' --author 'gpt-6.1-sol#low' --json
-```
-
-`assess` judges any reviewer coordinate, seated or not, against every author
-of the diff it read, and answers two questions. `findings` is `eligible` when
-the reviewer's `review_tier` reaches each author's floor, strictly above the
-floor of each author in its own family. `clears` is true when the reviewer is
-family-independent of every author and at or above both the highest author
-floor and the clearance floor; only a clearing read discharges review debt.
-At a floor of 2, the GPT-6.1 Sol xhigh, Opus 5.5 high and xhigh and Astra
-seats clear for authors outside their family at or below their tier, and
-tier-1 seats such as DeepSeek Flash max report findings without clearing.
-
-`--json` emits `agent-routing-assessment/2`: `purpose` (`findings` or
-`clearance`, the default, which only records the question asked), the
-`clearance` floor, the reviewer and authors with their tiers, floors and
-identities, `findings`, `clears`, `independence`, the closed set of
-`qualifiers`, and `debt_kind: "ineligible-review"` when the read does not
-clear. `independence` keeps its `agent-routing-assessment/1` meaning, eligible
-when no qualifier other than `below-clearance` holds. `--schema 1` emits the
-`/1` contract unchanged, independence alone, and refuses `--purpose findings`.
-Arc reads `/1` through its 2026.9.29 release and reads `/2` from its next
-release; pass `--schema 1` to an older arc.
-
-`frontier` reads embed `agent-routing-assessment/1`, and its seats are those
-`assess` calls independent.
-
-## Seat bindings
-
-`seats` projects the profile and variant bindings, including labeled trials,
-with their backend, provider, model, effort, stability and route version.
-The head-default query is the `plan` profile on Claude. An absent binding
-reports a null default and its resolver refusal. The actual head is unobserved. Ambient model variables do not establish a session.
-Evidence references are null where the manifests declare none. There is no
-separate seats manifest; model bars and review eligibility keep their existing
-sources.
-
-## Picker routes
-
-`agent-routing routes --json` emits one `agent-routing-routes/1` object with
-`route_version`, `routes` and `prohibited`. Each route names its `profile`,
-`variant`, `backend`, `provider`, `model`, `effort`, `stability` and `default`.
-The tuples are the answers to `resolve` without opt-ins, authors or quota
-observations. An unnamed request has `variant: null`; a backend-default
-variant is also listed under its explicit name. Default flags match `seats`.
-Routes requiring experimental or cross-pool opt-in are omitted.
-
-`--backend <backend>` and `--profile <profile>` filter routes, together or
-individually; an unmatched filter returns an empty route list. Prohibitions
-remain complete under every filter, with canonical model, effort and the
-recorded reason. Routes are ordered by profile, variant (unnamed first), then
-backend; prohibitions by model and effort. JSON is required.
-
-## Review frontier
-
-```sh
-agent-routing frontier --author 'opus-5.5#xhigh' --reads 'gpt-6.1-sol#xhigh' --json
-```
-
-`frontier` answers the strongest review seat eligible for an author, as
-`agent-routing-frontier/1`: the `route_version`, the author with its floor, a
-`status`, and `frontier`, the highest `review_tier` with every seat at that
-tier as a model, effort, backend and pool. A caller that stores the reads a
-change received compares them against it at read time, so no tier is ever
-stored.
-
-A seat is a stable route of the `review` profile on any backend whose pool
-serves its model, the kind `resolve review` can sell. A seat on another profile never raises the
-frontier. Eligibility is `assess`'s independence verbatim: the frontier adds no
-independence rule. Seats are ordered by `review_tier`, the cross-family scale `assess`
-compares, never by the pool-local `rank`. Quota is not an input, so an
-exhausted pool still marks the frontier and a clearance cannot flip on a pool
-running dry. An author whose floor is unestablished answers `floor-unknown`
-with no frontier; one whose floor no seat reaches answers `no-eligible-seat`.
-
-Each `--reads` coordinate returns its `assess --schema 1` result under the
-same route version and a `standing` of `below`, `at` or `above` the frontier's tier, or
-`unranked` when the read's tier is unseated or no frontier exists. Standing
-compares tiers only; the read's own independence is its assessment's.
-
-## Operator-directed selection
-
-An explicit one-off model choice keeps the execution shape separate from model
-resolution. Call `validate` with the base profile, backend, model, effort,
-provider, and a nonblank reason:
-
-```sh
-agent-routing validate \
-  --profile plan --backend codex --model gpt-6-astra --effort medium \
-  --provider openai-codex --reason "operator directed" \
-  --allow-experimental --json
-```
-
-The command does not resolve the profile or select a variant. Its JSON result
-records the base execution profile, canonical and backend model identities,
-the applied opt-ins, the `route_version` witness, and where the tuple sits
-relative to the route the profile would have chosen. A prohibited tier,
-unsupported model/backend or effort fact, unknown pool membership, or model-role
-restriction refuses before any of that. A known cross-pool selection
-additionally requires `--allow-cross-pool`; that opt-in does not waive missing
-backend, model, or effort support.
-
-Each backend in `delegation.toml` declares `supported_efforts`, the common
-levels it can send without dropping or clamping them. `model_efforts` maps
-canonical model IDs to lists that replace that common set for a particular
-catalog mapping. An empty set supports no effort. Structural lint checks
-these declarations and every profile/backend pairing; both `resolve` and
-`validate` enforce them, regardless of experimental or cross-pool opt-ins.
-Pi's declared Sol support ends at high; its DeepSeek mapping supports low, high and max.
-A custom Pi model declaration must be verified and recorded in the capability
-data before it can authorize a higher tier. OpenCode's delegated v2 provider
-supports no effort variants. Catalog presence alone does not establish support.
-
-`baseline` is the tuple `resolve` would return for the profile and backend,
-as `<canonical model>#<effort>`, or null when no route answers that backend.
-`direction` compares policy ranks inside the selection's pool: `same` for the
-baseline itself, `upgrade`, `lateral` or `downgrade` when both ends are
-ranked there, and `unranked` otherwise. Ranks live on seated tiers in
-`models.toml` as `rank = { "<pool>" = <n> }`; they are operator policy, not
-measured capability, and compare only within one pool. A tuple is eligible
-when the profile, or a profile it names in `escalation_sources`, seats it on
-a stable route.
-
-A selection is `stable` only against a stable baseline, and then when it is
-eligible and does not rank below the baseline, or when it is a stable variant
-of the profile on the requested backend and provider. A stable upgrade
-reports `selection_kind = "operator-escalation"`; every other selection is
-`operator-directed`, and anything left experimental requires
-`--allow-experimental`. `rostered` stays false for both, because the route
-did not choose the tuple.
-
-`resolve` is the route-selected surface; its review eligibility metadata does
-not certify an operator-directed `validate` selection's independence.
-Both commands emit machine-readable refusal payloads with the
-`agent-routing-refusal/1` schema on stderr.
+`agent-routing emit claude-agents` renders static Claude agent definitions and
+their `[[pin]]` table from resolved routes; a consumer enrolls them and the
+consumer lint holds them to the rendering.
 
 ## What this repository will not do
 
 **It will not classify work for you.** `resolve` maps a caller-selected profile
-to the current route, and `check` answers whether a tier is prohibited. There
-is deliberately no `agent-routing pick <task>`: classification is judgment,
-it is the head model's job, and a CLI that guesses becomes a stale oracle.
+to the current route; there is no `agent-routing pick <task>`.
 
-**It will not verify identity or enforce anything.** Nothing here gates. A
-harness that ignores this data is not stopped by it; the data only makes the
-decision legible and the prohibitions unambiguous.
+**It will not enforce anything.** A harness that ignores this data is not
+stopped by it; the data makes the decision legible and the prohibitions
+unambiguous.
+
+## Changing the data
+
+1. Edit `data/catalog.toml` or `data/policy.toml`, or append a line to
+   `data/notes.jsonl`. A measurement goes in a note's `metrics`, never in the
+   catalog; leave a value out rather than guess it.
+2. Run `agent-routing format` to restore canonical form, then
+   `agent-routing lint`, which names every offending row.
+3. Harness instruction files name verbs, not models, so a data edit needs no
+   rebuild there. Pi's settings name the `interactive` route, so changing that
+   profile needs `agent-harness build`.
+
+Rolling provider ids keep a checkpoint-specific `build` on the catalog row;
+field notes name the build, provider, harness and effort they observed.
 
 ## Checking a change
 
 `bin/check-change` is the gate. It checks the committed head of a clean
 checkout against the change's base (`--base REV`, else the merge base with the
-target branch `arc show --json` names) in three phases:
+target branch `arc show --json` names):
 
 1. **Compile.** Every Python source under `lib/`, `bin/` and `tests/` compiles,
    and every shell script in `bin/` passes `bash -n`.
-2. **Invariants.** The fixed list in `checks/invariants.toml`, `lint-routing`
-   and `lint-consumers`, sharing a 3-second limit. The list is read from the
-   base, with any entry the candidate adds under a new name, so a change
-   cannot drop the invariant that covers what it breaks. A roster edit is
-   checked here: the roster is its own truth, and the lint holds it to its
-   rules.
-3. **Witnesses.** The tests the change's commits name in their trailers, at
-   most three, each run once within 5 seconds. A failure, a skip or a run of
-   no test fails.
+2. **Invariants.** `checks/invariants.toml`, read from the base plus entries
+   the candidate adds under new names, within 3 seconds: `lint-routing`
+   validates the live data, and `roster-ids` refuses any catalog id in code,
+   templates or tests.
+3. **Tests.** The whole suite under `tests/`, once. A failure, an error or a
+   skip fails it.
+4. **Witnesses.** The tests the change's commits name, at most three, each run
+   alone within 5 seconds.
 
 A commit touching `lib/`, `bin/`, `templates/`, `tests/` or `checks/` names its
 witness in its final trailer block, or says why it has none:
@@ -482,33 +107,12 @@ Witness: tests/test_check_change.py::CheckChangeTest.test_a_fourth_witness_is_re
 Witness: none (renames a helper; no behaviour changes)
 ```
 
-A commit touching only data or prose (`routing/`, `doctrine/`, `eras/`,
-Markdown) needs neither. The whole run fits 20 seconds on a warm checkout; an
-overrun fails and names its phase, and nothing raises the limit. Checks run
-with a private home, temporary and XDG directories, and every run writes a
-JSON receipt under `$XDG_CACHE_HOME/agent-routing/checks/`.
+The run fits the `BUDGET` in `bin/check-change`, 5 seconds; an overrun fails
+and names its phase. Checks run with a private home, temporary and XDG
+directories, and every run writes a JSON receipt under
+`$XDG_CACHE_HOME/agent-routing/checks/`.
 
-The tests read the frozen roster in `tests/fixtures/roster`, never the live
-`routing/`, so editing the roster never breaks one. They are the pool a change
-draws its witnesses from; `python3 -m pytest -q` runs them all by hand, and
-no gate does.
-
-## Adding or revising a model
-
-Rolling provider IDs keep a checkpoint-specific `build` on the roster. Field
-tests and observations name that build, provider, harness and effort, and
-qualify the provider-reported identity separately. Earlier checkpoints retain
-their evidence in `eras/`; their results do not measure the current build.
-
-1. Edit `routing/models.toml`. Record `pass_at_1` from a real measurement and
-   leave a field out rather than guessing it — an absent number is honest, an
-   invented one is load-bearing.
-2. Note what changed and why in `eras/` when a roster seat moves.
-3. Run `agent-routing lint`. The harness instruction files name the verb
-   rather than embedding the roster, so a roster edit needs no rebuild there.
-   Changing the `interactive` profile is the exception: Pi's settings name that
-   route, so `~/code/agent-harnesses/bin/agent-harness build` has to
-   materialize it.
-
-Prohibitions carry a `use` string starting with `prohibited`; `check` keys on
-that prefix, so the explanation and the enforcement stay in one place.
+The tests read an invented data set in `tests/fixtures/data` — labs, models,
+backends and pools that do not exist — so they test the tool and never the
+roster, and a data edit never breaks one. `python3 -m unittest discover -s
+tests` runs them by hand.
