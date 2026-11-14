@@ -68,7 +68,7 @@ table.board { border-collapse: separate; border-spacing: 0; width: 100%; min-wid
 .variant { font-family: var(--mono); font-size: .8em; color: var(--muted); }
 .chip { display: inline-flex; align-items: baseline; gap: .35rem; padding: .12rem .5rem; border-radius: 999px;
   border: 1px solid hsl(var(--h) var(--chip-s) var(--chip-edge-l)); background: hsl(var(--h) var(--chip-s) var(--chip-l));
-  color: hsl(var(--h) 60% var(--chip-ink-l)); cursor: pointer; line-height: 1.35; }
+  color: hsl(var(--h) 60% var(--chip-ink-l)); cursor: pointer; line-height: 1.35; white-space: nowrap; }
 .chip .id { font-family: var(--mono); font-size: .9em; }
 .chip .eff { font-size: .82em; opacity: .85; }
 .chip.small { padding: 0 .4rem; font-size: .92em; }
@@ -166,7 +166,7 @@ table.tiers { border-collapse: collapse; font-size: .92em; }
 @media (max-width: 600px) { .history .entry { grid-template-columns: 1fr; } .history .reason { grid-column: 1; } }
 .verb { font-family: var(--mono); font-size: .82em; }
 .terminal { margin-top: 2rem; color: var(--muted); font-size: .85em; border-top: 1px solid var(--faint); padding-top: .7rem; }
-.terminal code { margin-right: .7rem; white-space: nowrap; }
+.terminal code { display: inline-block; margin-right: .7rem; white-space: nowrap; }
 #toast { position: fixed; right: 1rem; bottom: 1rem; background: var(--button); color: var(--button-ink); padding: .5rem .8rem;
   border-radius: 8px; box-shadow: var(--shadow); opacity: 0; transition: opacity .25s; pointer-events: none; }
 #toast.show { opacity: 1; }
@@ -606,9 +606,7 @@ async function commit(ed) {
 }
 
 // Re-attach open editors to their rows after a redraw, keeping what was typed and where the cursor was.
-function placeEditors(root) {
-  const active = document.activeElement;
-  const selection = active && "selectionStart" in active ? [active.selectionStart, active.selectionEnd] : null;
+function placeEditors(root, active, selection) {
   for (const ed of S.editors.values()) {
     if (ed.context !== context()) continue;
     const anchor = root.querySelector(`[data-anchor="${CSS.escape(ed.anchor)}"]`);
@@ -628,7 +626,7 @@ function placeEditors(root) {
   }
   if (active && active.isConnected && document.activeElement !== active) {
     active.focus({ preventScroll: true });
-    if (selection) try { active.setSelectionRange(...selection); } catch (error) { /* not a text input */ }
+    if (selection && selection[0] !== null) try { active.setSelectionRange(...selection); } catch (error) { /* not a text input */ }
   }
 }
 
@@ -640,9 +638,12 @@ function render() {
   drawTabs();
   const main = document.getElementById("main");
   if (!S.stores) return;
+  const active = document.activeElement;
+  let selection = null;
+  try { selection = [active.selectionStart, active.selectionEnd]; } catch (error) { /* not a text input */ }
   const body = { seats: seatsView, models: modelsView, review: reviewView, history: historyView }[S.view]();
   main.replaceChildren(body, terminalHints());
-  placeEditors(main);
+  placeEditors(main, active, selection);
 }
 
 function drawTabs() {
