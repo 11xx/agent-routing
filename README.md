@@ -23,10 +23,12 @@ Routing policy is opinionated, personal, and churns whenever a model ships.
 Keeping it here lets `arc` and `tapes` hold no routing opinion of their own.
 `arc` records whatever `--model` string it is handed, clears review debt
 against the capability ladders it imports from `agent-routing ladder`, and asks
-the live `frontier` answer for review assurance, so a rank edit here changes
-what Arc clears and assures. `tapes` reports whatever a transcript contains. `agent-routing prices --format tapes` writes API list
-prices in tapes' own `tapes-price-table/2` format, which the operator installs
-where tapes looks for a price table; tapes reads only that file.
+the live `frontier` answer for review assurance. A rank edit here therefore
+moves Arc's assurance at once, and moves what Arc clears only when Arc next
+imports the ladder. `tapes` reports whatever a transcript contains.
+`agent-routing prices --format tapes` writes API list prices in tapes' own
+`tapes-price-table/2` format, which the operator installs where tapes looks for
+a price table; tapes reads only that file.
 
 ## What is authoritative
 
