@@ -31,14 +31,17 @@ where tapes looks for a price table; tapes reads only that file.
 | path | holds |
 | :-- | :-- |
 | `data/catalog.toml` | facts about models: families, backends, tiers, prices, reachability |
-| `data/policy.toml` | what routing decides from: profiles, seats, pools, fallbacks, fences, admission |
+| `data/policy.toml` | what routing decides from: profiles, seats, pools, fallbacks, fences, admission; and the guards leads follow |
 | `data/notes.jsonl` | dated field notes; no routing decision reads them |
 | `doctrine/principles.md` | the standing principles |
 | `doctrine/guide.md` | the routing guide and verb contracts |
 | `DELEGATION.md` | how work reaches an executor: roles, briefs, launch contracts |
 
-The catalog and policy hold short, flat rows. A seat says in one sentence
-`when` it applies, `why` it holds and `since` when. Anything longer is a
+The catalog and policy hold short, flat rows. A seat names the backends it
+serves and says in one sentence `when` it applies, `why` it holds and `since`
+when. A guard is a standing instruction for using a tier: one-sentence `rule`
+and `why`, with the notes it rests on. Leads follow guards; no verb that
+selects, validates or refuses a route reads them. Anything longer is a
 principle, a note, or nothing. `agent-routing doctrine` renders the principles
 and the stores together, so the readable policy cannot drift from the data.
 

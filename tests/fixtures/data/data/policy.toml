@@ -1,4 +1,4 @@
-# What `resolve` answers: pools, profiles, seats, fallbacks, ranks and consumer pins.
+# What routing decides from: pools, fences, guards, profiles, seats, fallbacks, ranks and consumer pins.
 # Written in canonical form; `agent-routing format` rewrites a hand edit into it.
 
 schema = "agent-routing-policy/1"
@@ -50,6 +50,22 @@ model = "orbit-trial"
 profile = "review"
 why = "A trial model is never the reviewer of record."
 since = "2030-01-03"
+
+[[guard]]
+model = "orbit-flash"
+effort = "max"
+profile = "implement"
+rule = "Name a wall-clock bound in every brief."
+why = "Its long lanes run past any budget nobody states."
+since = "2030-01-05"
+because = ["n0002"]
+
+[[guard]]
+model = "nw-swift-2"
+effort = "max"
+rule = "Run max only as a capped trial, never as an escalation."
+why = "The tier is explicit-only and unmeasured."
+since = "2030-01-05"
 
 [[profile]]
 id = "extract"

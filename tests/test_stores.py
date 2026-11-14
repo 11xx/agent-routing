@@ -178,6 +178,42 @@ class ValidatorTest(unittest.TestCase):
                 self.assertEqual(caught.exception.kind, "manifest-invalid")
                 self.assertIn(expected, str(caught.exception))
 
+    def test_a_guard_must_scope_a_real_tier_and_cite_real_notes(self):
+        """Claim: a guard naming an effort its model has no tier for, an
+        unknown profile, a note that does not exist, or a rule of two
+        sentences is refused with the guard named. Rejects an instruction
+        that scopes nothing a lead can select or cites missing evidence."""
+        root = scratch(self)
+        edit(root, stores.POLICY, 'model = "nw-swift-2"\neffort = "max"\nrule = "Run max only as a capped trial, '
+             'never as an escalation."', 'model = "nw-swift-2"\neffort = "low"\nprofile = "nowhere"\nrule = "Run it '
+             'capped. Never escalate."')
+        edit(root, stores.POLICY, 'because = ["n0002"]', 'because = ["n0099"]')
+        problems = routing_profiles.data_problems(root)
+        for expected in ("data/policy.toml [[guard]] model=nw-swift-2 effort=low profile=nowhere: 'nw-swift-2' has "
+                         "no 'low' tier",
+                         "data/policy.toml [[guard]] model=nw-swift-2 effort=low profile=nowhere: profile is not a "
+                         "policy profile",
+                         "data/policy.toml [[guard]] model=nw-swift-2 effort=low profile=nowhere: rule is one sentence "
+                         "of at most 240 characters",
+                         "data/policy.toml [[guard]] model=orbit-flash effort=max profile=implement: because names "
+                         "'n0099', which is not a note"):
+            self.assertIn(expected, problems)
+
+    def test_no_decision_reads_the_guards(self):
+        """Claim: removing every guard changes no resolve, validate or assess
+        answer beyond the route version. Rejects a verb that starts deciding
+        from standing instructions meant for leads."""
+        root = scratch(self)
+        calls = (lambda: routing_profiles.resolve(root, "implement", "pi"),
+                 lambda: routing_profiles.validate_selection(root, "implement", "claude", "nw-swift-2", "max",
+                                                              "northwind-plan", "fixture", operator_named=True),
+                 lambda: routing_profiles.assess_review(root, "nw-atlas-2#xhigh", ["orbit-flash#max"]))
+        before = [{**call(), "route_version": None} for call in calls]
+        text = (root / stores.POLICY).read_text()
+        (root / stores.POLICY).write_text(re.sub(r"\[\[guard\]\]\n(?:[^\n]+\n)+\n", "", text))
+        self.assertNotIn("[[guard]]", (root / stores.POLICY).read_text())
+        self.assertEqual([{**call(), "route_version": None} for call in calls], before)
+
     def test_a_seat_on_an_unreachable_model_is_refused(self):
         """Claim: a seat whose model has no reach row for its backend and
         provider is refused. Rejects a route that names a model the backend

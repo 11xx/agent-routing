@@ -1888,7 +1888,7 @@ def data_problems(root: pathlib.Path) -> list[str]:
     problems = stores.canonical_problems(root)
     try:
         notes = stores.load_notes(root)
-        problems += stores.note_problems(notes, loaded.catalog)
+        problems += stores.note_problems(notes, loaded.catalog) + stores.guard_note_problems(loaded.policy, notes)
     except stores.StoreError as error:
         problems.append(str(error))
     if loaded.problems:

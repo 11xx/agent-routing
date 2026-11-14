@@ -17,7 +17,10 @@ THE STORES
                       admit-review decide from: review clearance, admission
                       thresholds, pools, family exceptions, fences, profiles,
                       seats, fallbacks, pool-local seat ranks and the consumer
-                      inventory
+                      inventory; and the guards, standing instructions for
+                      using a tier (a model, optionally an effort and a
+                      profile) that leads follow. No verb that selects,
+                      validates or refuses a route reads a guard.
   data/notes.jsonl    dated field notes, one JSON object a line: a model, an
                       optional effort, a kind (strength, weakness, observation,
                       measurement), area tags, a one-sentence claim, a cause
@@ -25,9 +28,15 @@ THE STORES
                       reference and optional metrics. Append-only. No verb
                       that selects, validates or refuses a route reads them.
 
-  Rows are flat and prose is short: a seat's `when` is one sentence saying
-  what it is for, its `why` the reason it holds, its `since` the date it took
-  effect. A ban carries a one-sentence reason.
+  Rows are flat and prose is short: a seat names the backends it serves, its
+  `when` is one sentence saying what it is for, its `why` the reason it holds,
+  its `since` the date it took effect. A guard's `rule` and `why` are one
+  sentence each, and its `because` names the notes it rests on. A ban carries
+  a one-sentence reason.
+
+  `lint` checks each store's raw shape (tables, key types, required and
+  unknown keys) before anything reads it; every verb refuses data with a
+  problem as manifest-invalid, naming the store and row.
 
   Each store is written in one canonical form: fixed key order, each model's
   rows (tiers, prices, reach) after the model and each profile's seats and
@@ -310,7 +319,7 @@ COMPARE WITH THE CALLER'S OBSERVED SEAT
 
 CHOOSE A PROFILE BY THE SHAPE OF THE WORK
   `agent-routing profiles` prints every profile with its purpose line, and
-  each seat with the backend it serves and its `when`. Choose by the shape of
+  each seat with the backends it serves and its `when`. Choose by the shape of
   the work, never by the model you expect.
 
 WHAT BINDS BEFORE ANY QUERY
@@ -331,8 +340,10 @@ WHAT BINDS BEFORE ANY QUERY
 
 READ THE POLICY
   agent-routing doctrine     the principles, then every profile's seats with
-                             their when, why and since, the bans, fences,
-                             pools and the catalog, rendered from the stores
+                             their when, why and since and the guards on
+                             them, the guards on unseated tiers, the bans,
+                             fences, pools and the catalog, rendered from the
+                             stores
   agent-routing mechanism    the delegation mechanism canon (DELEGATION.md)
   agent-routing models       the catalog
   agent-routing profiles     the policy

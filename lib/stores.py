@@ -77,6 +77,8 @@ POLICY_TABLES = {
     "family_exception": (("reviewer", "str", True), ("authors", "strs", True), ("why", "str", True),
                          ("since", "date", True)),
     "fence": (("model", "str", True), ("profile", "str", True), ("why", "str", True), ("since", "date", True)),
+    "guard": (("model", "str", True), ("effort", "str", False), ("profile", "str", False), ("rule", "str", True),
+              ("why", "str", True), ("since", "date", True), ("because", "strs", False)),
     "profile": (("id", "str", True), ("purpose", "str", True), ("escalation_sources", "strs", False)),
     "seat": (("profile", "str", True), ("variant", "str", False), ("backends", "strs", True), ("provider", "str", True),
              ("model", "str", True), ("effort", "str", True), ("stability", "str", True), ("default", "bool", False),
@@ -93,7 +95,7 @@ POLICY_TABLES = {
             ("profile", "str", True), ("variant", "str", False), ("backend", "str", True),
             ("generated", "bool", False), ("allow_experimental", "bool", False)),
 }
-POLICY_LAYOUT = (("pool", "family_exception", "fence"), "profile", ("seat", "fallback"),
+POLICY_LAYOUT = (("pool", "family_exception", "fence", "guard"), "profile", ("seat", "fallback"),
                  ("seat_rank", "repository", "accessor", "consumer", "proxy", "pin"))
 NOTE_KEYS = (("id", "str", True), ("date", "date", True), ("model", "str", True), ("effort", "str", False),
              ("kind", "str", True), ("areas", "strs", True), ("claim", "str", True), ("cause", "str", True),
@@ -102,7 +104,7 @@ NOTE_KEYS = (("id", "str", True), ("date", "date", True), ("model", "str", True)
 HEADERS = {
     CATALOG: "# Facts about models: families, backends, models, tiers, prices and reachability.\n"
              "# Written in canonical form; `agent-routing format` rewrites a hand edit into it.\n",
-    POLICY: "# What `resolve` answers: pools, profiles, seats, fallbacks, ranks and consumer pins.\n"
+    POLICY: "# What routing decides from: pools, fences, guards, profiles, seats, fallbacks, ranks and consumer pins.\n"
             "# Written in canonical form; `agent-routing format` rewrites a hand edit into it.\n",
 }
 
@@ -449,6 +451,7 @@ def label(table: str, row: dict) -> str:
             "price": ("model", "from"), "surcharge": ("model",), "price_window": ("model", "from"),
             "credit": ("model",), "reach": ("model", "backend", "provider"), "effort_support": ("model", "backend"),
             "pool": ("provider",), "family_exception": ("reviewer",), "fence": ("model", "profile"),
+            "guard": ("model", "effort", "profile"),
             "profile": ("id",), "seat": ("profile", "variant"), "fallback": ("profile", "backend"),
             "seat_rank": ("model", "effort", "pool"), "repository": ("id",), "accessor": ("id",),
             "consumer": ("id",), "proxy": ("consumer", "path"), "pin": ("consumer", "path")}.get(table, ())
@@ -641,6 +644,15 @@ def policy_problems(policy: dict, catalog: dict) -> list[str]:
             problems.append(f"{where}: its backends reach {row.get('model')!r} under different backend models; "
                             "split it into one seat per backend model")
         problems += _sentence_problems(where, row)
+    for row in policy.get("guard", []):
+        where = f"{store} {label('guard', row)}"
+        if row.get("model") not in models:
+            problems.append(f"{where}: model is not a catalog model")
+        elif "effort" in row and not _rows(catalog, "tier", model=row.get("model"), effort=row.get("effort")):
+            problems.append(f"{where}: {row.get('model')!r} has no {row.get('effort')!r} tier")
+        if "profile" in row and row.get("profile") not in profiles:
+            problems.append(f"{where}: profile is not a policy profile")
+        problems += _sentence_problems(where, row, ("rule", "why"))
     for row in policy.get("fallback", []):
         if row.get("profile") not in profiles:
             problems.append(f"{store} {label('fallback', row)}: profile is not a policy profile")
@@ -666,6 +678,14 @@ def policy_problems(policy: dict, catalog: dict) -> list[str]:
 def _sentence_problems(where: str, row: dict, keys=("when", "why")) -> list[str]:
     return [f"{where}: {key} is one sentence of at most 240 characters" for key in keys
             if isinstance(row.get(key), str) and (len(row[key]) > 240 or ". " in row[key])]
+
+
+def guard_note_problems(policy: dict, notes: list[dict]) -> list[str]:
+    """Each guard's `because` names notes that exist."""
+    ids = {note.get("id") for note in notes}
+    return [f"{POLICY} {label('guard', row)}: because names {note!r}, which is not a note"
+            for row in (policy.get("guard") if isinstance(policy.get("guard"), list) else []) if isinstance(row, dict)
+            for note in (row.get("because") if isinstance(row.get("because"), list) else []) if note not in ids]
 
 
 def note_problems(notes: list[dict], catalog: dict) -> list[str]:

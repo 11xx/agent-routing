@@ -61,6 +61,17 @@ class DoctrineTest(unittest.TestCase):
         self.assertIn("| nw-atlas-2 · max | Fixture ban: the top tier buys nothing over xhigh. |", text)
         self.assertIn("| orbit-flash | orbit | active | max 1/1, low 1/1 | 0.1 / 0.4 | 1 |", text)
 
+    def test_guards_render_beside_the_seats_they_scope(self):
+        """Claim: a guard renders under the profile whose seat holds its
+        tier, and a guard on a tier no seat holds renders in its own section.
+        Rejects standing instructions a lead reading the doctrine never sees."""
+        text = doctrine.render(ROOT)
+        implement = text[text.index("### implement"):text.index("### plan")]
+        self.assertIn("- **orbit-flash · max on `implement`:** Name a wall-clock bound in every brief. Its long lanes "
+                      "run past any budget nobody states. (2030-01-05; notes n0002)", implement)
+        unseated = text[text.index("## Guards on tiers no seat holds"):]
+        self.assertIn("- **nw-swift-2 · max:** Run max only as a capped trial, never as an escalation.", unseated)
+
     def test_the_delegation_view_is_canonical_rows(self):
         """Claim: the delegation view prints the backend, reach and effort
         rows in the catalog's canonical form, then the pools. Rejects a view

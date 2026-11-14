@@ -27,6 +27,17 @@ def _table(header: tuple[str, ...], rows: list[tuple]) -> list[str]:
     return lines
 
 
+def _scopes(guard: dict, seat: dict) -> bool:
+    return guard["model"] == seat["model"] and guard.get("effort", seat["effort"]) == seat["effort"]
+
+
+def _guard_line(guard: dict) -> str:
+    scope = guard["model"] + (f" · {guard['effort']}" if "effort" in guard else "") + (
+        f" on `{guard['profile']}`" if "profile" in guard else "")
+    because = f"; notes {', '.join(guard['because'])}" if guard.get("because") else ""
+    return f"- **{scope}:** {guard['rule']} {guard['why']} ({guard['since']}{because})"
+
+
 def render(root: pathlib.Path) -> str:
     """The principles, then every profile with its seats, the bans, the pools and the catalog."""
     root = pathlib.Path(root)
@@ -36,7 +47,10 @@ def render(root: pathlib.Path) -> str:
     lines += ["## Profiles and seats", "",
               f"Rendered from `{stores.POLICY}` at route version {data.version}. A seat without a variant answers "
               "an unnamed request on its backends; a variant marked default answers one on a backend the profile's "
-              "own seats do not serve.", ""]
+              "own seats do not serve. A guard is a standing instruction for using a tier: leads follow it, and "
+              "no verb that selects, validates or refuses a route reads it.", ""]
+    guards = policy.get("guard", [])
+    shown: set[int] = set()
     for profile in policy.get("profile", []):
         lines += [f"### {profile['id']}", "", profile["purpose"] + ".", ""]
         if profile.get("escalation_sources"):
@@ -46,6 +60,12 @@ def render(root: pathlib.Path) -> str:
             (seat.get("variant", "") + (" (default)" if seat.get("default") else ""), ", ".join(seat["backends"]),
              f"{seat['model']} · {seat['effort']}", seat["stability"], seat["when"], seat["why"], seat["since"])
             for seat in seats])
+        scoped = [(number, guard) for number, guard in enumerate(guards)
+                  if guard.get("profile", profile["id"]) == profile["id"]
+                  and any(_scopes(guard, seat) for seat in seats)]
+        if scoped:
+            lines += ["", "Guards on these seats:", ""] + [_guard_line(guard) for _, guard in scoped]
+            shown.update(number for number, _ in scoped)
         fallbacks = [rule for rule in policy.get("fallback", []) if rule["profile"] == profile["id"]]
         if fallbacks:
             lines += ["", "When the selected pool is exhausted: " + "; ".join(
@@ -53,6 +73,11 @@ def render(root: pathlib.Path) -> str:
                                                                          if rule.get("variant") else "")
                 for rule in fallbacks) + "."]
         lines.append("")
+    unseated = [guard for number, guard in enumerate(guards) if number not in shown]
+    if unseated:
+        lines += ["## Guards on tiers no seat holds", "",
+                  "Followed whenever one of these tiers is selected by name.", ""]
+        lines += [_guard_line(guard) for guard in unseated] + [""]
     banned = [tier for tier in catalog.get("tier", []) if tier.get("prohibited")]
     lines += ["## Prohibited tiers", "", "Never selected, including on explicit request.", ""]
     lines += _table(("model · effort", "reason"), [(f"{tier['model']} · {tier['effort']}", tier["reason"])
