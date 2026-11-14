@@ -14,6 +14,7 @@ works on only when that shape is sound.
 from __future__ import annotations
 
 import datetime
+import functools
 import hashlib
 import json
 import math
@@ -285,10 +286,17 @@ class Data:
 
     @classmethod
     def from_texts(cls, texts: dict[str, str]) -> "Data":
-        return cls(parse_toml(texts[CATALOG], CATALOG), parse_toml(texts[POLICY], POLICY), route_version(texts))
+        """The data two store texts hold; equal texts share one read-only instance."""
+        return _data_from(texts[CATALOG], texts[POLICY])
 
     def by_model(self) -> dict[str, dict]:
         return {model["id"]: model for model in self.models}
+
+
+@functools.lru_cache(maxsize=64)
+def _data_from(catalog_text: str, policy_text: str) -> Data:
+    return Data(parse_toml(catalog_text, CATALOG), parse_toml(policy_text, POLICY),
+                route_version({CATALOG: catalog_text, POLICY: policy_text}))
 
 
 # --- projection ---------------------------------------------------------------
