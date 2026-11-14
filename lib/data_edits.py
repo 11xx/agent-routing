@@ -36,6 +36,23 @@ class StaleState(stores.StoreError):
     """The stores or their edit history moved since the state an edit was asked to start from."""
 
 
+def today():
+    """The date an edit records when it is given none."""
+    return datetime.date.today().isoformat()
+
+
+def edit_date(given):
+    """The date an edit records: the one given, as YYYY-MM-DD, else today."""
+    if given is None:
+        return today()
+    try:
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", given) and datetime.date.fromisoformat(given):
+            return given
+    except ValueError:
+        pass
+    raise stores.StoreError(f"--date must be a calendar date as YYYY-MM-DD, not {given!r}")
+
+
 def read_texts(root):
     return {name: (root / name).read_bytes().decode("utf-8") for name in PATHS}
 
@@ -571,7 +588,7 @@ def apply(root, verb, **opts):
     note_verb = verb in {"note", "again", "retract", "supersede"}
     if not note_verb:
         opts["why"] = why_text(opts.get("why"))
-    today = datetime.date.today().isoformat()
+    today = edit_date(opts.get("date"))
     expect = opts.pop("expect", None)
     # One lock hold covers the state read, its check against `expect`, the
     # candidate and, unless this is a dry run, the write and the commit.
@@ -633,6 +650,8 @@ def apply(root, verb, **opts):
         result = dict(schema="agent-routing-edit/1", verb=verb, dry_run=dry, state=observed, changes=changes,
                       old_route_version=stores.route_version(comparison), new_route_version=stores.route_version(candidate),
                       stale_consumers=stale_consumers(comparison, candidate, root), commit=None, **extra)
+        if verb != "commit":
+            result["date"] = today
         reclassified = classification_changes(comparison, candidate, changes)
         if reclassified is not None:
             result["classification_changes"] = reclassified

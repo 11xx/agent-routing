@@ -41,6 +41,9 @@ def parser(*, raising=False):
             p.add_argument("--dry-run", action="store_true")
             p.add_argument("--expect", metavar="STATE",
                            help="refuse unless the stores and their edit history are in this state, a preview's `state`")
+            if verb != "commit":
+                p.add_argument("--date", metavar="YYYY-MM-DD",
+                               help="the date the edit records (a seat's or guard's since, a note's date); today if omitted")
             if verb not in {"note", "again", "retract", "supersede"}:
                 p.add_argument("--why", required=True)
                 p.add_argument("--because", action="append", default=[])
@@ -109,8 +112,6 @@ def parser(*, raising=False):
             p.add_argument("--evidence", required=True)
         if verb in {"retract", "supersede"}:
             p.add_argument("--reason", required=True)
-        if verb in {"note", "again", "retract", "supersede"}:
-            p.add_argument("--date")
         if verb == "notes":
             p.add_argument("model", nargs="?")
             p.add_argument("--kind", choices=stores.NOTE_KINDS)

@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from test_page import SEAT, PageServerTest
 import data_edits
+import edit_cli
 import routing_page
 import stores
 from routing_profiles import validate_selection
@@ -95,6 +96,25 @@ class FreshnessTest(PageServerTest):
         with self.assertRaisesRegex(data_edits.StaleState, f"the latest verb edit is {head[:12]}, not {seat[:12]}"):
             data_edits.apply(self.root, "undo", target=seat, why="Back to max.")
         self.unchanged(texts, head)
+
+    def test_a_confirmation_after_midnight_commits_the_date_its_preview_showed(self):
+        """Claim: an edit's result names the date it records, and the
+        confirmation the page sends with that date commits the previewed
+        changes exactly on a later day; a verb given no date records the
+        day it runs. Rejects a confirmation that dates the seat by the
+        clock at confirmation, unlike its preview."""
+        with patch.object(data_edits, "today", return_value="2030-02-01"):
+            status, preview = self.edit(SEAT)
+        self.assertEqual((status, preview["result"]["date"]), (200, "2030-02-01"), preview)
+        with patch.object(data_edits, "today", return_value="2030-02-02"):
+            later = data_edits.apply(self.root, "set-seat", **dict(edit_cli.arguments(SEAT)[2], dry_run=True))
+            status, answer = self.edit([*SEAT, "--date", preview["result"]["date"]], confirm=True, expect=preview["stamp"])
+        self.assertEqual(later["date"], "2030-02-02")
+        self.assertIn({"since": "2030-02-02"}, [{"since": row["after"]["since"]} for row in later["changes"]])
+        self.assertEqual(status, 200, answer)
+        self.assertEqual((answer["result"]["changes"], answer["result"]["date"]),
+                         (preview["result"]["changes"], "2030-02-01"))
+        self.assertIn('since = "2030-02-01"', self.git("show", "HEAD:data/policy.toml"))
 
     def test_a_rank_move_lists_the_selections_it_reclassifies(self):
         """Claim: an edit that changes pool ranks lists every directed

@@ -586,7 +586,9 @@ async function preview(ed, action) {
   const answer = await api("/api/edit", { argv, confirm: false });
   if (ticket !== ed.generation || !S.editors.has(ed.key)) return;
   if (!answer.ok) { showError(ed, answer.error); return; }
-  ed.pending = { argv, stamp: answer.stamp, action };
+  // The confirmation is the previewed edit: the same state and the date the preview recorded.
+  const dated = argv.includes("--date") || !answer.result.date ? argv : [...argv, "--date", answer.result.date];
+  ed.pending = { argv: dated, stamp: answer.stamp, action };
   drawPreview(ed, answer);
 }
 
