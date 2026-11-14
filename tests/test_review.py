@@ -294,6 +294,22 @@ class ReviewPurposeTest(unittest.TestCase):
                          ("review-independence", "no-eligible-route", 3, "clearance"))
         self.assertIn("at or above author 'ts-3-prime#max' and at or above clearance floor 2", refused["message"])
 
+    def test_findings_answers_the_route_its_row_names_over_the_default(self):
+        """Claim: findings answers the route its review seat names, though
+        the backend's default review route would also serve the author.
+        Rejects findings chosen by the profile default rather than by the
+        policy's row."""
+        root = with_review_variant(self, "core", "codex", "tessel-plan", "ts-3-core", "max")
+        self.assertEqual(resolve(root, "review", "codex", author="orbit-flash#max", purpose="findings")["profile"],
+                         "review")
+        change_policy(root, lambda document: next(
+            row for row in document["review_seat"] if (row["purpose"], row["backend"]) == ("findings", "codex")
+        ).update(model="ts-3-core", effort="max"))
+        self.assertEqual(data_problems(root), [])
+        found = resolve(root, "review", "codex", author="orbit-flash#max", purpose="findings")
+        self.assertEqual((found["profile"], found["model"], found["effort"], found["review"]["findings"]),
+                         ("review:core", "ts-3-core", "max", "eligible"))
+
     def test_findings_refuses_its_seat_for_the_same_model_above_its_effort(self):
         """Claim: findings answers its seat for an author of the seat's own
         lab, and refuses it for the seat's own model at a higher effort.
