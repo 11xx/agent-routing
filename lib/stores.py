@@ -16,6 +16,8 @@ only `standing_problems`, which lint and the doctrine report, checks them.
 from __future__ import annotations
 
 import datetime
+import contextlib
+import fcntl
 import functools
 import hashlib
 import json
@@ -106,6 +108,8 @@ POLICY_LAYOUT = (("pool", "family_exception", "fence", "guard"), "profile", ("se
 NOTE_KEYS = (("id", "str", True), ("date", "date", True), ("model", "str", True), ("effort", "str", False),
              ("kind", "str", True), ("areas", "strs", True), ("claim", "str", True), ("cause", "str", True),
              ("evidence", "str", True), ("metrics", "metrics", False))
+EVENT_KEYS = (("id", "str", True), ("date", "date", True), ("event", "str", True), ("note", "str", True),
+              ("evidence", "str", False), ("reason", "str", False), ("replacement", "str", False))
 
 HEADERS = {
     CATALOG: "# Facts about models: families, backends, models, tiers, prices and reachability.\n"
@@ -193,7 +197,7 @@ def emit_policy(document: dict) -> str:
 
 
 def emit_note(note: dict) -> str:
-    known = [key for key, _, _ in NOTE_KEYS]
+    known = [key for key, _, _ in (EVENT_KEYS if "event" in note else NOTE_KEYS)]
     extra = [key for key in note if key not in known]
     if extra:
         raise StoreError(f"note {note.get('id')!r} has unknown key {extra[0]!r}")
@@ -239,7 +243,25 @@ def parse_notes(text: str) -> list[dict]:
 
 
 def texts_at(root: pathlib.Path) -> dict[str, str]:
-    return {name: (root / name).read_text() for name in (CATALOG, POLICY)}
+    with store_lock(root, exclusive=False):
+        return {name: (root / name).read_text() for name in (CATALOG, POLICY)}
+
+
+@contextlib.contextmanager
+def store_lock(root: pathlib.Path, *, exclusive=True):
+    """One lock per checkout; readers see a complete catalog and policy pair."""
+    gitdir = pathlib.Path(root) / ".git"
+    if gitdir.is_file():
+        gitdir = pathlib.Path(root) / gitdir.read_text().removeprefix("gitdir: ").strip()
+    if not gitdir.is_dir():
+        yield
+        return
+    with (gitdir / "routing-data.lock").open("a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def route_version(texts: dict[str, str]) -> str:
@@ -459,7 +481,8 @@ def _typed(kind: str, value) -> bool:
         return isinstance(value, str) and bool(_TIME.fullmatch(value))
     if kind == "metrics":
         return isinstance(value, dict) and bool(value) and all(
-            isinstance(key, str) and (type(item) in (int, float, str) and item == item) for key, item in value.items())
+            isinstance(key, str) and (isinstance(item, str) or type(item) in (int, float) and math.isfinite(item))
+            for key, item in value.items())
     raise AssertionError(kind)
 
 
@@ -577,6 +600,7 @@ def catalog_problems(catalog: dict) -> list[str]:
             problems.append(f"{store} {label('tier', row)}: reason belongs to a prohibited tier")
         if row.get("prohibited") is False:
             problems.append(f"{store} {label('tier', row)}: omit prohibited rather than writing false")
+        problems += _sentence_problems(f"{store} {label('tier', row)}", row, ("reason",))
     for row in catalog.get("price", []):
         unique("price", row, ("price", row.get("model"), row.get("from")))
     for table in ("surcharge", "credit"):
@@ -704,7 +728,7 @@ def guard_problems(policy: dict, catalog: dict, notes: list[dict] | None) -> lis
         return problems
     models, tiers = _keys(catalog, "model", "id"), _keys(catalog, "tier", "model", "effort")
     profiles = _keys(policy, "profile", "id")
-    ids = None if notes is None else _keys({"note": notes}, "note", "id")
+    ids = None if notes is None else _keys({"note": [row for row in notes if "event" not in row]}, "note", "id")
     for row in policy.get("guard", []):
         where = f"{POLICY} {label('guard', row)}"
         if (row["model"],) not in models:
@@ -729,6 +753,12 @@ def standing_problems(root: pathlib.Path, data: "Data") -> list[str]:
 
 
 def note_problems(notes: list[dict], catalog: dict) -> list[str]:
+    from field_notes import problems
+
+    return problems(notes, catalog)
+
+
+def _note_problems(notes: list[dict], catalog: dict) -> list[str]:
     problems = []
     models = {model for model, in _keys(catalog, "model", "id")}
     ids: set = set()
@@ -750,9 +780,12 @@ def note_problems(notes: list[dict], catalog: dict) -> list[str]:
             problems.append(f"{where}: cause must be one of {', '.join(NOTE_CAUSES)}")
         if "effort" in note and note["effort"] not in EFFORTS:
             problems.append(f"{where}: effort must be one of {', '.join(EFFORTS)}")
-        if previous is not None and note["id"] <= previous:
+        number = int(note["id"][1:]) if re.fullmatch(r"n[0-9]{4,}", note["id"]) else None
+        if number is None:
+            problems.append(f"{where}: id must be n followed by at least four digits")
+        if previous is not None and number is not None and number <= previous:
             problems.append(f"{where}: ids increase down the file")
-        previous = note["id"]
+        previous = number
     return problems
 
 

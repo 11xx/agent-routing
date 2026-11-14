@@ -28,6 +28,17 @@ THE STORES
                       reference and optional metrics. Append-only. No verb
                       that selects, validates or refuses a route reads them.
 
+  Note ids are n followed by at least four decimal digits, increasing across
+  notes and events. Every event has id, date, event and note (an earlier id):
+    again       evidence; adds an occurrence with a date and reference
+    retract     reason; marks a note inactive
+    supersede   reason and replacement (an earlier corrected note id)
+    undo        reason; cancels an earlier record without deleting it
+  A correction appends the corrected note and then its supersede event.
+  A compensation can cancel an undo record, restoring its effect. Earlier
+  lines retain every byte. Notes are reference evidence; events change no
+  route answer or route_version.
+
   Rows are flat and prose is short: a seat names the backends it serves, its
   `when` is one sentence saying what it is for, its `why` the reason it holds,
   its `since` the date it took effect. A guard's `rule` and `why` are one
