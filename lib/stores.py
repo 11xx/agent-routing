@@ -292,11 +292,6 @@ def load(root: pathlib.Path) -> "Data":
     return cached[1]
 
 
-def forget(root: pathlib.Path) -> None:
-    """Drop the parsed stores held for `root`, a checkout that is going away."""
-    _CACHE.pop(str(pathlib.Path(root).resolve()), None)
-
-
 def load_notes(root: pathlib.Path) -> list[dict]:
     path = pathlib.Path(root) / NOTES
     return parse_notes(path.read_text()) if path.exists() else []

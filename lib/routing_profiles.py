@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import hashlib
 import json
 import math
@@ -73,10 +75,27 @@ class RouteRefusal(ValueError):
         return {"schema": REFUSAL_SCHEMA, "kind": self.kind, "message": self.message, **self.fields}
 
 
+_GIVEN: contextvars.ContextVar[stores.Data | None] = contextvars.ContextVar("given stores", default=None)
+
+
+@contextlib.contextmanager
+def answering_from(loaded: stores.Data):
+    """Answer from these loaded stores, in place of the files at any root, for the duration."""
+    token = _GIVEN.set(loaded)
+    try:
+        yield
+    finally:
+        _GIVEN.reset(token)
+
+
+def _load(root: pathlib.Path) -> stores.Data:
+    return _GIVEN.get() or stores.load(root)
+
+
 def data(root: pathlib.Path) -> stores.Data:
     """The stores at `root`; a refusal naming every problem when they cannot be projected."""
     try:
-        loaded = stores.load(root)
+        loaded = _load(root)
     except stores.StoreError as error:
         raise RouteRefusal("manifest-invalid", str(error)) from None
     if loaded.problems:
@@ -582,7 +601,7 @@ def clearance_floor(root: pathlib.Path) -> int:
 def structural_problems(root: pathlib.Path) -> list[str]:
     """Every structural problem of the stores at `root`, computed once per loaded revision."""
     try:
-        loaded = stores.load(root)
+        loaded = _load(root)
     except stores.StoreError as error:
         return [str(error)]
     if loaded.problems:

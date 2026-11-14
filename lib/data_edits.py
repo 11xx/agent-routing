@@ -129,50 +129,42 @@ def require_one(rows, where, **key):
     return found[0]
 
 
-def selection_classes(texts, pools):
+def selection_classes(root, texts, pools):
     """validate's classification of every directed selection it answers in these pools, in one data set.
 
     Every profile, by every tier of every model a backend reaches through
     one of the pools, asked of validate itself (as --allow-experimental
-    would) on a scratch copy of the stores: a selection it refuses, for
-    any reason, has no classification here.
+    would), answering from these texts parsed once: a selection it refuses,
+    for any reason, has no classification here.
     """
     import routing_profiles as routes
 
-    with tempfile.TemporaryDirectory(prefix="agent-routing-classes-") as scratch:
-        root = pathlib.Path(scratch)
-        for name in PATHS:
-            (root / name).parent.mkdir(parents=True, exist_ok=True)
-            (root / name).write_text(texts[name])
-        try:
-            loaded = stores.load(root)
-            by_model = loaded.by_model()
-            classes = {}
-            for profile in loaded.profiles:
-                for reach in loaded.catalog.get("reach", []):
-                    if reach["provider"] not in pools or reach["model"] not in by_model:
+    loaded = stores.Data.from_texts(texts)
+    by_model = loaded.by_model()
+    classes = {}
+    with routes.answering_from(loaded):
+        for profile in loaded.profiles:
+            for reach in loaded.catalog.get("reach", []):
+                if reach["provider"] not in pools or reach["model"] not in by_model:
+                    continue
+                for tier in by_model[reach["model"]].get("effort", []):
+                    key = (profile["id"], reach["backend"], reach["model"], tier["effort"], reach["provider"])
+                    try:
+                        answer = routes.validate_selection(root, *key, "Compare the pool ranks.", allow_experimental=True)
+                    except routes.RouteRefusal:
                         continue
-                    for tier in by_model[reach["model"]].get("effort", []):
-                        key = (profile["id"], reach["backend"], reach["model"], tier["effort"], reach["provider"])
-                        try:
-                            answer = routes.validate_selection(root, *key, "Compare the pool ranks.",
-                                                               allow_experimental=True)
-                        except routes.RouteRefusal:
-                            continue
-                        classes[key] = {name: answer[name] for name in ("direction", "stability", "selection_kind")}
-            return classes
-        finally:
-            stores.forget(root)
+                    classes[key] = {name: answer[name] for name in ("direction", "stability", "selection_kind")}
+    return classes
 
 
-def classification_changes(before, after, changes):
+def classification_changes(root, before, after, changes):
     """The directed selections in the pools an edit of pool ranks touches that validate answers both before and
     after it, classified differently."""
     pools = {row[side]["pool"] for row in changes if row["table"] == "seat_rank" for side in ("before", "after")
              if row[side]}
     if not pools:
         return None
-    old, new = selection_classes(before, pools), selection_classes(after, pools)
+    old, new = selection_classes(root, before, pools), selection_classes(root, after, pools)
     return [dict(profile=key[0], backend=key[1], model=key[2], effort=key[3], pool=key[4], before=old[key],
                  after=new[key]) for key in old if key in new and old[key] != new[key]]
 
@@ -658,7 +650,7 @@ def apply(root, verb, **opts):
                       stale_consumers=stale_consumers(comparison, candidate, root), commit=None, **extra)
         if verb != "commit":
             result["date"] = today
-        reclassified = classification_changes(comparison, candidate, changes)
+        reclassified = classification_changes(root, comparison, candidate, changes)
         if reclassified is not None:
             result["classification_changes"] = reclassified
         if any(row["table"] == "tier" and row["before"] and row["after"]
