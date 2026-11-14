@@ -85,7 +85,12 @@ all three stores before writing, locks the checkout, publishes canonical
 files by rename, and makes one signed-as-configured Git commit containing
 only data paths. `--why` records the reason; repeat `--because NOTE_ID` to
 cite field evidence. `--dry-run` validates and previews without writing, and
-`--json` emits one result object for callers.
+`--json` emits one result object for callers. Every result carries the
+`state` it was computed from, the store bytes and the last data commit;
+`--expect STATE` refuses, writing nothing, once either has moved, so a
+preview's state makes the real run that same edit or none. An edit that
+changes pool ranks lists each directed selection whose classification
+`validate` changes, or says none changes.
 
 The invented fixture shows the fields a preview changes:
 
@@ -151,7 +156,8 @@ For a large roster edit, change the files by hand and run
 committing; a regular edit refuses pre-existing staged or unstaged data
 changes. Earlier note bytes cannot be rewritten, even by the commit verb.
 `log` shows the data history. `undo` reverses the latest verb edit in a new
-commit, preserving disjoint later edits and refusing conflicts. Policy undo
+commit, preserving disjoint later edits and refusing conflicts; `--commit
+REV` refuses unless REV is that edit. Policy undo
 restores the previous bytes; note undo appends a compensating event.
 
 An edit names each row and prints only changed fields as `old → new`,
@@ -180,11 +186,16 @@ It holds no routing rule of its own. A change made on the page is an edit
 verb's arguments: run first as `--dry-run` and shown as the verb's field diff
 with the route versions and stale consumers, then run for real on one
 confirmation, so it validates, commits and undoes exactly as the verb does.
-A confirmation is refused when the stores moved after its preview. Seat
+A confirmation runs from the state its preview was computed from, checked
+in the edit's own lock hold, and is refused when any writer changed a store
+byte or committed data since; an undo confirms only the commit its preview
+named. A response arriving after the form changed, or after a newer
+preview, is dropped, so Commit sends what the editor shows. Seat
 choices list what a backend reaches, with the reason beside each tier it
 cannot hold. A tier its pool has not ranked shows that pool's order and
 asks for a place, filled with the suggested one, and the seat edit writes
-the rank in the same commit. The page watches the stores, so an edit a verb makes elsewhere
+the rank in the same commit; its preview lists the directed selections the
+new ranks reclassify. The page watches the stores, so an edit a verb makes elsewhere
 appears within seconds and the rows it changed flash once; what is being
 typed stays. What only a terminal does, the page names as a command.
 

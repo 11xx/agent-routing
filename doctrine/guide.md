@@ -83,10 +83,11 @@ THE STORES
   NUL byte. Notes do not move it.
 
 EDIT POLICY OR CATALOG
-  All edit commands take --dry-run and --json. Catalog and policy edits
-  require --why TEXT (one or two sentences); a seat's or guard's stored why
-  is one sentence, at most 240 characters. Repeat --because NOTE_ID to cite
-  motivating notes in the commit body; guards also retain them in because.
+  All edit commands take --dry-run, --expect STATE and --json. Catalog and
+  policy edits require --why TEXT (one or two sentences); a seat's or
+  guard's stored why is one sentence, at most 240 characters. Repeat
+  --because NOTE_ID to cite motivating notes in the commit body; guards
+  also retain them in because.
 
   set-seat PROFILE --backend BACKEND [--backend BACKEND...] [--variant NAME]
     --model MODEL --effort EFFORT [--provider PROVIDER]
@@ -115,10 +116,15 @@ EDIT POLICY OR CATALOG
   it. Within one model and pool it never falls as effort rises. Every edit
   keeps ranks on exactly the seated tiers: one that leaves a tier with no
   stable seat drops its rank in the same commit and lists the removed row.
-  The suggested N keeps the place the seat's previous tier held on the same
-  pool, so directed selections compare with the moved seat as before;
-  otherwise it is 1, the bottom of the pool, where the tier outranks
-  nothing. Either is held inside the model's own order on that pool.
+  The suggested N is the place the seat's previous tier held on the same
+  pool, or 1, the bottom of the pool, where the tier outranks nothing, for
+  a seat with no previous tier there. Kept that way, a move reclassifies
+  only selections of the two tiers that trade the place. When the model's
+  own order on the pool forbids that place, N is the nearest rank it
+  allows, which also reverses the comparisons with every tier ranked
+  between the two places. Any edit that changes pool ranks lists, as
+  classification_changes, each directed selection in those pools whose
+  validate direction, stability or kind it changes, or says none does.
   default-seat PROFILE --variant NAME [--backend BACKEND...] --why TEXT
       Make that variant the unnamed request's default on all its backends.
       Multi-backend rows default together. An overlapping primary is retained
@@ -162,12 +168,21 @@ EDIT POLICY OR CATALOG
   Each edit builds candidate text in memory and validates the whole data set,
   including route, pool, price and rank relations, notes and guards. A refusal
   names the store and row and leaves the files untouched. Writers hold a
-  checkout lock; readers take its shared lock so catalog and policy are read
-  together. Files are flushed to a temporary sibling and renamed. A failed
-  Git commit restores the earlier working bytes. Signing follows Git config.
+  checkout lock; readers and dry runs take its shared lock so the stores
+  are read together. Files are flushed to a temporary sibling and renamed.
+  A failed Git commit restores the earlier working bytes. Signing follows
+  Git config.
   The commit contains only changed data paths, the reason, motivating note
   ids and Routing-edit: VERB. When arc env establishes an acting harness and
   model, Implemented-by records them. Nothing is pushed.
+
+  Every edit result carries state, a digest of the store bytes and the last
+  commit that changed a data path, read in the same lock hold the edit is
+  computed from. --expect STATE runs the edit only from that state: inside
+  its lock hold, before computing anything, an edit whose stores or data
+  history moved since is refused as stale and writes nothing. A preview's
+  state passed to --expect makes the confirmation the edit the preview
+  showed, or no edit.
 
   agent-routing commit --why TEXT [--because NOTE_ID...] [--dry-run] [--json]
     Validate and canonicalize hand edits, then commit only data paths. Other
@@ -178,9 +193,11 @@ EDIT POLICY OR CATALOG
     line carries a short hash, date, verb, row and the reason's first sentence.
     --json emits agent-routing-history/1 whose edits carry commit, date
     (YYYY-MM-DD), subject and body.
-  agent-routing undo --why TEXT [--dry-run] [--json]
-    Revert the latest Routing-edit commit as a new verb commit. Disjoint later
-    edits are retained; overlapping edits refuse. Catalog and policy regain
+  agent-routing undo [--commit REV] --why TEXT [--dry-run] [--json]
+    Revert the latest Routing-edit commit as a new verb commit, reported as
+    undone_commit. With --commit, refuse as stale unless REV is that commit,
+    the one a preview named. Disjoint later edits are retained; overlapping
+    edits refuse. Catalog and policy regain
     the previous bytes. Notes regain their previous presentation through
     appended undo events, preserving every earlier byte. Undoing an undo
     restores the effect of the original edit.
@@ -190,11 +207,17 @@ EDIT POLICY OR CATALOG
   as removed. A row pairs with its earlier version only when both have the
   same identity; a seat move that drops one pool rank and adds another
   lists one seat_rank row removed and one added. The footer carries old and new route_version, commit id, and
-  affected generated consumers with refresh commands. Notes
-  leave route_version unchanged. --json emits one agent-routing-edit/1 object
-  with verb, dry_run, changes, old_route_version, new_route_version,
-  stale_consumers and commit (null for dry runs); changes name store, table,
-  before and after. Errors use agent-routing-edit-error/1 with verb and error.
+  affected generated consumers with refresh commands, then, for an edit of
+  pool ranks, each reclassified directed selection as profile on backend:
+  model effort via pool: direction (stability, kind) → direction
+  (stability, kind). Notes leave route_version unchanged. --json emits one
+  agent-routing-edit/1 object with verb, dry_run, state, changes,
+  old_route_version, new_route_version, stale_consumers and commit (null
+  for dry runs); changes name store, table, before and after. An edit of
+  pool ranks adds classification_changes, rows of profile, backend, model,
+  effort, pool, and before and after, each with direction, stability and
+  selection_kind. Errors use agent-routing-edit-error/1 with verb and
+  error, and stale true for a refused --expect or undo --commit.
   Generation is reported from seat and reach inputs, not by reading deployed
   consumers. Emit stages agents/ and consumers-pins.toml under its output
   directory; consumer deployment owns installation and enrollment of pins.
@@ -250,24 +273,28 @@ EDIT FROM A PAGE
   /api/routes is routes --json, and /api/card?model=M, /api/notes (model,
   kind, area, liveness) and /api/log?limit=N are the card, notes and log
   --json results. /api/stores is the parsed catalog and policy with each
-  model's lab; /api/version is the route version and a digest of all three
-  stores, which the page polls to notice an edit made elsewhere.
+  model's lab; /api/version is the route version and, as stamp, the stores'
+  state, which the page polls to notice an edit made elsewhere.
   /api/choices?profile=P[&variant=V]&backend=B... lists every tier the
   backends reach through one provider, withholding each that resolve
   refuses, or that validation refuses for the seat's stability, with its
-  reasons. For the seat profile and variant name, a stable
-  one, each choice carries pool_rank: its current rank on its pool, or the
-  rank set-seat would suggest and why; "pools" holds each pool's order.
+  reasons. The choices are for one seat: without variant, the profile's
+  own; with a variant no seat has, an empty one included, a new variant,
+  which has no previous tier. For a stable seat each choice carries
+  pool_rank: its current rank on its pool, or the rank set-seat would
+  suggest and why; "pools" holds each pool's order.
   With for=review_seat&backend=B it lists the review profile's stable
   routes there.
 
-  /api/edit takes {"argv": [VERB, ARG...], "confirm": BOOL, "expect": DIGEST}.
+  /api/edit takes {"argv": [VERB, ARG...], "confirm": BOOL, "expect": STATE}.
   argv is an edit verb with its arguments, parsed by the verb's own parser
   and run by the verb's own code. Unconfirmed, it runs as --dry-run and
-  answers {"result": agent-routing-edit/1, "command", "route_version",
-  "stamp"}. Confirmed with the stamp of its preview, it runs for real; once
-  the stores have moved, it is refused as stale (409) and writes nothing. A
-  refusal answers {"error": MESSAGE} in the validator's or parser's words.
+  answers {"result": agent-routing-edit/1, "command", "stamp"}, stamp being
+  the state the preview was computed from. Confirmed, it runs for real with
+  that stamp as --expect, so a store byte or data commit that lands after
+  the preview, from any writer, makes it answer stale (409) and write
+  nothing. The page's undo names the commit its preview undoes. A refusal
+  answers {"error": MESSAGE} in the validator's or parser's words.
 
 READABLE TEXT VIEWS
   Text uses the terminal width, or 80 columns for redirected output. Seat
