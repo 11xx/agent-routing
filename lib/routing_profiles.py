@@ -833,9 +833,10 @@ def _classify_selection(
 
 
 def _seat_when(root: pathlib.Path, model: str, effort: str, provider: str) -> str | None:
-    """The `when` of the first policy seat binding this tier on this provider, if one does."""
-    return next((seat["when"] for seat in data(root).policy.get("seat", [])
-                 if (seat.get("model"), seat.get("effort"), seat.get("provider")) == (model, effort, provider)), None)
+    """The `when` of the first policy seat holding this tier, preferring one on this provider."""
+    seats = [seat for seat in data(root).policy.get("seat", []) if (seat["model"], seat["effort"]) == (model, effort)]
+    seat = next((seat for seat in seats if seat["provider"] == provider), seats[0] if seats else None)
+    return seat["when"] if seat else None
 
 
 def caller_confirmation(root: pathlib.Path, route: dict, canonical_model: str,

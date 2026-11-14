@@ -130,6 +130,14 @@ class ValidateTest(unittest.TestCase):
         self.assertTrue(confirmation["offer_to_user"])
         self.assertEqual(confirmation["benefit"], "Implementation that needs the head model's standing tier.")
 
+    def test_an_offer_on_another_pool_quotes_the_seat_holding_the_tier(self):
+        """Claim: when no seat holds the selected tier on the selection's own
+        provider, the benefit is the `when` of a seat holding that tier on
+        another. Rejects an offer that goes silent because the pool differs."""
+        answer = validate_selection(FIXTURE, "extract", "pi", "ts-3-core", "low", "flat-pool", "fixture reason",
+                                    allow_experimental=True, caller="orbit-flash#low")
+        self.assertEqual(answer["confirmation"]["benefit"], "Fixed-shape calls on the Tessel window.")
+
     def test_an_effort_the_backend_cannot_express_is_refused(self):
         """Claim: an effort outside a backend's support for that model (here
         pi's effort_support row) is refused. Rejects a route the harness would
