@@ -7,7 +7,7 @@ import data_edits
 import field_notes
 import stores
 
-EDITS = ("set-seat", "remove-seat", "default-seat", "prohibit", "allow", "rank", "set-fallback", "remove-fallback",
+EDITS = ("set-seat", "remove-seat", "default-seat", "prohibit", "allow", "rank", "pool-rank", "set-fallback", "remove-fallback",
          "set-review-seat", "remove-review-seat", "set-guard", "retire-guard", "add-model", "supersede-model", "note", "again", "retract", "supersede", "commit", "undo")
 
 
@@ -52,6 +52,8 @@ def parser(*, raising=False):
             p.add_argument("--effort", required=True)
             p.add_argument("--provider")
             p.add_argument("--stability", choices=stores.SEAT_STABILITIES)
+            p.add_argument("--pool-rank", type=int,
+                           help="the seat's tier's place in its pool's order; needed when that tier is unranked there")
             p.add_argument("--when", required=True)
         if verb in {"set-review-seat", "remove-review-seat"}:
             p.add_argument("purpose", choices=stores.REVIEW_PURPOSES)
@@ -62,10 +64,14 @@ def parser(*, raising=False):
             p.add_argument("--model", required=True)
             p.add_argument("--effort", required=True)
             p.add_argument("--when", required=True)
-        if verb in {"prohibit", "allow", "rank", "set-guard", "retire-guard", "add-model", "supersede-model", "card"}:
+        if verb in {"prohibit", "allow", "rank", "pool-rank", "set-guard", "retire-guard", "add-model", "supersede-model",
+                    "card"}:
             p.add_argument("model")
-        if verb in {"prohibit", "allow", "rank"}:
+        if verb in {"prohibit", "allow", "rank", "pool-rank"}:
             p.add_argument("effort")
+        if verb == "pool-rank":
+            p.add_argument("--pool", required=True, help="the provider whose pool the rank orders")
+            p.add_argument("--rank", type=int, required=True)
         if verb == "prohibit":
             p.add_argument("--reason", required=True)
         if verb == "rank":

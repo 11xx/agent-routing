@@ -85,7 +85,101 @@ def require_one(rows, where, **key):
     return found[0]
 
 
+def seated_tiers(catalog, policy):
+    """Each (model, effort, pool) a stable route seats, by the definition validation ranks."""
+    import routing_profiles as routes
+
+    by_pool = {row["provider"]: row for row in policy.get("pool", [])}
+    seated = routes._seated_tiers(stores.project_profiles(catalog, policy), by_pool)
+    return {(model, effort, pool) for (model, effort), pools in seated.items() for pool in pools}
+
+
+def pool_order(policy, pool):
+    """The pool's seat_rank rows, lowest rank first."""
+    import routing_profiles as routes
+
+    def effort(row):
+        return routes.EFFORT_ORDER.index(row["effort"]) if row["effort"] in routes.EFFORT_ORDER else -1
+    return sorted((row for row in policy.get("seat_rank", []) if row["pool"] == pool),
+                  key=lambda row: (row["rank"], row["model"], effort(row)))
+
+
+def pool_placement(policy, previous, model, effort, pool):
+    """Where a seat's tier sits in its pool's order: its current rank, or the rank suggested for it and why.
+
+    A seat moved within one pool keeps the place its previous tier held, so
+    a directed selection compares with it as it compared with the seat
+    before; any other seat starts at the bottom, rank 1, where it outranks
+    nothing. Either is then kept inside the model's own order on that pool,
+    which never falls as effort rises.
+    """
+    import routing_profiles as routes
+
+    ranks = {(row["model"], row["effort"], row["pool"]): row["rank"] for row in policy.get("seat_rank", [])}
+    if (model, effort, pool) in ranks:
+        return dict(current=ranks[model, effort, pool], suggested=ranks[model, effort, pool], basis="its current rank")
+    rank, basis = 1, "starts at the bottom of the pool, outranking nothing"
+    if previous and previous.get("stability") == "stable" and previous.get("provider") == pool \
+            and (previous["model"], previous["effort"], pool) in ranks:
+        rank = ranks[previous["model"], previous["effort"], pool]
+        basis = f"keeps the place {previous['model']} {previous['effort']} held"
+    order = routes.EFFORT_ORDER
+    if effort in order:
+        lower = [value for (m, e, p), value in ranks.items()
+                 if (m, p) == (model, pool) and e in order and order.index(e) < order.index(effort)]
+        higher = [value for (m, e, p), value in ranks.items()
+                  if (m, p) == (model, pool) and e in order and order.index(e) > order.index(effort)]
+        if lower and rank < max(lower):
+            rank, basis = max(lower), f"is raised to {model}'s lower efforts there, since rank never falls as effort rises"
+        if higher and rank > min(higher):
+            rank, basis = min(higher), f"is lowered to {model}'s higher efforts there, since rank never falls as effort rises"
+    return dict(current=None, suggested=rank, basis=basis)
+
+
+def settle_pool_ranks(catalog, policy, verb, opts, seated_before, previous):
+    """Rank the tier a seat edit newly seats, and drop each rank the edit leaves on a tier no stable route seats."""
+    after = seated_tiers(catalog, policy)
+    ranked = {(row["model"], row["effort"], row["pool"]): row for row in policy.get("seat_rank", [])}
+    rank = opts.get("pool_rank")
+    if verb == "set-seat":
+        seat = require_one(policy["seat"], f"{stores.POLICY} [[seat]]", profile=opts["profile"],
+                           variant=opts.get("variant"))
+        tier = (seat["model"], seat["effort"], seat["provider"])
+        where = f"{stores.POLICY} {stores.label('seat', seat)}"
+        if tier not in after:
+            if rank is not None:
+                raise stores.StoreError(f"{where}: --pool-rank orders the tier a stable seat holds within its pool, "
+                                        f"and this seat holds none on {tier[2]!r}")
+        elif tier in ranked:
+            if rank is not None:
+                ranked[tier]["rank"] = rank
+        elif rank is None:
+            order = ", ".join(f"{row['model']} {row['effort']} {row['rank']}" for row in pool_order(policy, tier[2]))
+            placement = pool_placement(policy, previous, *tier)
+            raise stores.StoreError(
+                f"{where}: {tier[0]} {tier[1]} has no pool rank on {tier[2]!r}; pass --pool-rank N to place it in "
+                f"that pool's order ({order or 'nothing ranked yet'}); --pool-rank {placement['suggested']} "
+                f"{placement['basis']}")
+        else:
+            policy.setdefault("seat_rank", []).append(dict(model=tier[0], effort=tier[1], pool=tier[2], rank=rank))
+    stranded = seated_before - after
+    if stranded:
+        policy["seat_rank"] = [row for row in policy.get("seat_rank", [])
+                               if (row["model"], row["effort"], row["pool"]) not in stranded]
+
+
 def change_rows(catalog, policy, verb, opts, today):
+    """Mutate a private candidate, then keep pool ranks on exactly the tiers stable seats hold."""
+    seated = seated_tiers(catalog, policy)
+    previous = None
+    if verb == "set-seat":
+        previous = copy.deepcopy(next((row for row in policy.get("seat", []) if row["profile"] == opts["profile"]
+                                       and row.get("variant") == opts.get("variant")), None))
+    edit_rows(catalog, policy, verb, opts, today)
+    settle_pool_ranks(catalog, policy, verb, opts, seated, previous)
+
+
+def edit_rows(catalog, policy, verb, opts, today):
     """Mutate a private candidate; row keys are explicit and never inferred from prose."""
     why = opts["why"]
     if verb in {"set-seat", "remove-seat", "default-seat"}:
@@ -154,6 +248,14 @@ def change_rows(catalog, policy, verb, opts, today):
             row.pop("reason", None)
         else:
             row.update(rank=opts["rank"], floor=opts["floor"])
+    elif verb == "pool-rank":
+        where = f"{stores.POLICY} [[seat_rank]] model={opts['model']} effort={opts['effort']} pool={opts['pool']}"
+        found = [row for row in policy.get("seat_rank", [])
+                 if (row["model"], row["effort"], row["pool"]) == (opts["model"], opts["effort"], opts["pool"])]
+        if not found:
+            raise stores.StoreError(f"{where}: no such pool rank; a tier gains one with the set-seat --pool-rank "
+                                    "edit that seats it")
+        found[0]["rank"] = opts["rank"]
     elif verb in {"set-fallback", "remove-fallback"}:
         rows = policy.setdefault("fallback", [])
         key = {k: opts[k] for k in ("profile", "from_provider", "backend")}
@@ -490,10 +592,13 @@ def apply(root, verb, **opts):
 def subject_for(verb, opts, result):
     target = opts.get("profile") or opts.get("model") or opts.get("note") or result.get("record_id") or "data stores"
     suffix = f" {opts['variant']}" if opts.get("variant") else ""
-    if verb in {"prohibit", "allow", "rank"}:
+    if verb in {"prohibit", "allow", "rank", "pool-rank"}:
         suffix += f" {opts['effort']}"
+    if verb == "pool-rank":
+        suffix += f" on {opts['pool']}"
     action = {"note": "record note for", "again": "record recurrence of", "retract": "retract note",
-              "supersede": "correct note", "rank": "set rank and floor for", "default-seat": "default seat for"}
+              "supersede": "correct note", "rank": "set rank and floor for", "default-seat": "default seat for",
+              "pool-rank": "set pool rank for"}
     if verb == "commit":
         return "data: commit hand edits to routing stores"
     if verb in {"set-review-seat", "remove-review-seat"}:

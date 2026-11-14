@@ -34,6 +34,7 @@ Run `agent-routing` with no verb for the routing guide.
                       print API list prices, or write a tapes-price-table/2 file
   set-seat / remove-seat / default-seat    edit a profile seat or its default
   prohibit / allow / rank                   edit a tier ban or capability
+  pool-rank                                 reorder a seated tier within its pool
   set-fallback / remove-fallback            edit an exhaustion fallback
   set-review-seat / remove-review-seat      edit the reader for a review purpose
   set-guard / retire-guard                  edit a standing instruction
@@ -96,7 +97,7 @@ case "${1:-}" in
   assess)     shift; exec "$root/bin/assess-review" "$@" ;;
   ladder)     shift; exec "$root/bin/review-ladder" "$@" ;;
   frontier)   shift; exec "$root/bin/frontier-review" "$@" ;;
-  set-seat|remove-seat|default-seat|prohibit|allow|rank|set-fallback|remove-fallback|set-review-seat|remove-review-seat|set-guard|retire-guard|add-model|supersede-model|note|again|retract|supersede|notes|card|commit|log|undo)
+  set-seat|remove-seat|default-seat|prohibit|allow|rank|pool-rank|set-fallback|remove-fallback|set-review-seat|remove-review-seat|set-guard|retire-guard|add-model|supersede-model|note|again|retract|supersede|notes|card|commit|log|undo)
               exec "$root/bin/edit-data" "$@" ;;
   emit)       shift; exec "$root/bin/emit-claude-agents" "$@" ;;
   page)       shift; exec "$root/bin/routing-page" "$@" ;;

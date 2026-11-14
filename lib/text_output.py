@@ -46,7 +46,7 @@ def row_name(table, row):
         return f"fallback {row['profile']} from {row['from_provider']} on {row['backend']}"
     if table == "review_seat":
         return f"review seat {row['purpose']} for {row['author_family']} on {row['backend']}"
-    keys = {"guard": ("model", "effort", "profile"), "tier": ("model", "effort"),
+    keys = {"guard": ("model", "effort", "profile"), "tier": ("model", "effort"), "seat_rank": ("model", "effort", "pool"),
             "reach": ("model", "backend", "provider")}.get(table, ("id", "model", "profile", "provider", "path"))
     return " ".join([table, *(str(row[key]) for key in keys if key in row)])
 
