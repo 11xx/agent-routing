@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check a change: compile it, run the fixed invariants, run the witnesses it names.
+"""Check a change: compile it, run the fixed invariants, the test suite and the witnesses it names.
 
 The candidate is the committed HEAD of a clean checkout; the change is the
 commits BASE..HEAD. BASE is `--base REV`, else the merge base of HEAD with the
@@ -10,6 +10,8 @@ target branch `arc show --json` reports.
 - Invariants: the entries of checks/invariants.toml, read from BASE, plus the
   candidate's entries under names BASE lacks, so a change cannot drop the
   invariant that covers what it breaks. Together they get INVARIANT_LIMIT.
+- Tests: every test under tests/ runs once in one process. A failure, an
+  error, a skip, an unexpected success or an empty suite fails it.
 - Witnesses: the `Witness:` trailers of BASE..HEAD, each
   `tests/FILE.py::Class.test_name` or `none (REASON)`, at most MAX_WITNESSES
   distinct names. Each runs once within WITNESS_LIMIT; a failure, an error, a
@@ -37,7 +39,7 @@ import time
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-BUDGET = 20.0
+BUDGET = 5.0
 INVARIANT_LIMIT = 3.0
 WITNESS_LIMIT = 5.0
 MAX_WITNESSES = 3
@@ -60,6 +62,32 @@ print(json.dumps({"run": result.testsRun, "failures": len(result.failures), "err
                   "skipped": len(result.skipped), "expected_failures": len(result.expectedFailures),
                   "unexpected_successes": len(result.unexpectedSuccesses)}))
 """
+
+
+# Runs every test under the directory it is given and reports its counts on the last line of stdout.
+SUITE = """
+import json, sys, unittest
+suite = unittest.defaultTestLoader.discover(sys.argv[1], top_level_dir=sys.argv[1])
+result = unittest.TextTestRunner(stream=sys.stderr, verbosity=1).run(suite)
+print(json.dumps({"run": result.testsRun, "failures": len(result.failures), "errors": len(result.errors),
+                  "skipped": len(result.skipped), "expected_failures": len(result.expectedFailures),
+                  "unexpected_successes": len(result.unexpectedSuccesses)}))
+"""
+
+
+def counts_of(row, output):
+    """The runner's counts from its last line, or None when it reported none."""
+    if row["exit_status"] is None or not output.strip():
+        return None
+    try:
+        counts = json.loads(output.strip().splitlines()[-1])
+    except ValueError:
+        return None
+    return counts if isinstance(counts, dict) and "run" in counts else None
+
+
+def passed(counts):
+    return counts is not None and counts["run"] >= 1 and not any(counts[key] for key in counts if key != "run")
 
 
 class Refusal(Exception):
@@ -261,24 +289,27 @@ class Run:
             if row["exit_status"] != 0:
                 raise Refusal("invariants", f"invariant {entry['name']} failed ({row['exit_status']})\n{output}")
 
+    def tests(self):
+        if not (ROOT / "tests").is_dir():
+            raise Refusal("tests", "the candidate has no tests/ directory")
+        row, output = self.execute("tests", "tests/", [sys.executable, "-c", SUITE, str(ROOT / "tests")],
+                                   self.remaining())
+        row["counts"] = counts = counts_of(row, output)
+        if row["exit_status"] is None:
+            raise Refusal("tests", f"the test suite overran the run's {BUDGET:g}s budget\n{output}")
+        if not passed(counts):
+            raise Refusal("tests", f"the test suite did not pass: {counts or 'no result'}\n{output}")
+
     def witnesses(self, names):
         for name in names:
             if NONE.fullmatch(name):
                 continue
             path, test = WITNESS.fullmatch(name).groups()
             row, output = self.execute("witnesses", name, [sys.executable, "-c", RUNNER, path, test], WITNESS_LIMIT)
-            counts = None
-            if row["exit_status"] == 0 and output.strip():
-                try:
-                    counts = json.loads(output.strip().splitlines()[-1])
-                except ValueError:
-                    counts = None
-            row["counts"] = counts
+            row["counts"] = counts = counts_of(row, output) if row["exit_status"] == 0 else None
             if row["exit_status"] is None:
                 raise Refusal("witnesses", f"witness {name} overran its {WITNESS_LIMIT:g}s limit\n{output}")
-            passed = (counts is not None and counts["run"] >= 1
-                      and not any(counts[key] for key in counts if key != "run"))
-            if not passed:
+            if not passed(counts):
                 raise Refusal("witnesses", f"witness {name} did not pass: {counts or 'no result'}\n{output}")
 
 
@@ -313,6 +344,7 @@ def main():
         listed = invariants(base)
         run.phase("compile", run.compile)
         run.phase("invariants", lambda: run.invariants(listed))
+        run.phase("tests", run.tests)
         run.phase("witnesses", lambda: run.witnesses(witnesses))
         receipt.update(exit_status=0, failure=None)
     except Refusal as refusal:

@@ -3,13 +3,13 @@
 # names, so a change cannot drop the invariant that covers what it breaks.
 # Their combined limit is 3 seconds; measure it when adding an entry.
 
-# The roster, profiles and doctrine agree and validate.
+# The catalog, policy and notes validate and are in canonical form.
 [[invariant]]
 name = "lint-routing"
 command = "bin/lint-routing"
 
-# The sibling consumers carry no concrete roster pins. AGENT_CODE_ROOT comes
-# from the caller, or $HOME/code, resolved before the check is isolated.
+# No catalog model id, alias or backend model string appears in code,
+# templates or tests.
 [[invariant]]
-name = "lint-consumers"
-command = "bin/lint-consumers"
+name = "roster-ids"
+command = "bin/lint-roster-ids"

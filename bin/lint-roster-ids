@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""Refuse a catalog model id, alias or backend model string in code, templates or tests.
+
+The roster lives in data/; code that names a model breaks or lies when the
+roster moves, and a test that names one tests the roster instead of the tool.
+"""
+
+import pathlib
+import re
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+import stores  # noqa: E402
+
+SCANNED = ("lib", "bin", "templates", "tests")
+TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def catalog_ids() -> dict[str, str]:
+    catalog = stores.parse_toml((ROOT / stores.CATALOG).read_text(), stores.CATALOG)
+    ids = {}
+    for model in catalog.get("model", []):
+        ids[model["id"]] = model["id"]
+        ids.update((alias, model["id"]) for alias in model.get("aliases", []))
+    for reach in catalog.get("reach", []):
+        ids.update((name, reach["model"]) for name in (reach["backend_model"], reach.get("agent_alias")) if name)
+    return ids
+
+
+def main() -> int:
+    ids = catalog_ids()
+    problems = []
+    for directory in SCANNED:
+        for path in sorted((ROOT / directory).rglob("*")):
+            if not path.is_file() or "__pycache__" in path.parts:
+                continue
+            for number, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
+                for token in TOKEN.findall(line):
+                    token = token.rstrip("._-")
+                    if token in ids:
+                        problems.append(f"{path.relative_to(ROOT)}:{number}: catalog id {token!r} "
+                                        f"(model {ids[token]})")
+    for problem in problems:
+        print(problem)
+    if problems:
+        print(f"\n{len(problems)} catalog id(s) in code or tests; read the roster from data/ instead")
+        return 1
+    print(f"no catalog id in {', '.join(SCANNED)} across {len(ids)} catalog names")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

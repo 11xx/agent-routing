@@ -1,7 +1,7 @@
 # The change gate: it compiles the candidate, runs the fixed invariants in
-# checks/invariants.toml (read from the change's base) and the witnesses the
-# change's commits name, within a 20-second budget. The consumer lint is one
-# of those invariants and reads the sibling repositories under
-# AGENT_CODE_ROOT, so a roster pin that lands in a consumer fails here too.
+# checks/invariants.toml (read from the change's base), the whole test suite
+# and the witnesses the change's commits name, within the 5-second budget
+# bin/check-change declares. The consumer lint reads sibling repositories and
+# runs on demand as `agent-routing lint-consumers`.
 [gates.check-change]
 command = "bin/check-change"

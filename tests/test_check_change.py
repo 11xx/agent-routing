@@ -1,8 +1,8 @@
-"""bin/check-change holds a change to its declarations and to the base's invariants.
+"""bin/check-change holds a change to its declarations, the base's invariants and its tests.
 
-Each test copies this repository's code into a scratch Git repository whose
-base commit lists one invariant, adds the change's commits, and runs the gate
-there against that base.
+Each test copies this repository's code, without this suite, into a scratch
+Git repository whose base commit lists one invariant and holds a one-test
+suite, adds the change's commits, and runs the gate there against that base.
 """
 
 import json
@@ -14,10 +14,13 @@ import tempfile
 import unittest
 
 REPOSITORY = pathlib.Path(__file__).resolve().parent.parent
-COPIED = ("bin", "lib", "templates", "tests")
+COPIED = ("bin", "lib", "templates")
 IDENTITY = {"GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@localhost",
             "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@localhost"}
 GUARD = '[[invariant]]\nname = "guard"\ncommand = "test ! -e broken"\n'
+SUITE = ("import unittest\n\n\nclass Suite(unittest.TestCase):\n"
+         "    def test_one(self):\n        pass\n\n    def test_two(self):\n        pass\n\n"
+         "    def test_three(self):\n        pass\n\n    def test_four(self):\n        pass\n")
 
 
 class CheckChangeTest(unittest.TestCase):
@@ -34,7 +37,8 @@ class CheckChangeTest(unittest.TestCase):
                 (self.repo / name).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, self.repo / name)
         self.git("init", "--quiet", "--initial-branch=master")
-        self.base = self.commit("chore: establish the base", {"checks/invariants.toml": GUARD})
+        self.base = self.commit("chore: establish the base", {"checks/invariants.toml": GUARD,
+                                                                 "tests/test_suite.py": SUITE})
 
     def git(self, *args, stdin=None):
         result = subprocess.run(["git", "-C", str(self.repo), "-c", "commit.gpgsign=false", *args],
@@ -76,10 +80,9 @@ class CheckChangeTest(unittest.TestCase):
     def test_a_fourth_witness_is_refused(self):
         """Claim: a change naming four distinct witnesses is refused before any
         of them runs. Rejects a gate whose witness phase grows with the change."""
-        names = ("test_stores.py::EmitterTest.test_one", "test_stores.py::EmitterTest.test_two",
-                 "test_resolve.py::ResolveTest.test_three", "test_resolve.py::ResolveTest.test_four")
+        names = [f"test_suite.py::Suite.test_{number}" for number in ("one", "two", "three", "four")]
         trailers = "".join(f"Witness: tests/{name}\n" for name in names)
-        self.commit(f"test: name four witnesses\n\n{trailers}", {"tests/test_stores.py": "\n"})
+        self.commit(f"test: name four witnesses\n\n{trailers}", {"tests/test_suite.py": SUITE + "\n"})
         result = self.check()
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn(f"'tests/{names[3]}' is refused", result.stderr)
@@ -96,10 +99,12 @@ class CheckChangeTest(unittest.TestCase):
         self.assertIn("invariants: invariant guard failed", result.stderr)
 
     def test_a_skipped_witness_fails(self):
-        """Claim: a named witness that skips fails the gate. Rejects counting a
-        test that did not run as coverage."""
-        test = ("import unittest\n\n\nclass Skipped(unittest.TestCase):\n"
-                "    @unittest.skip('not run')\n    def test_skipped(self):\n        pass\n")
+        """Claim: a named witness that skips when run alone fails the gate, though
+        the whole suite passes. Rejects counting a test that did not run as
+        coverage."""
+        test = ("import unittest\n\n\nclass Skipped(unittest.TestCase):\n    ran = False\n\n"
+                "    def test_a_first(self):\n        Skipped.ran = True\n\n"
+                "    def test_skipped(self):\n        if not Skipped.ran:\n            self.skipTest('run alone')\n")
         self.commit("test: add a skipped test\n\nWitness: tests/test_skipped.py::Skipped.test_skipped\n",
                     {"tests/test_skipped.py": test})
         result = self.check()
@@ -107,6 +112,20 @@ class CheckChangeTest(unittest.TestCase):
         self.assertIn("witness tests/test_skipped.py::Skipped.test_skipped did not pass", result.stderr)
         self.assertIn('"skipped": 1', result.stderr)
 
+
+    def test_a_failing_test_no_witness_names_fails_the_tests_phase(self):
+        """Claim: every test under tests/ runs on every check, so a failing
+        test fails the gate even when no Witness names it. Rejects a gate that
+        runs only the tests a change chooses to name."""
+        failing = "import unittest\n\n\nclass Broken(unittest.TestCase):\n    def test_broken(self):\n" \
+                  "        self.fail('broken')\n"
+        self.commit("test: add a failing test\n\nWitness: tests/test_suite.py::Suite.test_one\n",
+                    {"tests/test_broken.py": failing})
+        result = self.check()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("tests: the test suite did not pass", result.stderr)
+        self.assertIn('"failures": 1', result.stderr)
+        self.assertEqual(self.receipt()["failure"]["phase"], "tests")
 
 if __name__ == "__main__":
     unittest.main()
