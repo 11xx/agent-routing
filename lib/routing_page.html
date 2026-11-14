@@ -585,6 +585,7 @@ async function preview(ed, action) {
   const ticket = ed.generation;
   const answer = await api("/api/edit", { argv, confirm: false });
   if (ticket !== ed.generation || !S.editors.has(ed.key)) return;
+  if (!answer.ok && answer.stale && action.stale) { await refresh(); action.stale(ed); return; }
   if (!answer.ok) { showError(ed, answer.error); return; }
   // The confirmation is the previewed edit: the same state and the date the preview recorded.
   const dated = argv.includes("--date") || !answer.result.date ? argv : [...argv, "--date", answer.result.date];
@@ -641,6 +642,7 @@ async function commit(ed) {
   ed.preview.querySelectorAll("button.commit").forEach(button => button.disabled = true);
   const answer = await api("/api/edit", { argv: pending.argv, confirm: true, expect: pending.stamp });
   if (!answer.ok) {
+    if (answer.stale && pending.action.stale) { await refresh(); pending.action.stale(ed); return; }
     if (answer.stale) { markStale(ed); await refresh(); return; }
     clearPreview(ed);
     showError(ed, answer.error);
@@ -1093,9 +1095,51 @@ function trailer(body) {
   return match ? match[1] : null;
 }
 
+const latestVerbEdit = () => (S.log || []).find(edit => trailer(edit.body));
+
+function undoEditor(latest) {
+  editor("undo", "undo", {
+    title: `undo ${latest.commit.slice(0, 12)}`, meta: latest.subject.replace(/^data: /, ""), target: latest,
+    fields: [{ name: "why", label: "why", value: "", hint: "The reason for reverting it, recorded in the commit." }],
+    actions: [{ label: "Preview undo", danger: true, require: ["why"], stale: undoMoved,
+      argv: (vals, ed) => ["undo", "--commit", ed.spec.target.commit, "--why", vals.why] }] });
+}
+
+// An undo stays bound to the commit it was opened for. Once another edit is the latest, say so and offer that one.
+function undoMoved(ed) {
+  const target = ed.spec.target, latest = latestVerbEdit();
+  ed.pending = null;
+  if (latest && latest.commit === target.commit) {
+    ed.preview.replaceChildren(h("div", { class: "stale" }, "The stores changed underneath this preview. Press enter to preview it again."));
+    ed.preview.hidden = false;
+    return;
+  }
+  const parts = [h("div", { class: "stale" }, "Another edit has been made since this undo was opened, so it would no longer take back ",
+    h("code", {}, target.commit.slice(0, 12)), ". Nothing was written.")];
+  if (latest) {
+    const retarget = h("button", { type: "button", class: "act primary danger", onclick: () => {
+      ed.spec.target = latest;
+      ed.spec.title = `undo ${latest.commit.slice(0, 12)}`;
+      ed.el.querySelector(".ed-head .title").textContent = ed.spec.title;
+      ed.el.querySelector(".ed-head .meta").textContent = latest.subject.replace(/^data: /, "");
+      ed.el.setAttribute("aria-label", ed.spec.title);
+      preview(ed, ed.spec.actions[0]);
+    } }, `Preview undo of ${latest.commit.slice(0, 12)}`);
+    parts.push(h("div", { class: "footer" }, "An undo would now take back ", h("code", {}, latest.commit.slice(0, 12)), ", ",
+      latest.subject.replace(/^data: /, ""), "."), h("div", { class: "actions" }, retarget));
+    ed.preview.replaceChildren(...parts);
+    ed.preview.hidden = false;
+    retarget.focus();
+  } else {
+    parts.push(h("div", { class: "footer" }, "No verb edit is left to undo."));
+    ed.preview.replaceChildren(...parts);
+    ed.preview.hidden = false;
+  }
+}
+
 function historyView() {
   const edits = S.log || [];
-  const latest = edits.find(edit => trailer(edit.body));
+  const latest = latestVerbEdit();
   const items = edits.map(edit => {
     const paragraphs = edit.body.split("\n\n");
     const because = (edit.body.match(/^Because: (.+)$/m) || [])[1];
@@ -1105,10 +1149,7 @@ function historyView() {
       h("span", {}, edit.subject.replace(/^data: /, "")),
       reason || because ? h("span", { class: "reason" }, reason, because ? ` · because ${because}` : "") : null);
   });
-  const undo = latest ? h("div", { dataset: { anchor: "undo" } }, h("button", { type: "button", class: "act", onclick: () => editor("undo", "undo", {
-    title: `undo ${latest.commit.slice(0, 12)}`, meta: latest.subject.replace(/^data: /, ""),
-    fields: [{ name: "why", label: "why", value: "", hint: "The reason for reverting it, recorded in the commit." }],
-    actions: [{ label: "Preview undo", danger: true, require: ["why"], argv: vals => ["undo", "--commit", latest.commit, "--why", vals.why] }] }) },
+  const undo = latest ? h("div", { dataset: { anchor: "undo" } }, h("button", { type: "button", class: "act", onclick: () => undoEditor(latest) },
     `Undo the latest verb edit, ${latest.subject.replace(/^data: /, "")}`)) : null;
   return h("div", { class: "panel" }, h("h2", {}, "Edits to the stores, newest first"), undo,
     h("div", { class: "history" }, items.length ? items : h("span", { class: "empty" }, "none")),
