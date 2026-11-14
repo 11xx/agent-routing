@@ -1076,6 +1076,16 @@ when = "A whole-surface read chosen for capability from a Claude session."
 why = "Chosen for capability, not independence: Opus xhigh is the highest-ranked review route on Claude, and its only one."
 since = "2026-11-14"
 
+[[review_seat]]
+purpose = "exhaustive"
+author_family = "any"
+backend = "pi"
+model = "deepseek-flash"
+effort = "max"
+when = "A whole-surface read chosen for capability from a pi session."
+why = "Chosen for capability, not independence: DeepSeek Flash max is the highest-ranked review route on pi, and its only one."
+since = "2026-11-14"
+
 [[repository]]
 id = "skills"
 name = "agent-harnesses"
