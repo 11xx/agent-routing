@@ -1056,6 +1056,16 @@ when = "Candidate defects for adjudication from a pi session."
 why = "Pi's review default finds within its rank, and every identifier it emits is checked against source."
 since = "2026-11-14"
 
+[[review_seat]]
+purpose = "exhaustive"
+author_family = "any"
+backend = "codex"
+model = "gpt-6.1-sol"
+effort = "xhigh"
+when = "A whole-surface read chosen for capability on the Codex window."
+why = "Chosen for capability, not independence: Sol xhigh ties Astra xhigh at rank 3, and the review profile already prefers Sol as its Codex default."
+since = "2026-11-14"
+
 [[repository]]
 id = "skills"
 name = "agent-harnesses"
