@@ -1960,3 +1960,44 @@ def seats_view(root: pathlib.Path) -> dict[str, object]:
         "head_default_refusal": refusal,
         "actual_head": {"status": "unobserved"},
     }
+
+
+def routes_view(root: pathlib.Path, *, backend: str | None = None,
+                profile_id: str | None = None) -> dict[str, object]:
+    """List the coordinates that resolve without opt-ins or quota observations."""
+    view = seats_view(root)
+    coordinates = {}
+    for seat in view["seats"]:
+        profile, variant, served_backend = (seat[key] for key in ("profile", "variant", "backend"))
+        coordinates[profile, variant, served_backend] = seat["default"]
+        unnamed = (profile, None, served_backend)
+        coordinates[unnamed] = coordinates.get(unnamed, False) or seat["default"]
+    routes = []
+    for profile, variant, served_backend in sorted(coordinates, key=lambda key: (key[0], key[1] or "", key[2])):
+        if backend is not None and backend != served_backend:
+            continue
+        if profile_id is not None and profile_id != profile:
+            continue
+        try:
+            route = resolve(root, profile, served_backend, variant_id=variant)
+        except RouteRefusal as error:
+            if error.kind not in {"stability", "unsupported-backend", "pool"}:
+                raise
+            continue
+        routes.append({
+            "profile": profile, "variant": variant, "backend": served_backend,
+            **{key: route[key] for key in ("provider", "model", "effort", "stability")},
+            "default": coordinates[profile, variant, served_backend],
+        })
+    prohibited = []
+    for model in load_toml(root / "routing/models.toml").get("model", []):
+        banned = prohibited_efforts(model)
+        for tier in model.get("effort", []):
+            if tier["effort"] in banned:
+                prohibited.append({"model": model["id"], "effort": tier["effort"], "reason": tier["use"]})
+    return {
+        "schema": "agent-routing-routes/1",
+        "route_version": view["route_version"],
+        "routes": routes,
+        "prohibited": sorted(prohibited, key=lambda row: (row["model"], row["effort"])),
+    }
