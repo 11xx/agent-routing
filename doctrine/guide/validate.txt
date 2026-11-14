@@ -1,0 +1,29 @@
+VALIDATE AN OPERATOR-DIRECTED SELECTION
+  agent-routing validate --profile <profile> --backend <backend>
+    --model <model> --effort <effort> --provider <provider>
+    --reason <text> [--allow-experimental | --operator-named] [--allow-cross-pool] --json
+
+  When the operator names the exact tuple, --operator-named permits both
+  explicit-only and experimental selection. It records that assertion and
+  preserves prohibitions, model status, fences, backend effort support and
+  pool checks. A model with a status (superseded, retired and the like) is
+  refused with its successor; a policy [[fence]] keeps a model off a profile
+  with its reason. Unseated selection refusals list the stable seated efforts
+  for the requested model, profile, backend and provider. `agent-routing seats
+  --json` lists the bindings before selection; `check` answers only
+  prohibition, not seating. Backend model spellings are the catalog's reach
+  rows and aliases. An unsupported profile refusal lists the backend's
+  supported routes.
+
+  validate keeps the named profile as the execution shape and checks an
+  explicit model tuple without resolving that profile or selecting a variant.
+  The result carries the canonical and backend model identities, the
+  route-version witness, the profile's own route as `baseline`, and a
+  `direction` from comparing policy ranks within the selection's pool. Only a
+  stable baseline admits a stable selection, and then either a tuple the
+  profile or its `escalation_sources` seat stably, at or above the baseline,
+  or a stable variant of the profile on the requested backend and provider,
+  whatever its rank. A stable upgrade reports `operator-escalation`. Every
+  other selection is experimental and requires --allow-experimental. Unknown
+  pool membership and missing backend/model support are refusals, not
+  opt-ins.

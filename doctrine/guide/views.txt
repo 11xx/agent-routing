@@ -1,0 +1,94 @@
+READ THE POLICY
+  agent-routing doctrine     the principles, then every profile's seats with
+                             their when, why and since and the guards on
+                             them, the review seats by purpose, the guards on
+                             unseated tiers, the bans, fences, pools and the
+                             catalog, rendered from the stores
+  agent-routing mechanism    the delegation mechanism canon (DELEGATION.md)
+  agent-routing models       the catalog
+  agent-routing profiles     the policy
+  agent-routing delegation   the backend, reachability, effort-support and
+                             pool rows
+  agent-routing all          the catalog, the policy and the field notes
+
+READABLE TEXT VIEWS
+  Text uses the terminal width, or 80 columns for redirected output. Seat
+  columns align across the model's own rows. Variants read profile:variant;
+  experimental and probationary labels lead the seat's when sentence.
+  Guards lead with their effort and profile scope, with why, since and
+  because beneath the rule. Claims wrap with a hanging indent; evidence
+  has its own indented line. A note shows ×N and a date range only when its
+  first and last dates differ. notes leads each entry with model and effort,
+  and inactive entries say retracted or superseded with their reason.
+  Text uses no colour. JSON output retains the complete structured result.
+
+  The invented fixture, at 80 columns:
+
+    agent-routing card nw-atlas-2
+
+nw-atlas-2 · northwind
+Seats
+  implement:atlas       claude  medium  default  Specified implementation from a
+                                                 Northwind session.
+  implement:atlas-high  claude  high             Implementation that needs the
+                                                 head model's standing tier.
+  review:atlas          claude  xhigh   default  Review from a Northwind
+                                                 session.
+  implement:bounded     claude  medium           experimental · Explicit
+                                                 comparison with a fixed
+                                                 deadline.
+Review seats
+  clearance   for any  claude  xhigh  Independent review from a Northwind
+                                      session.
+  findings    for any  claude  xhigh  Candidate defects from a Northwind
+                                      session.
+  exhaustive  for any  claude  xhigh  A whole-surface read from a Northwind
+                                      session.
+Prohibited
+  max: Fixture ban: the top tier buys nothing over xhigh.
+Guards
+  · high, implement: Name exact targets and stop when a target is absent before
+    beginning any implementation.
+    why: The fixture's failed brief left its target ambiguous.
+    since 2030-01-06   because n0003
+Weaknesses
+  n0003  ×2  2030-01-06 → 2030-01-09   An ambiguous target can send
+                                       implementation past the intended files
+                                       unless the brief names a stop condition.
+    evidence: 2030-01-06 fixture:case-3
+    evidence: 2030-01-09 fixture:repeat
+Strengths
+  n0005  ×1  2030-01-07   A bounded change with named probes lands cleanly.
+    evidence: fixture:case-5
+Observations and measurements
+  n0010  ×1  2030-01-09   The corrected fixture score is one quarter.
+    evidence: fixture:case-10
+    metrics: pass_at_1: 0.25
+Inherited from nw-atlas-1, unverified for this model
+  n0006  ×1  2030-01-03   The predecessor needed explicit target boundaries.
+    evidence: fixture:case-6
+
+  A preview names its seat and shows only the fields it changes:
+
+agent-routing set-seat implement --variant flat --backend pi \
+  --model orbit-flash --effort low --when "Fixed-scope implementation from pi." \
+  --why "Use the cheaper measured tier." --dry-run
+
+set-seat (dry run)
+data/policy.toml seat implement:flat (backends: pi)
+  effort: max → low
+  when: Specified implementation from pi. → Fixed-scope implementation from pi.
+  why: The flat pool's workhorse. → Use the cheaper measured tier.
+  since: 2030-01-03 → 2030-01-09
+route_version: b31715eb8626 -> 298e8fdfce1f
+stale consumers: none
+
+WHERE THINGS ARE
+  agent-routing root    the repository holding this data
+  agent-routing dir     the data directory
+
+`agent-routing seats --json` projects every declared profile and variant by
+backend, provider, model, effort, stability and default status. Trials retain
+their stability label. The head-default query is the `plan` route on Claude; a
+missing binding is reported with its refusal. The actual head is unobserved,
+independent of `ARC_MODEL`.

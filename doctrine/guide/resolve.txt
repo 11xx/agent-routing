@@ -1,0 +1,106 @@
+CHOOSE A PROFILE BY THE SHAPE OF THE WORK
+  `agent-routing profiles` prints every profile with its purpose line, and
+  each seat with the backends it serves and its `when`. Choose by the shape of
+  the work, never by the model you expect.
+
+RESOLVE A ROUTE
+  agent-routing resolve <profile> --backend <backend> --json
+
+  The caller chooses the profile. resolve never reads a prompt and never
+  classifies work; it maps that recorded choice to the current provider, model,
+  effort and stability, with the route version tying the answer to the exact
+  data that produced it. The answer names the backend's own model string from
+  the catalog's reach row. Probationary and experimental routes need
+  --allow-experimental — a whole profile as much as a variant — so a route that
+  is not ready cannot be reached by accident.
+
+  For review, add --author '<model>#<effort>' using the diff author's
+  recorded coordinate, and --purpose for what the read is for. The answer is
+  the policy's review seat for that purpose, the author's lab and the
+  backend: the lab's own [[review_seat]] row, else its `any` row. resolve
+  checks that seat against the purpose's requirement and refuses, naming
+  it, when the seat does not meet it:
+    clearance   the default; the independent read of a change, the one that
+                may clear review debt: a stable seat outside the author's lab,
+                at or above both the author's capability floor and the
+                policy's [review] clearance
+    findings    candidate defects for someone else to adjudicate: a seat at or
+                above the author's tier, its own lab included, except the
+                same model at a lower effort
+    exhaustive  a reader chosen for capability, for a whole-surface read: a
+                seat among the backend's highest-ranked stable review routes,
+                whatever its lab, the author's own lab and model included;
+                --author is optional
+  A route's excluded families are its reviewer's family: the lineages the
+  catalog's [[family]] row groups with the reviewer's own, the same relation
+  assess reads for same-family. --variant names the route instead of the
+  policy's seat and is checked the same way. Capability grants no routing
+  seat. A missing seat, or one the author's facts do not satisfy, is a
+  refusal, never a weaker reviewer: for clearance and findings
+  "review-independence" recommending Arc review debt, for exhaustive
+  "review-purpose" with reason "no-review-seat" or "below-top-rank". Unknown
+  author floors also recommend debt, except for exhaustive, which needs no
+  floor. Omitting #effort uses the highest declared author floor; missing
+  floors are not inferred.
+
+  Without --author or --purpose, review JSON carries the backend's default
+  review route with independence: "unverified", the excluded author
+  families, and the reviewer tier inside `review`; --purpose clearance or
+  findings then refuses, since there is nothing to judge. With an author it
+  carries the author floor, the purpose, and the seat's three answers:
+  independence ("eligible" when outside the excluded families and at the
+  author's tier), findings ("eligible" or "ineligible") and clears (true or
+  false), with the assessment qualifiers. A findings route may say
+  independence "ineligible" and clears false; only clears true discharges
+  debt. Exhaustive selects a reader and judges nothing: its answers are the
+  seat's own, so another lab's reader at the floors clears like any
+  independent read and the author's own lab gives findings. Eligibility is
+  not a verdict. ARC_MODEL is never used as the author, since the caller may not
+  have written the diff. --author and --purpose are only valid for review.
+
+  When no route serves the purpose, --accept-ineligible (which needs --author
+  and refuses exhaustive, which owes no debt) returns the strongest stable
+  seat instead of refusing, ties broken by the profile's order of
+  preference. Its `review` block carries the seat's answers and qualifiers,
+  recommendation: "record-debt" and debt_kind: "ineligible-review". Where a
+  route serves the purpose the answer is the same with or without the flag.
+
+  Which review answers are rows and which are ranks: resolve review with
+  --author or --purpose, and admit-review through it, answer the policy's
+  review seats, bounded by ranks, floors and labs. The rest is computed from
+  ranks and labs: assess judges any pair; frontier is the strongest eligible
+  review route for an author; ladder exports the capability table; and the
+  strongest seat --accept-ineligible returns is chosen by rank.
+
+LIST ROUTES FOR A PICKER
+  agent-routing routes --json [--backend <backend>] [--profile <profile>]
+
+  Emit one agent-routing-routes/1 object with route_version, routes and
+  prohibited. Each route carries profile, variant, backend, provider, model,
+  effort, stability and the default flag reported by seats. It equals the plain
+  resolve answer for those coordinates, without opt-ins, authors or quota
+  observations. Unnamed requests use variant: null; backend-default variants
+  are also listed by name. Routes needing experimental or cross-pool opt-in are
+  omitted.
+
+  The filters restrict routes only, together or individually; unmatched values
+  yield an empty list. prohibited always lists every banned model and effort
+  with its recorded reason. Routes sort by profile, variant (unnamed first) and
+  backend; prohibitions sort by model and effort. --json is required.
+
+COMPARE WITH THE CALLER'S OBSERVED SEAT
+  resolve and validate accept --caller <model>#<effort> and an optional
+  --caller-provider <provider>. Name the provider when a model belongs to
+  several pools. The caller is an observation, never inferred from ARC_MODEL.
+
+  The optional `confirmation` block is agent-routing-confirmation/1 and
+  advisory: `offer_to_user` is true for a higher rank in the same pool or a
+  declared scarcer pool, false for a known ordinary move, and null when the
+  policy cannot compare. A less scarce pool establishes no cross-pool tier cost
+  comparison, so that move remains unknown. Cross-pool ranks remain unranked.
+  The block names the caller, the selection, the pool and, as `benefit`, the
+  `when` of the seat being selected: for resolve the seat it answered with,
+  for validate the named profile's seat, or else an escalation source's, on
+  that backend, provider, model and effort. A selection that is no seat has a
+  null benefit. A standing user authorization replaces the offer; the block is
+  not a dispatch gate.

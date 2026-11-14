@@ -1,0 +1,78 @@
+THE STORES
+  data/catalog.toml   facts about models: families and their lineages,
+                      backends, models with status and successor, tiers with
+                      rank, floor, stability and bans, API prices, surcharges,
+                      time-of-day windows, Codex credits, reachability per
+                      backend and provider, and per-backend effort support.
+                      A model whose provider id rolls forward can record the
+                      `build` and `build_date` it is expected to be; a field
+                      note's evidence names the build, provider, harness and
+                      effort it observed.
+  data/policy.toml    what the resolver, validate, assess, frontier and
+                      admit-review decide from: review clearance, admission
+                      thresholds, pools, family exceptions, fences, profiles,
+                      seats, fallbacks, pool-local seat ranks, review seats by
+                      purpose and the consumer inventory; and the guards,
+                      standing instructions for
+                      using a tier (a model, optionally an effort and a
+                      profile) that leads follow. No verb that selects,
+                      validates or refuses a route reads a guard.
+  data/notes.jsonl    dated field notes, one JSON object a line: a model, an
+                      optional effort, a kind (strength, weakness, observation,
+                      measurement), area tags, a one-sentence claim, a cause
+                      (brief, executor, integration, unknown), an evidence
+                      reference and optional metrics. Append-only. No verb
+                      that selects, validates or refuses a route reads them.
+
+  Note ids are n followed by at least four decimal digits, increasing across
+  notes and events. Every event has id, date, event and note (an earlier id):
+    again       evidence; adds an occurrence with a date and reference
+    retract     reason; marks a note inactive
+    supersede   reason and replacement (an earlier corrected note id)
+    undo        reason; cancels an earlier record without deleting it
+  A correction appends the corrected note and then its supersede event.
+  A compensation can cancel an undo record, restoring its effect. Earlier
+  lines retain every byte. Notes are reference evidence; events change no
+  route answer or route_version.
+
+  Rows are flat and prose is short: a seat names the backends it serves, its
+  `when` is one sentence saying what it is for, its `why` the reason it holds,
+  its `since` the date it took effect. A guard's `rule` and `why` are one
+  sentence each, and its `because` names the notes it rests on. A ban carries
+  a one-sentence reason.
+
+  A review seat is the operator's choice of reader for one review purpose
+  (clearance, findings or exhaustive), one author lab, and one backend: its
+  `author_family` is a catalog [[family]] id, a lineage no family row groups,
+  or `any`, and its model and effort name a stable route of the review
+  profile on that backend. A clearance seat can clear a lab when it sits
+  outside that lab and reaches both the [review] clearance floor and the
+  least floor of the lab's authors; an `any` seat is for every lab but its
+  own. Lint refuses a review seat that can never serve its purpose: a
+  clearance seat that can clear none of the labs it is for, a findings seat
+  below every floor of the authors it is for, and an exhaustive seat below
+  the highest-ranked stable review route its backend's pools serve. By the
+  same rule it names a lab whose models hold a seat outside review when no
+  clearance seat on any backend can clear it.
+
+  `lint` checks each store's raw shape (tables, key types, required and
+  unknown keys) before anything reads it; every verb refuses a problem in
+  what it decides from as manifest-invalid, naming the store and row. Guards
+  and notes are outside that path both ways: no deciding verb reads them, and
+  a fault in one never makes resolve, validate, assess, frontier,
+  admit-review, check, routes, seats or ladder refuse. `lint`, `format`,
+  `doctrine` and the change gate validate them.
+
+  Each store is written in one canonical form: fixed key order, each model's
+  rows (tiers, prices, reach) after the model and each profile's seats and
+  fallbacks after the profile, in their recorded order. Parsing and writing a
+  store reproduces it byte for byte.
+
+    agent-routing lint               validate the whole data set; each problem
+                                     names its store and row
+    agent-routing format [--check]   rewrite the stores in canonical form, or
+                                     name the ones that are not
+
+  The route version is the first twelve hex digits of SHA-256 over, for the
+  catalog and then the policy, the path, a NUL byte, the file's bytes and a
+  NUL byte. Notes do not move it.

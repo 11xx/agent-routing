@@ -13,9 +13,11 @@ usage() {
   cat <<'EOF'
 usage: agent-routing <verb> [args]
 
-Run `agent-routing` with no verb for the routing guide.
+Run `agent-routing` with no verb for the map of what it does.
 
-  guide               print the routing guide (also the bare invocation)
+  guide [<topic>] [--search TEXT] [--all]
+                      print the guide's topic index, one topic, the topics that
+                      mention TEXT, or every topic
   models              print the catalog: models, tiers, prices, reachability
   profiles            print the policy: profiles, seats, pools, fallbacks
   delegation          print the backend, reachability and pool rows
@@ -67,14 +69,14 @@ Run `agent-routing` with no verb for the routing guide.
                      [--output-dir <dir>] [--check]
                       emit static Claude agent definitions and their pins
 
-`resolve` never classifies a task: the caller chooses the profile. Run the
-guide for the complete contracts.
+`resolve` never classifies a task: the caller chooses the profile. The guide's
+topics hold the complete contracts.
 EOF
 }
 
 case "${1:-}" in
-  "")         cat "$root/doctrine/guide.md" ;;
-  guide)      cat "$root/doctrine/guide.md" ;;
+  "")         exec "$root/bin/routing-guide" --map ;;
+  guide)      shift; exec "$root/bin/routing-guide" "$@" ;;
   help|-h|--help) usage ;;
   models)     cat "$data_dir/catalog.toml" ;;
   profiles)   cat "$data_dir/policy.toml" ;;

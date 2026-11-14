@@ -1,0 +1,76 @@
+agent-routing says which model runs a task, and on which subscription. It owns
+the roster, the delegation profiles and the mechanism rules, so policy is read
+when a decision is in front of you rather than carried in every context.
+
+This map is complete in under 80 lines: read all of it. Depth comes one topic
+at a time. `agent-routing guide` lists the topics; `agent-routing --help`
+lists every verb.
+
+WHAT BINDS BEFORE ANY QUERY
+  agent-routing check <model> [effort]      exits non-zero if that pair is banned
+  Prohibited tiers stay prohibited when asked for by name.
+  An escalation that costs more than the caller's own seat, or draws on a
+  scarcer pool, is offered to the user: name the route, what it buys and the
+  pool it spends.
+  The reviewer is never the author, and independence is never manufactured.
+  Independent review is an escalation, not a reflex. Without one, the lead
+  inspects, runs the gates and records the deferred coverage as Arc debt.
+  Nothing here enforces itself. The data states the decision so that a
+  caller, a launcher or a lint can hold to it.
+  Topics: principles
+
+ROUTE A TASK
+  agent-routing profiles                    every profile, its purpose and its seats
+  agent-routing resolve <profile> --backend <backend> --json
+                                            provider, model, effort and stability
+  agent-routing routes --json               the routes a picker may offer
+  You choose the profile, by the shape of the work and never by the model you
+  expect: resolve reads no prompt and classifies nothing. A probationary or
+  experimental route needs --allow-experimental.
+  agent-routing validate --profile P --backend B --model M --effort E
+    --provider V --reason TEXT --json       check a tuple the operator named
+  agent-routing resolve <profile> --backend <backend> --usage-file usage.json --json
+                                            the same, admitted against quota
+  Topics: resolve validate quota
+
+ROUTE A REVIEW
+  agent-routing resolve <profile> --backend <backend>
+    --author '<model>#<effort>' [--purpose clearance|findings|exhaustive] --json
+                                            the review seat for that author
+  agent-routing assess --reviewer <model>#<effort> --author <model>#<effort>
+                                            whether a read can be trusted, and
+                                            whether it clears debt
+  agent-routing frontier --author <model>#<effort>
+                                            the strongest review route eligible
+  Clearance is the default purpose: a stable seat outside the author's lab.
+  The same model at a lower effort is never a reviewer.
+  Topics: review
+
+READ THE POLICY
+  agent-routing doctrine                    principles, seats, guards, bans and pools
+  agent-routing mechanism                   how work reaches an executor
+  agent-routing seats --json                every profile and variant binding
+  agent-routing models                      the catalog
+  Topics: views stores
+
+CHANGE THE POLICY
+  agent-routing set-seat | prohibit | allow | rank | set-fallback | set-guard ...
+  Edit through the verbs: each validates, writes and commits one change. They
+  take --dry-run, and catalog and policy edits require --why.
+  agent-routing note --model M --effort E --kind K --area A --claim S
+    --cause C --evidence REF                dated field evidence; no routing answer reads it
+  agent-routing page                        a local page that edits through the verbs
+  Topics: edit notes page
+
+FOR TOOLS THAT READ ROUTING
+  agent-routing lint-consumers              reject roster pins copied into consumers
+  agent-routing prices --format tapes       API list prices as a price table
+  agent-routing emit claude-agents          static Claude agent definitions
+  Point a consumer at a verb instead of quoting a model.
+  Topics: consumers
+
+GO DEEPER
+  agent-routing guide                       every topic with a one-line description
+  agent-routing guide <topic>               one topic
+  agent-routing guide --search TEXT         the topics that mention TEXT
+  agent-routing guide --all                 every topic at once: long, only when asked for

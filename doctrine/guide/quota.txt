@@ -1,0 +1,37 @@
+QUOTA ADMISSION BEFORE DISPATCH
+  agent-routing resolve <profile> --backend <backend> --usage-file usage.json --json
+  agent-routing admit-review --author <model>[#effort] --usage-file usage.json
+    --base <revision> --head <revision> --json
+
+  The caller supplies normalized account-window JSON from `agent-status usage`.
+  Routing reads that file alone and never probes an account. A policy pool's
+  `usage_key` names the account; the policy's [admission] table holds snapshot
+  freshness and the review threshold, and its [[fallback]] rows the ordered
+  fallbacks of each profile. Each pool declares the windows its plan has
+  (`windows`). Every declared window must be reported fresh and valid, and
+  every reported window must have room, declared or not. Unavailable, stale,
+  expired or inconsistent observations do not establish availability.
+
+  Without --usage-file, resolve remains a data-only query. With it, an
+  exhausted pool follows the profile's fallback for that provider and records
+  the original route as `rerouted_from` with reason `pool-exhausted`. Both
+  pools exhausted, an unmeasured alternative, a profile without a fallback, or
+  a pinned --variant yields one bounded refusal. Only fallback routes declared
+  for that profile are authorized; no retry occurs. Check admission at the
+  fan-out boundary before creating executor sessions. A snapshot describes
+  observed headroom; it does not reserve capacity.
+
+  admit-review emits agent-routing-review-admission/1. Authors whose lineage
+  [admission] codex_author_families lists are reviewed on its
+  codex_review_backend, others on its other_review_backend. A review on the
+  claude window needs more than claude_minimum_remaining percent of its
+  five-hour window. At or below it, with unmeasured quota, or with no eligible
+  reviewer it returns status `review-debt`, route null, recommendation
+  `record-debt` and debt_kind `independent-review`. A route outcome names the
+  model, effort, read-only execution, non-persistence and the supplied
+  base-to-head range. Pass resolved revisions. The adapter enforces those
+  execution requirements; routing neither dispatches a reviewer nor records a
+  verdict. On review-debt, record `arc debt <change> --kind independent-review
+  --reason <reason>`. Eligibility and headroom are admission facts, never an
+  approval. Quota does not change `frontier`, which describes the strongest
+  rostered coverage.

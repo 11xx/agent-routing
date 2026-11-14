@@ -67,8 +67,9 @@ seat; no routing answer reads them.
 
 ## Where the rest is
 
-`agent-routing` with no arguments prints the guide, which is the contract for
-every command, and `agent-routing --help` lists the commands.
+`agent-routing` with no arguments prints a one-screen map of what it does.
+`agent-routing guide <topic>` holds each command's contract, one subject at a
+time, and `agent-routing --help` lists the commands.
 [DELEGATION.md](DELEGATION.md) covers how work reaches an executor: roles,
 briefs and what each CLI needs at launch. `bin/check-change` is the gate a
 change to the code passes, and its header says what it checks.

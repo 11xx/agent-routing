@@ -1,0 +1,54 @@
+EDIT FROM A PAGE
+  agent-routing page [--no-open]
+    Serve one HTML page for this checkout on 127.0.0.1 at a free port, print
+    its address with a token made for this launch, and open it in a browser
+    unless --no-open. It serves until interrupted and fetches nothing from
+    the network. The page shows seats by profile and backend, review seats by
+    purpose, each model's tiers, guards and notes, and the edit log, and it
+    edits them in place through the edit verbs (`agent-routing guide edit`).
+
+  Every request carries the launch token: the page in its ?token= query, the
+  API only in an X-Routing-Token header. A request whose Host is not this
+  loopback address and port is refused, and a write is a JSON POST whose
+  Origin is the page's own.
+
+  Reads return what the views compute: /api/seats is seats --json,
+  /api/routes is routes --json, and /api/card?model=M, /api/notes (model,
+  kind, area, liveness) and /api/log?limit=N are the card, notes and log
+  --json results. /api/stores is the parsed catalog and policy with each
+  model's lab; /api/version is the route version and, as stamp, the stores'
+  state, which the page polls to notice an edit made elsewhere.
+  /api/choices?profile=P[&variant=V]&backend=B... lists every tier the
+  backends reach through one provider, withholding each that resolve
+  refuses, or that validation refuses for the seat's stability, with its
+  reasons. The choices are for one seat: without variant, the profile's
+  own; with a variant no seat has, an empty one included, a new variant,
+  which has no previous tier. For a stable seat each choice carries
+  pool_rank: its current rank on its pool, or the rank set-seat would
+  suggest and why; "pools" holds each pool's order.
+  With for=review_seat&backend=B it lists the review profile's stable
+  routes there.
+
+  /api/edit takes {"argv": [VERB, ARG...], "confirm": BOOL, "expect": STATE}.
+  argv is an edit verb with its arguments, parsed by the verb's own parser
+  and run by the verb's own code. Unconfirmed, it runs as --dry-run and
+  answers {"result": agent-routing-edit/1, "command", "stamp"}, stamp being
+  the state the preview was computed from. Confirmed, it runs for real with
+  that stamp as --expect, so a store byte or data commit that lands after
+  the preview, from any writer, makes it answer stale (409) and write
+  nothing. The page confirms with the preview's date as --date, so a
+  preview confirmed after midnight records the date it showed. The page's
+  undo stays bound to the commit it was opened for; once another verb edit
+  is the latest, it says so, names that edit, and previews its undo on
+  request. A refusal answers {"error": MESSAGE} in the validator's or
+  parser's words.
+
+  The page holds no routing rule of its own. Each lab has one colour on
+  every model chip. A preview that answers after the form changed, or after
+  a newer preview was asked for, is dropped, so Commit sends what the editor
+  shows. A stable seat on a tier its pool has not ranked shows that pool's
+  order and asks for a place, filled with the suggested one. When the polled
+  state moves, the page redraws and flashes once the seats, review seats,
+  guards, catalog tiers and note summaries that changed; an open form keeps
+  what is typed while its row remains. What only a terminal does, the page
+  names as a command.

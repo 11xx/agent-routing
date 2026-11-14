@@ -1,0 +1,126 @@
+ASSESS A REVIEW
+  agent-routing assess --reviewer <model>[#<effort>]
+    --author <model>[#<effort>] [--author ...]
+    [--purpose findings|clearance] [--as-of <RFC3339> [--accepted <ref>]]
+    [--schema 1|2] [--json]
+
+  Every catalog tier has a capability rank and author floor: 1 bounded work,
+  2 a working technical peer, 3 the top review band. Capability is independent
+  of seats, model size, price and retirement. Rank measures the reviewer; floor
+  is the least rank for authored work and can be lower. Lint requires both
+  values and a rank in another family that meets every floor. No exclusive top
+  is valid. The policy's pool-local seat_rank orders selections, not
+  capability.
+
+  assess judges any known pair, including retired models and unseated tiers:
+    findings  eligible when rank reaches every author's floor, except the
+              same model at an effort lower than its author's
+    clears    true when findings are eligible, the reviewer is independent
+              of every author's family, and rank reaches [review] clearance
+  Equal-rank same-family reads can find but never clear, except for the
+  model pairs a policy [[family_exception]] row names. An effort-less reviewer
+  uses its minimum rank; an effort-less author its maximum floor. --purpose
+  records the question asked and leads the text; both answers are always
+  given. A read is assessed for what it is, with findings or clearance,
+  however its reader was chosen: --purpose exhaustive, which selects a
+  reader in resolve review, is refused as invalid-purpose. --as-of reads the
+  accepted branch's first-parent history at the instant; --accepted <ref>
+  selects that history explicitly. The default is
+  the repository's default branch, never the checkout's HEAD. Remote
+  origin/HEAD identifies the local default branch when available; a sole local
+  master or main is the fallback. Ambiguous or unavailable defaults require
+  --accepted. Without --as-of, assess uses the current stores and refuses
+  --accepted.
+
+  A dated answer reads the stores at the pinned revision; a revision before the
+  stores existed is read through the ladder's recorded reconstruction of the
+  routing files it held. A revision whose policy wrote a route as one seat row
+  per backend reads as the one route those rows share, and a revision whose
+  stores have problems is refused rather than read as an empty table. route_version binds the pinned data, the ladder's
+  design record at that revision (or its absence), and the projected
+  capability table. Dates before the numeric record refuse with ladder-gap;
+  invalid or timezone-less instants are refused. Dated reads validate the
+  complete accepted capability history as ladder --history does.
+  Non-increasing version dates refuse with effective_from must increase and
+  name the offending version. Each exported version takes effect at its
+  effective_from instant. Dated reads select commits before the next
+  capability version; an earlier-dated neutral descendant cannot make that
+  next table take effect sooner.
+
+  --json emits agent-routing-assessment/2 with the route version, purpose,
+  clearance, reviewer, authors, floor, independence, qualifiers, findings,
+  clears and debt_kind. The reviewer's review_tier field carries its capability
+  rank; authors carry floor. Each coordinate includes its known identities. The
+  shape is independent of --as-of. --schema 1 emits the independence answer
+  without purpose, clearance, findings, clears or below-clearance; it refuses
+  --purpose findings. Without --json the answer is one line.
+
+  Qualifiers are a closed set:
+    same-model         the reviewer is an author's model, at any effort
+    same-family        a shared family under the catalog's [[family]] rows
+    below-floor        rank is below the highest author's floor
+    below-clearance    rank is below [review] clearance
+    floor-unknown      an author's floor is unestablished
+    reviewer-unseated  no stable route seats the reviewer's tier; a routing
+                       note that does not refuse findings or clearance
+  Independence ignores below-clearance and reviewer-unseated. Clearance
+  ignores only reviewer-unseated. A pair a [[family_exception]] row names
+  raises no same-family; the assessment lists those authors under
+  family_exception, outside the qualifiers. Unknown models or efforts are
+  refused.
+
+EXPORT THE CAPABILITY LADDER
+  agent-routing ladder --json [--history] [--accepted <ref>]
+
+  Emit arc-review-ladder/1, the same structure Arc imports as JSON or TOML.
+  Both modes read the accepted ref, resolved once to a commit, with the same
+  default-branch selection as assess --as-of. They ignore the checkout's
+  branch and working files. Plain output contains the current accepted
+  capability table alone; --history reconstructs each distinct table from the
+  start of the numeric record onward, reading the stores where a revision has
+  them and the routing files it held otherwise. Commits changing only prices,
+  seats or notes do not create versions.
+
+  A version's effective_from is the committer time of the accepted ref's
+  first-parent commit whose table differs from its parent's. Land table
+  changes as a no-ff merge, or as a single commit directly on the accepted
+  branch. A no-ff merge records acceptance time and excludes topic-internal
+  tables. Fast-forwarding a series of topic commits does not record when those
+  tables were accepted and must not be used for capability changes.
+
+  Each version has a stable id and a source naming its accepted commit. Before
+  the numeric record begins there is one gap=true version without a model
+  table; no rank is invented for that span. The producer validates every
+  version before emitting any bytes: positive integers, reachable cross-family
+  floors, unique ids and identities, nonempty efforts, and strictly increasing
+  RFC 3339 instants. Failure names the version. Unavailable numeric-era history
+  is refused by --history; current-only export can use a shallow accepted
+  snapshot.
+
+FIND THE REVIEW FRONTIER
+  agent-routing frontier --author <model>[#<effort>]
+    [--reads <model>#<effort>...] [--json]
+
+  frontier answers, from ranks rather than review seat rows, the strongest
+  review route eligible for an author, so a caller can tell whether a
+  recorded read is still the best routing can buy. A seat is a stable review
+  route on any backend whose pool serves its model, a
+  route of the review profile, the kind resolve review can sell; a seat on
+  another profile never raises the frontier. It is eligible exactly when assess
+  calls it independent, so frontier carries no independence rule of its own.
+  Seats are ordered by review_tier, the cross-family scale assess compares,
+  never by a pool-local rank. Quota and pool availability are not inputs: an
+  exhausted pool still marks the frontier, and the answer moves only when the
+  stores do. --json emits agent-routing-frontier/1: the route version, the
+  author with its floor, a status, the frontier, and the reads.
+    status "frontier"          frontier carries the highest eligible
+                               review_tier and every seat at that tier, each
+                               a model, effort, backend and pool
+    status "floor-unknown"     an author floor is unestablished, so there is
+                               no frontier; a floor is never guessed
+    status "no-eligible-seat"  the floor is known and no seat reaches it
+  Each --reads coordinate carries its agent-routing-assessment/1 under the
+  answered route version, and a standing against the frontier's tier: "below",
+  "at" or "above", or "unranked" when there is no frontier. Standing compares
+  tiers only; the read's own independence is in its assessment. Without --json
+  it prints one line for the author and one per read.

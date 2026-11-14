@@ -1,0 +1,148 @@
+EDIT POLICY OR CATALOG
+  All edit commands take --dry-run, --expect STATE and --json, and all but
+  commit take --date YYYY-MM-DD, the date the edit records: a seat's or
+  guard's since, a note's or note event's date. Without it an edit records
+  today. Catalog and policy edits require --why TEXT (one or two
+  sentences); a seat's or guard's stored why is one sentence, at most 240
+  characters. Repeat --because NOTE_ID to cite motivating notes in the
+  commit body; guards also retain them in because.
+
+  set-seat PROFILE --backend BACKEND [--backend BACKEND...] [--variant NAME]
+    --model MODEL --effort EFFORT [--provider PROVIDER]
+    [--stability stable|probationary|experimental] [--pool-rank N]
+    --when SENTENCE --why TEXT
+      Create or update the seat identified by profile and optional variant.
+      Backends replace the row's backend list. Provider can be omitted only
+      when every backend has exactly one common reach provider. An existing
+      stability is retained unless supplied; new seats default to stable.
+      A stable seat's tier needs a pool rank on the seat's provider (below).
+      On a tier that pool has not ranked, --pool-rank N writes that
+      [[seat_rank]] row in the same commit; without it the edit is refused
+      with the pool's order and a suggested N. On a ranked tier --pool-rank
+      changes the rank.
+  remove-seat PROFILE [--variant NAME] --why TEXT
+      Remove that seat. A default backend must retain a resolvable default.
+  pool-rank MODEL EFFORT --pool PROVIDER --rank N --why TEXT
+      Change one seated tier's pool rank and nothing else. A tier with no
+      rank on that pool gains one with the set-seat edit that seats it.
+
+  A pool rank ([[seat_rank]]) orders the tiers stable seats hold inside one
+  pool, by provider; it is not capability. validate reads it to call a
+  directed selection an upgrade, lateral or downgrade against the profile's
+  own seat in the same pool, and a stable upgrade an operator escalation;
+  a caller confirmation compares the selection with the caller's seat by
+  it. Within one model and pool it never falls as effort rises. Every edit
+  keeps ranks on exactly the seated tiers: one that leaves a tier with no
+  stable seat drops its rank in the same commit and lists the removed row.
+  The suggested N is the place the seat's previous tier held on the same
+  pool, or 1, the bottom of the pool, where the tier outranks nothing, for
+  a seat with no previous tier there. Kept that way, a move reclassifies
+  only selections of the two tiers that trade the place. When the model's
+  own order on the pool forbids that place, N is the nearest rank it
+  allows, which also reverses the comparisons with every tier ranked
+  between the two places. Any edit that changes pool ranks lists, as
+  classification_changes, each directed selection in those pools that
+  validate --allow-experimental answers both before and after the edit
+  with a different direction, stability or kind, or says none does. Every
+  profile, backend and reached tier in those pools is asked of validate
+  itself, answering from the stores as they are before the edit and as
+  they would be after it; a selection it refuses either way, for any
+  reason, is not listed.
+  default-seat PROFILE --variant NAME [--backend BACKEND...] --why TEXT
+      Make that variant the unnamed request's default on all its backends.
+      Multi-backend rows default together. An overlapping primary is retained
+      as primary-BACKEND (backends joined with hyphens when there are several),
+      leaving its other backends on the primary. A partly overlapping variant
+      default needs a hand split first; the command names it and refuses.
+  prohibit MODEL EFFORT --reason SENTENCE --why TEXT
+  allow MODEL EFFORT --why TEXT
+      Set or lift the tier's prohibition. A seated prohibition is refused;
+      choose another seat before prohibiting the tier.
+  rank MODEL EFFORT --rank N --floor N --why TEXT
+      Set capability rank and author floor. This moves Arc assurance at once;
+      clearance changes when Arc next imports the ladder.
+  set-fallback PROFILE --from-provider PROVIDER --backend BACKEND
+    [--variant NAME] --why TEXT
+  remove-fallback PROFILE --from-provider PROVIDER --backend BACKEND --why TEXT
+      Upsert or remove the fallback keyed by profile, exhausted provider and
+      destination backend. The destination must be a stable seat.
+  set-review-seat PURPOSE --author-family FAMILY|any --backend BACKEND
+    --model MODEL --effort EFFORT --when SENTENCE --why TEXT
+  remove-review-seat PURPOSE --author-family FAMILY|any --backend BACKEND --why TEXT
+      Upsert or remove the review seat keyed by purpose (clearance, findings
+      or exhaustive), author lab and backend. Its model and effort name a
+      stable review route on that backend that can serve the purpose. An edit
+      leaving a lab whose models hold seats with no clearance seat that can
+      clear it is refused, naming the lab.
+  set-guard MODEL [--effort EFFORT] [--profile PROFILE] --rule SENTENCE --why TEXT
+  retire-guard MODEL [--effort EFFORT] [--profile PROFILE] --why TEXT
+      Upsert or retire one guard at this exact scope. Multiple guards at the
+      same scope are ambiguous; edit them by hand. Neither rule nor because
+      influences any deciding verb.
+  add-model MODEL --family FAMILY --reach JSON [--reach JSON...]
+    --tier JSON [--tier JSON...] --why TEXT
+      Add a minimal catalog model. Each reach object has backend, provider,
+      backend_model and optional agent_alias; each tier object has effort,
+      rank, floor and optional stability. The model key is supplied by the
+      command. Large roster changes, including pool membership, use hand edits.
+  supersede-model MODEL --successor MODEL --why TEXT
+      Mark an unseated model superseded; its notes remain reference evidence.
+
+  Each edit builds candidate text in memory and validates the whole data set,
+  including route, pool, price and rank relations, notes and guards. A refusal
+  names the store and row and leaves the files untouched. Writers hold a
+  checkout lock; readers and dry runs take its shared lock so the stores
+  are read together. Files are flushed to a temporary sibling and renamed.
+  A failed Git commit restores the earlier working bytes. Signing follows
+  Git config.
+  The commit contains only changed data paths, the reason, motivating note
+  ids and Routing-edit: VERB. When arc env establishes an acting harness and
+  model, Implemented-by records them. Nothing is pushed.
+
+  Every edit result carries state, a digest of the store bytes and the last
+  commit that changed a data path, read in the same lock hold the edit is
+  computed from. --expect STATE runs the edit only from that state: inside
+  its lock hold, before computing anything, an edit whose stores or data
+  history moved since is refused as stale and writes nothing. The result's
+  date is the date the edit recorded. A preview's state passed to --expect,
+  and its date to --date, make the confirmation the edit the preview
+  showed, on any day, or no edit.
+
+  agent-routing commit --why TEXT [--because NOTE_ID...] [--dry-run] [--json]
+    Validate and canonicalize hand edits, then commit only data paths. Other
+    edits refuse dirty data paths, staged or unstaged, with instructions to
+    commit them or discard them. Unrelated staged work stays staged.
+  agent-routing log [--limit N] [--json]
+    Show the stores' Git history, including hand commits, newest first. Each
+    line carries a short hash, date, verb, row and the reason's first sentence.
+    --json emits agent-routing-history/1 whose edits carry commit, date
+    (YYYY-MM-DD), subject and body.
+  agent-routing undo [--commit REV] --why TEXT [--dry-run] [--json]
+    Revert the latest Routing-edit commit as a new verb commit, reported as
+    undone_commit. With --commit, refuse as stale unless REV is that commit,
+    the one a preview named. Disjoint later edits are retained; overlapping
+    edits refuse. Catalog and policy regain
+    the previous bytes. Notes regain their previous presentation through
+    appended undo events, preserving every earlier byte. Undoing an undo
+    restores the effect of the original edit.
+
+  Every edit names the store, table and row, then prints only changed fields
+  as field: old → new. Added rows list their fields; removed rows are named
+  as removed. A row pairs with its earlier version only when both have the
+  same identity; a seat move that drops one pool rank and adds another
+  lists one seat_rank row removed and one added. The footer carries old and new route_version, commit id, and
+  affected generated consumers with refresh commands, then, for an edit of
+  pool ranks, each reclassified directed selection as profile on backend:
+  model effort via pool: direction (stability, kind) → direction
+  (stability, kind). Notes leave route_version unchanged. --json emits one
+  agent-routing-edit/1 object with verb, dry_run, state, date (except for
+  commit), changes, old_route_version, new_route_version, stale_consumers
+  and commit (null for dry runs); changes name store, table, before and
+  after. An edit of
+  pool ranks adds classification_changes, rows of profile, backend, model,
+  effort, pool, and before and after, each with direction, stability and
+  selection_kind. Errors use agent-routing-edit-error/1 with verb and
+  error, and stale true for a refused --expect or undo --commit.
+  Generation is reported from seat and reach inputs, not by reading deployed
+  consumers. Emit stages agents/ and consumers-pins.toml under its output
+  directory; consumer deployment owns installation and enrollment of pins.

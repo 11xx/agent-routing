@@ -20,7 +20,7 @@ import tempfile
 
 REPOSITORY = pathlib.Path(__file__).resolve().parent.parent
 FIXTURE = REPOSITORY / "tests" / "fixtures" / "data"
-CODE = ("bin", "lib", "templates", "doctrine/guide.md", "doctrine/principles.md", "DELEGATION.md")
+CODE = ("bin", "lib", "templates", "doctrine/guide", "doctrine/principles.md", "DELEGATION.md")
 sys.path.insert(0, str(REPOSITORY / "lib"))
 
 

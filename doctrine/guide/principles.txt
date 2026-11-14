@@ -1,0 +1,19 @@
+WHAT BINDS BEFORE ANY QUERY
+  The standing principles are doctrine/principles.md, printed first by
+  `agent-routing doctrine`. Three of them bind every query:
+
+  Prohibited tiers stay prohibited when asked for by name.
+
+    agent-routing check <model> [effort]   exit non-zero if that pair is banned
+
+  An escalation that costs more than the caller's own seat, or draws on a
+  scarcer pool, is offered to the user, naming the route, what it buys and the
+  pool it spends.
+
+  The reviewer is never the author, and independence is never manufactured.
+  Independent review is an escalation, not a reflex; otherwise the lead
+  inspects, runs the gates and records the deferred coverage as Arc debt.
+
+  Nothing here enforces itself. A harness that ignores an answer is not
+  stopped by it: the data states the decision and the prohibitions so that a
+  caller, a launcher or a lint can hold to them.
