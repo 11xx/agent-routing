@@ -87,14 +87,12 @@ class LadderTest(LadderCase):
         """Claim: a ladder whose versions repeat or reverse an effective_from
         instant is refused. Rejects two tables in force at one instant, or a
         history that runs backwards."""
-        edit(self.root, stores.CATALOG, HIGH, RAISED)
-        self.commit("2030-01-05T00:00:00Z")
         ladder = review_ladder.export(self.root, history=True)
+        gap, table = ladder["version"]
         review_ladder.validate(ladder)
-        for instant in (ladder["version"][1]["effective_from"], "2030-01-02T00:00:00Z"):
+        for instant in (gap["effective_from"], "2000-01-01T00:00:00Z"):
             with self.subTest(instant=instant):
-                broken = {**ladder, "version": [*ladder["version"][:2],
-                                                {**ladder["version"][2], "effective_from": instant}]}
+                broken = {**ladder, "version": [gap, {**table, "effective_from": instant}]}
                 with self.assertRaisesRegex(ValueError, "effective_from must increase"):
                     review_ladder.validate(broken)
 
