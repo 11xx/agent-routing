@@ -51,6 +51,239 @@ profile = "review"
 why = "A probationary adversarial reviewer is never the reviewer of record alone."
 since = "2026-08-23"
 
+[[guard]]
+model = "opus-5.5"
+rule = "Probe a harness route that forces tool_choice before relying on it."
+why = "Forced tool_choice (any or tool) returns a 400 on this model."
+since = "2026-09-22"
+because = ["n0004"]
+
+[[guard]]
+model = "sonnet-5.5"
+rule = "Watch every run for subagent fan-out, out-of-scope edits and timeouts."
+why = "Its highest tier lost mergeable results to exactly that failure shape."
+since = "2026-09-28"
+because = ["n0071"]
+
+[[guard]]
+model = "sonnet-5.5"
+effort = "max"
+rule = "Run max only as a bounded trial under a token or time cap, never as an escalation, and read its diff against the brief's scope ceiling."
+why = "At max it fanned out into subagents and out-of-scope edits and scored below xhigh, on the most output tokens of any tier measured."
+since = "2026-09-28"
+because = ["n0071", "n0073"]
+
+[[guard]]
+model = "sonnet-5.5"
+effort = "xhigh"
+rule = "Never escalate to xhigh from a slice high cannot land; decompose it, give it better context or take a sideways second opinion."
+why = "The tier is explicit-only and unmeasured here, and more effort is not the remedy for a slice that does not land."
+since = "2026-09-28"
+
+[[guard]]
+model = "sonnet-5.5"
+effort = "high"
+rule = "Trial high against Opus 5.5 medium on the same work, under a named brief, acceptance probes and lead review."
+why = "The trial decides the production Sonnet tier on accepted patches, repair rounds, wall time, window weight, output tokens and scope discipline."
+since = "2026-09-28"
+because = ["n0076"]
+
+[[guard]]
+model = "haiku-5.5"
+effort = "low"
+rule = "Use low only for a short fixed-shape trial."
+why = "The vendor warns that low can skip a needed search or verification in long agent prompts."
+since = "2026-10-07"
+because = ["n0090"]
+
+[[guard]]
+model = "haiku-5.5"
+effort = "medium"
+rule = "Trial medium on bounded work against GPT-6 Luna max and DeepSeek Flash max under the same acceptance probes."
+why = "Medium is the vendor default below the routed tier, and nothing here measures it."
+since = "2026-10-07"
+
+[[guard]]
+model = "haiku-5.5"
+effort = "xhigh"
+rule = "Check a run's artifact for an empty visible answer rather than trusting its exit status."
+why = "The vendor warns that xhigh can finish with no visible text after putting the answer in thinking."
+since = "2026-10-07"
+because = ["n0091"]
+
+[[guard]]
+model = "haiku-5.5"
+effort = "max"
+rule = "Run max only as a bounded explicit trial, never as a default or an escalation."
+why = "No field evidence makes it either, and on one draft it cost 1.51 times xhigh for the same repair."
+since = "2026-10-07"
+because = ["n0099"]
+
+[[guard]]
+model = "gpt-daybreak-blue"
+rule = "Re-read the Codex model list before relying on its GPT-5.6 Sol lineage."
+why = "The Codex alias carries -latest and may move to a newer model."
+since = "2026-11-05"
+because = ["n0112"]
+
+[[guard]]
+model = "gpt-daybreak-blue"
+rule = "Read a run that ends on Codex's hardware-key gate as its own outcome, with its work up to that point in the run log."
+why = "The gate can withhold a reply on security output."
+since = "2026-11-05"
+because = ["n0115"]
+
+[[guard]]
+model = "muse-spark-1.2"
+effort = "xhigh"
+rule = "Brief it to refute, and pair it with a second reviewer or a lead who checks each blocking finding against source."
+why = "It is a probationary reviewer, and no approval it gave has been confirmed by another reviewer."
+since = "2026-08-23"
+because = ["n0152", "n0155"]
+
+[[guard]]
+model = "muse-spark-1.2"
+effort = "xhigh"
+rule = "Never use it as an implementer or a planner."
+why = "Its field record is adversarial review and discussion only."
+since = "2026-08-23"
+because = ["n0154"]
+
+[[guard]]
+model = "muse-spark-1.3"
+effort = "xhigh"
+rule = "Record a run of it as unmeasured."
+why = "No review arc has measured it, and 1.2's record does not carry over."
+since = "2026-09-03"
+because = ["n0160"]
+
+[[guard]]
+model = "deepseek-flash"
+rule = "Route its shipped work through a cross-lab reviewer at GPT-6.1 Sol's review tier or above."
+why = "Independent review finds its blind spots in concurrency, resource lifetimes, unchecked narrowing and tests that build the expected value from the code under test."
+since = "2026-10-29"
+because = ["n0162", "n0164"]
+
+[[guard]]
+model = "deepseek-flash"
+rule = "Brief a wall-time bound beside the scope ceiling."
+why = "It does not budget wall time: one fix lane ran 303 minutes."
+since = "2026-10-29"
+because = ["n0165"]
+
+[[guard]]
+model = "deepseek-flash"
+rule = "Resume a lane the Go endpoint refused for capacity once, and do not loop."
+why = "Seven or eight concurrent max lanes drew three capacity refusals in an hour."
+since = "2026-10-29"
+because = ["n0166"]
+
+[[guard]]
+model = "deepseek-flash"
+rule = "Record the expected build and the provider-reported identity separately, and never relabel earlier sessions as 1017."
+why = "Its provider ids roll and attest no checkpoint."
+since = "2026-10-18"
+because = ["n0168"]
+
+[[guard]]
+model = "deepseek-flash"
+rule = "Check every identifier and factual claim it emits against source."
+why = "Predecessor builds fabricated confidently rather than visibly, a precaution no 1017 measurement has lifted."
+since = "2026-10-18"
+because = ["n0169", "n0255"]
+
+[[guard]]
+model = "deepseek-flash"
+rule = "Bound where it may search in its brief, and supervise it by its session recording rather than by its process."
+why = "A self-chosen search of the whole home directory stalled one run for 18 minutes behind a live process and a silent session."
+since = "2026-09-26"
+because = ["n0256", "n0257"]
+
+[[guard]]
+model = "glm-5.3-flash"
+effort = "high"
+rule = "Prefer it where a slice's shape is still in question, and pair it with a literal executor on another provider so each reviews the other."
+why = "It reaches past the letter of a brief, and a pair on independent quota needs no expensive tier to implement and review."
+since = "2026-08-28"
+because = ["n0182", "n0183"]
+
+[[guard]]
+model = "glm-5.3-flash"
+effort = "high"
+profile = "review"
+rule = "Give it repository access when it reviews."
+why = "Its unaided claims about source are inference, and it says so."
+since = "2026-08-28"
+because = ["n0180"]
+
+[[guard]]
+model = "gemini-3.8-flash"
+rule = "Activate it only through a pi probe for reachability and the effort lever, then a review arc, then a seat decision."
+why = "It is benchmarked but unprobed, and no pool serves it."
+since = "2026-09-03"
+because = ["n0146", "n0249"]
+
+[[guard]]
+model = "gpt-6.1-sol"
+rule = "Every write brief names exact targets, a scope ceiling, abort conditions, a sandbox and no tests or refactors beyond those listed."
+why = "The Sol line turns ambiguity into overbuild or into working around a missing target, and it still circumvents explicit restrictions in 23.5% of the vendor's cases."
+since = "2026-09-29"
+because = ["n0106", "n0107", "n0226"]
+
+[[guard]]
+model = "gpt-6.1-sol"
+rule = "Give a long execute arc a no-progress stop condition in its brief."
+why = "It follows its process rules even when they stop all progress and does not ask for help."
+since = "2026-09-29"
+because = ["n0223"]
+
+[[guard]]
+model = "gpt-6.1-sol"
+rule = "Keep user-facing work on the Claude taste axis."
+why = "Its front-end work is poor, with no taste and slop copy."
+since = "2026-09-29"
+because = ["n0225"]
+
+[[guard]]
+model = "gpt-6.1-sol"
+effort = "max"
+rule = "Run max only as a bounded comparison against xhigh, never as an escalation."
+why = "It buys 0.8 index points over xhigh for 84% more per task and twice the wall-clock, and a third-party run scored it below low and high."
+since = "2026-09-29"
+because = ["n0222"]
+
+[[guard]]
+model = "mimo-v2.6-flash"
+effort = "high"
+rule = "Trial it under a fully specified brief with exact targets, a scope ceiling, named acceptance probes and lead review, and never let it be the last model to touch shipped work."
+why = "Nothing measures it: no pass@1, field arc, review round or confirmed approval."
+since = "2026-09-22"
+because = ["n0233"]
+
+[[guard]]
+model = "mimo-v2.6-flash"
+effort = "high"
+rule = "Run it where no queue waits behind its slot."
+why = "Its reasoning tail holds the slot for minutes, 763.6 seconds on one formatting prompt."
+since = "2026-09-22"
+because = ["n0235", "n0236"]
+
+[[guard]]
+model = "mimo-v2.6-pro"
+effort = "high"
+rule = "Trial it under a fully specified brief with exact targets, a scope ceiling, named acceptance probes and lead review, and never let it be the last model to touch shipped work."
+why = "Nothing measures it: no pass@1, field arc, review round or confirmed approval."
+since = "2026-09-22"
+because = ["n0254"]
+
+[[guard]]
+model = "mimo-v2.6-pro"
+effort = "high"
+rule = "Run it where no queue waits behind its slot."
+why = "It shares Flash's reasoning tail, and one run was killed at a twenty-minute cap."
+since = "2026-09-22"
+because = ["n0240"]
+
 [[profile]]
 id = "extract"
 purpose = "one fixed-input, fixed-output classification, extraction, aggregation, or bounded summary"
