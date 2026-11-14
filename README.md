@@ -135,7 +135,8 @@ Inherited, unverified for this model
 
 `set-seat`, `remove-seat` and `default-seat` edit seats; `prohibit`, `allow`
 and `rank` edit tiers; `set-fallback` and `remove-fallback` edit recovery
-routes; `set-guard` and `retire-guard` edit standing instructions;
+routes; `set-review-seat` and `remove-review-seat` edit the reader for a review
+purpose; `set-guard` and `retire-guard` edit standing instructions;
 `add-model` and `supersede-model` cover small catalog changes. The guide
 lists their arguments. Notes use `note`, `again`, `retract` and `supersede`;
 `notes` filters the live evidence and `card` shows a model's policy and

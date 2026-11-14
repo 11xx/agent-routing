@@ -167,6 +167,17 @@ def change_rows(catalog, policy, verb, opts, today):
                 row["variant"] = opts["variant"]
             if not found:
                 rows.append(row)
+    elif verb in {"set-review-seat", "remove-review-seat"}:
+        rows = policy.setdefault("review_seat", [])
+        key = {k: opts[k] for k in ("purpose", "author_family", "backend")}
+        if verb == "remove-review-seat":
+            rows.remove(require_one(rows, f"{stores.POLICY} [[review_seat]]", **key))
+        else:
+            found = [row for row in rows if all(row.get(k) == v for k, v in key.items())]
+            row = found[0] if found else dict(key)
+            row.update(model=opts["model"], effort=opts["effort"], when=opts["when"], why=why, since=today)
+            if not found:
+                rows.append(row)
     elif verb in {"set-guard", "retire-guard"}:
         rows = policy.setdefault("guard", [])
         key = {k: opts.get(k) for k in ("model", "effort", "profile")}
@@ -481,6 +492,9 @@ def subject_for(verb, opts, result):
               "supersede": "correct note", "rank": "set rank and floor for", "default-seat": "default seat for"}
     if verb == "commit":
         return "data: commit hand edits to routing stores"
+    if verb in {"set-review-seat", "remove-review-seat"}:
+        return (f"data: {verb.split('-')[0]} {opts['purpose']} review seat for {opts['author_family']} "
+                f"on {opts['backend']}")
     if verb == "undo":
         return f"data: undo routing edit {result['undone_commit'][:12]}"
     return f"data: {action.get(verb, verb.replace('-', ' '))} {target}{suffix}"

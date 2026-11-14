@@ -48,6 +48,45 @@ class EditTest(GitStoreTest):
         self.assertEqual(result["new_route_version"], stores.load(self.root).version)
         self.assertEqual(result["stale_consumers"], [])
 
+    def review_seat(self, verb="set-review-seat", **opts):
+        defaults = dict(purpose="clearance", author_family="orbit", backend="claude")
+        if verb == "set-review-seat":
+            defaults.update(model="nw-atlas-2", effort="xhigh", when="Independent review of orbit work.")
+        return self.apply(verb, **{**defaults, "why": "The fixture names a reader for orbit authors.", **opts})
+
+    def test_a_review_seat_edit_is_one_row_and_one_commit(self):
+        """Claim: set-review-seat adds or updates exactly the row its purpose,
+        author lab and backend name, in one data-only commit, and a later
+        resolve answers from it. Rejects an edit keyed more loosely that
+        rewrites another lab's seat, or one that leaves no commit."""
+        result = self.review_seat()
+        self.assertEqual([(row["table"], row["before"], row["after"]["author_family"]) for row in result["changes"]],
+                         [("review_seat", None, "orbit")])
+        self.assertEqual(self.git("rev-list", "--count", f"{self.base}..HEAD"), "1")
+        self.assertEqual(self.git("diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"), stores.POLICY)
+        message = self.git("log", "-1", "--format=%B")
+        self.assertTrue(message.startswith("data: set clearance review seat for orbit on claude\n"), message)
+        self.assertIn("Routing-edit: set-review-seat", message)
+        self.assertEqual(resolve(self.root, "review", "claude", author="orbit-flash#max")["profile"], "review:atlas")
+        removed = self.review_seat("remove-review-seat", why="The any seat serves orbit authors.")
+        self.assertEqual([(row["before"]["author_family"], row["after"]) for row in removed["changes"]],
+                         [("orbit", None)])
+        self.assertEqual(self.git("rev-list", "--count", f"{self.base}..HEAD"), "2")
+
+    def test_removing_a_labs_only_clearance_seat_is_refused(self):
+        """Claim: removing the only clearance seat outside a lab whose models
+        hold seats is refused, naming the lab, with no byte or commit
+        written; removing a seat that leaves every lab served succeeds.
+        Rejects an edit that strands a lab's work without an independent
+        reader."""
+        before = self.texts()
+        with self.assertRaisesRegex(stores.StoreError, "lab tessel has seated authors and no clearance seat outside"):
+            self.review_seat("remove-review-seat", author_family="any", why="Drop the Northwind reader.")
+        self.assertEqual((self.texts(), self.git("rev-parse", "HEAD")), (before, self.base))
+        self.review_seat("remove-review-seat", purpose="findings", author_family="any", backend="pi",
+                         why="Pi reads no findings.")
+        self.assertEqual(self.git("rev-list", "--count", f"{self.base}..HEAD"), "1")
+
     def test_reader_between_lock_and_rename(self):
         """Claim: a deciding reader during publication sees a complete old or new answer; rejects truncate-and-write."""
         entered, release = threading.Event(), threading.Event()

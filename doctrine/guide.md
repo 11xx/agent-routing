@@ -113,6 +113,14 @@ EDIT POLICY OR CATALOG
   remove-fallback PROFILE --from-provider PROVIDER --backend BACKEND --why TEXT
       Upsert or remove the fallback keyed by profile, exhausted provider and
       destination backend. The destination must be a stable seat.
+  set-review-seat PURPOSE --author-family FAMILY|any --backend BACKEND
+    --model MODEL --effort EFFORT --when SENTENCE --why TEXT
+  remove-review-seat PURPOSE --author-family FAMILY|any --backend BACKEND --why TEXT
+      Upsert or remove the review seat keyed by purpose (clearance, findings
+      or exhaustive), author lab and backend. Its model and effort name a
+      stable review route on that backend that can serve the purpose. An edit
+      leaving a lab whose models hold seats without a clearance seat outside
+      it is refused, naming the lab.
   set-guard MODEL [--effort EFFORT] [--profile PROFILE] --rule SENTENCE --why TEXT
   retire-guard MODEL [--effort EFFORT] [--profile PROFILE] --why TEXT
       Upsert or retire one guard at this exact scope. Multiple guards at the

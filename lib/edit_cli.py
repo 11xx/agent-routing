@@ -8,7 +8,7 @@ import field_notes
 import stores
 
 EDITS = ("set-seat", "remove-seat", "default-seat", "prohibit", "allow", "rank", "set-fallback", "remove-fallback",
-         "set-guard", "retire-guard", "add-model", "supersede-model", "note", "again", "retract", "supersede", "commit", "undo")
+         "set-review-seat", "remove-review-seat", "set-guard", "retire-guard", "add-model", "supersede-model", "note", "again", "retract", "supersede", "commit", "undo")
 
 
 def parser():
@@ -32,6 +32,15 @@ def parser():
             p.add_argument("--effort", required=True)
             p.add_argument("--provider")
             p.add_argument("--stability", choices=stores.SEAT_STABILITIES)
+            p.add_argument("--when", required=True)
+        if verb in {"set-review-seat", "remove-review-seat"}:
+            p.add_argument("purpose", choices=stores.REVIEW_PURPOSES)
+            p.add_argument("--author-family", required=True,
+                           help=f"the author lab the seat serves: a catalog family id or {stores.ANY_FAMILY}")
+            p.add_argument("--backend", required=True)
+        if verb == "set-review-seat":
+            p.add_argument("--model", required=True)
+            p.add_argument("--effort", required=True)
             p.add_argument("--when", required=True)
         if verb in {"prohibit", "allow", "rank", "set-guard", "retire-guard", "add-model", "supersede-model", "card"}:
             p.add_argument("model")
