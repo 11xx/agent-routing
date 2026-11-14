@@ -245,7 +245,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def dispatch(self, method: str) -> None:
         try:
             url = urllib.parse.urlsplit(self.path)
-            query = urllib.parse.parse_qs(url.query)
+            query = urllib.parse.parse_qs(url.query, keep_blank_values=True)
             host = self.headers.get("Host", "")
             if host not in {f"{name}:{self.server.port}" for name in LOOPBACK}:
                 raise Refused(403, "the page answers only its own loopback address")

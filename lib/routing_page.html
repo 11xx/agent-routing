@@ -430,9 +430,11 @@ function fieldNode(ed, field) {
 }
 
 async function loadChoices(ed, field, select) {
+  const ticket = ed.choiceTicket = (ed.choiceTicket || 0) + 1;
   const query = field.query(ed);
-  if (!query) { select.replaceChildren(); select.disabled = true; return; }
+  if (!query) { select.replaceChildren(); select.disabled = true; placeRank(ed); return; }
   const answer = await api(`/api/choices?${query}`);
+  if (ticket !== ed.choiceTicket) return;
   if (!answer.ok) { showError(ed, answer.error); return; }
   const current = field.current;
   const groups = new Map();
@@ -476,7 +478,8 @@ function placeRank(ed) {
   wrapper.hidden = !placement;
   ed.rankCurrent = placement ? placement.current : null;
   if (!placement) return;
-  if (ed.rankFor !== held) { ed.inputs.pool_rank.value = placement.suggested; ed.rankFor = held; }
+  const placed = `${held}|${placement.current}|${placement.suggested}`;
+  if (ed.rankFor !== placed) { ed.inputs.pool_rank.value = placement.suggested; ed.rankFor = placed; }
   const order = (ed.pools[choice.provider] || []).map(row => `${row.model} ${row.effort} ${row.rank}`).join(" · ") || "nothing ranked yet";
   ed.hints.pool_rank.hidden = false;
   ed.hints.pool_rank.textContent = `${choice.provider}, lowest first: ${order}. ` + (placement.current === null
@@ -753,12 +756,21 @@ function chosen(vals) {
   return JSON.parse(vals.holds);
 }
 
-function seatQuery(profile, variant) {
+// A seat's choices are asked for that seat: its variant, or none for the profile's own seat.
+// A new variant always names itself, an empty name included, so it never takes another seat's place.
+function seatQuery(profile, variantOf) {
   return ed => {
-    const backends = values(ed).backends;
-    return backends.length ? `profile=${encodeURIComponent(profile)}&` + (variant ? `variant=${encodeURIComponent(variant)}&` : "")
-      + backends.map(b => `backend=${encodeURIComponent(b)}`).join("&") : null;
+    const vals = values(ed);
+    const variant = variantOf(vals);
+    return vals.backends.length ? `profile=${encodeURIComponent(profile)}&`
+      + (variant === undefined ? "" : `variant=${encodeURIComponent(variant)}&`)
+      + vals.backends.map(b => `backend=${encodeURIComponent(b)}`).join("&") : null;
   };
+}
+
+function refreshChoicesSoon(ed) {
+  clearTimeout(ed.choiceTimer);
+  ed.choiceTimer = setTimeout(() => refreshChoices(ed), 250);
 }
 
 function refreshChoices(ed) {
@@ -787,7 +799,7 @@ function editSeat(row) {
     facts: [["when", row.when], ["why", row.why]],
     fields: [
       { name: "backends", label: "backends", type: "checks", options: backendIds(), value: row.backends, onchange: refreshChoices },
-      choiceField({ model: row.model, effort: row.effort, provider: row.provider }, seatQuery(row.profile, row.variant)),
+      choiceField({ model: row.model, effort: row.effort, provider: row.provider }, seatQuery(row.profile, () => row.variant)),
       poolRankField(),
       { name: "when", label: "when", value: row.when },
       { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },
@@ -800,9 +812,9 @@ function newSeat(profile) {
   editor(`new-seat:${profile}`, `profile:${profile}`, {
     title: `${profile}: a new variant`,
     fields: [
-      { name: "variant", label: "variant", value: "", mono: true },
+      { name: "variant", label: "variant", value: "", mono: true, onchange: refreshChoicesSoon },
       { name: "backends", label: "backends", type: "checks", options: backendIds(), value: [], onchange: refreshChoices },
-      choiceField(null, seatQuery(profile), "tick a backend to see what it reaches"),
+      choiceField(null, seatQuery(profile, vals => vals.variant), "tick a backend to see what it reaches"),
       poolRankField(),
       { name: "when", label: "when", value: "" },
       { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },

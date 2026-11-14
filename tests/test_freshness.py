@@ -127,3 +127,13 @@ class FreshnessTest(PageServerTest):
         self.assertIn("directed selections reclassified: none", data_edits.render(quiet))
         status, plain = self.edit(SEAT)
         self.assertNotIn("classification_changes", plain["result"])
+
+    def test_a_new_variant_is_offered_no_other_seats_place(self):
+        """Claim: choices asked for a variant no seat has, its name still
+        empty or typed, suggest the bottom of the pool, while the profile's
+        own seat keeps its place. Rejects a new variant borrowing the
+        primary seat's place in the pool."""
+        def suggested(query):
+            choices = self.read(f"/api/choices?profile=implement&{query}backend=codex")["choices"]
+            return next(row["pool_rank"]["suggested"] for row in choices if (row["model"], row["effort"]) == ("ts-3-prime", "high"))
+        self.assertEqual([suggested("variant=&"), suggested("variant=fresh&"), suggested("")], [1, 1, 2])
