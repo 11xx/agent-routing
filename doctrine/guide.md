@@ -54,6 +54,22 @@ RESOLVE A ROUTE
   "ineligible-review". Where a route serves the purpose the answer is the same
   with or without the flag.
 
+LIST ROUTES FOR A PICKER
+  agent-routing routes --json [--backend <backend>] [--profile <profile>]
+
+  Emit one agent-routing-routes/1 object with route_version, routes and
+  prohibited. Each route carries profile, variant, backend, provider, model,
+  effort, stability and the default flag reported by seats. It equals the
+  plain resolve answer for those coordinates, without opt-ins, authors or
+  quota observations. Unnamed requests use variant: null; backend-default
+  variants are also listed by name. Routes needing experimental or cross-pool
+  opt-in are omitted.
+
+  The filters restrict routes only, together or individually; unmatched values
+  yield an empty list. prohibited always lists every banned model and effort
+  with its recorded reason. Routes sort by profile, variant (unnamed first)
+  and backend; prohibitions sort by model and effort. --json is required.
+
 QUOTA ADMISSION BEFORE DISPATCH
   agent-routing resolve execute --backend codex --usage-file usage.json --json
   agent-routing admit-review --author <model>[#effort] --usage-file usage.json

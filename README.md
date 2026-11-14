@@ -8,6 +8,7 @@ agent-routing                         # the routing guide: start here
 agent-routing models                  # the model/effort matrix
 agent-routing profiles                # named task-shape routes
 agent-routing seats --json            # derived bindings and the declared head default
+agent-routing routes --json           # picker routes and prohibited tiers
 agent-routing resolve implement --backend codex --json
 agent-routing validate --profile plan --backend codex --model gpt-6-astra \
   --effort medium --provider openai-codex --reason "operator directed" \
@@ -344,6 +345,22 @@ reports a null default and its resolver refusal. The actual head is unobserved. 
 Evidence references are null where the manifests declare none. There is no
 separate seats manifest; model bars and review eligibility keep their existing
 sources.
+
+## Picker routes
+
+`agent-routing routes --json` emits one `agent-routing-routes/1` object with
+`route_version`, `routes` and `prohibited`. Each route names its `profile`,
+`variant`, `backend`, `provider`, `model`, `effort`, `stability` and `default`.
+The tuples are the answers to `resolve` without opt-ins, authors or quota
+observations. An unnamed request has `variant: null`; a backend-default
+variant is also listed under its explicit name. Default flags match `seats`.
+Routes requiring experimental or cross-pool opt-in are omitted.
+
+`--backend <backend>` and `--profile <profile>` filter routes, together or
+individually; an unmatched filter returns an empty route list. Prohibitions
+remain complete under every filter, with canonical model, effort and the
+recorded reason. Routes are ordered by profile, variant (unnamed first), then
+backend; prohibitions by model and effort. JSON is required.
 
 ## Review frontier
 

@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""List plain resolver answers for a model picker without selecting a route."""
+
+import argparse
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+from routing_profiles import RouteRefusal, dumps, routes_view
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="agent-routing routes")
+    parser.add_argument("--json", action="store_true", required=True, help="emit agent-routing-routes/1")
+    parser.add_argument("--backend", help="include only this backend's routes")
+    parser.add_argument("--profile", help="include only this profile's routes")
+    args = parser.parse_args()
+    try:
+        answer = routes_view(ROOT, backend=args.backend, profile_id=args.profile)
+    except RouteRefusal as error:
+        print(f"agent-routing: cannot list routes: {error}", file=sys.stderr)
+        print(dumps(error.payload()), file=sys.stderr)
+        return 1
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        print(f"agent-routing: cannot list routes: {error}", file=sys.stderr)
+        print(dumps(RouteRefusal("manifest-invalid", str(error)).payload()), file=sys.stderr)
+        return 1
+    print(dumps(answer))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

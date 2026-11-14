@@ -18,6 +18,8 @@ Run `agent-routing` with no verb for the routing guide.
   guide               print the routing guide (also the bare invocation)
   models              print the model/effort matrix (models.toml)
   seats [--json]      project profile/variant bindings and the declared head default
+  routes --json [--backend <backend>] [--profile <profile>]
+                      list resolvable picker routes and prohibited tiers
   profiles            print the named delegation profiles (profiles.toml)
   delegation          print the delegation mechanism matrix (delegation.toml)
   mechanism           print the mechanism-routing prose canon (DELEGATION.md)
@@ -86,6 +88,7 @@ case "${1:-}" in
   emit)       shift; exec "$root/bin/emit-claude-agents" "$@" ;;
   models)     cat "$routing_dir/models.toml" ;;
   seats)      shift; exec "$root/bin/show-seats" "$@" ;;
+  routes)     shift; exec "$root/bin/list-routes" "$@" ;;
   profiles)   cat "$routing_dir/profiles.toml" ;;
   delegation) cat "$routing_dir/delegation.toml" ;;
   mechanism)  cat "$root/DELEGATION.md" ;;

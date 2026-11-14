@@ -1,6 +1,9 @@
 """A picker sees every plain resolve coordinate and exactly its resolved tuple."""
 
+import json
 import pathlib
+import shutil
+import subprocess
 import sys
 import tempfile
 import tomllib
@@ -183,6 +186,30 @@ class RoutesViewTest(unittest.TestCase):
                            for key, value in filters.items())]})
         for filters in ({"profile_id": "absent"}, {"backend": "absent"}):
             self.assertEqual(routes_view(root, **filters), {**answer, "routes": []})
+
+    def test_cli_requires_json_and_emits_the_filtered_contract(self):
+        root = self.fixture_root()
+        for name in ("bin", "lib"):
+            shutil.copytree(REPOSITORY / name, root / name, ignore=shutil.ignore_patterns("__pycache__"))
+        command = [root / "bin/agent-routing", "routes"]
+        refused = subprocess.run(command, capture_output=True, text=True, timeout=5)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertEqual(refused.stdout, "")
+        self.assertIn("--json", refused.stderr)
+        answer = routes_view(root)
+        row = answer["routes"][0]
+        for flags, expected in (
+            ([], answer),
+            (["--backend", row["backend"]], routes_view(root, backend=row["backend"])),
+            (["--profile", row["profile"]], routes_view(root, profile_id=row["profile"])),
+            (["--profile", row["profile"], "--backend", row["backend"]],
+             routes_view(root, profile_id=row["profile"], backend=row["backend"])),
+            (["--profile", "absent"], {**answer, "routes": []}),
+        ):
+            result = subprocess.run([*command, "--json", *flags], capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stderr, "")
+            self.assertEqual(json.loads(result.stdout), expected)
 
 
 if __name__ == "__main__":
