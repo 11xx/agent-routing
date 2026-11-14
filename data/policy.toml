@@ -276,7 +276,7 @@ because = ["n0223"]
 
 [[guard]]
 model = "gpt-6.1-sol"
-rule = "Keep user-facing work on the Claude taste axis."
+rule = "Keep novel user-facing design and final polish on the Claude taste axis; implementing against a settled design system is permitted."
 why = "Its front-end work is poor, with no taste and slop copy."
 since = "2026-09-29"
 because = ["n0225"]
