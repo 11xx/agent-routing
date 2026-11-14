@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Path-free access to the routing manifests. Any harness, skill, or script on
-# this machine runs `agent-routing <verb>` without knowing where the data
-# lives. This script resolves its own location, so symlinking it anywhere on
-# PATH keeps working and moving the repository needs no edit anywhere else.
+# Path-free access to the routing data. Any harness, skill, or script on this
+# machine runs `agent-routing <verb>` without knowing where the data lives.
+# This script resolves its own location, so symlinking it anywhere on PATH
+# keeps working and moving the repository needs no edit anywhere else.
 set -euo pipefail
 
 self=$(readlink -f "${BASH_SOURCE[0]}")
 root=$(cd "$(dirname "$self")/.." && pwd)
-routing_dir="$root/routing"
+data_dir="$root/data"
 
 usage() {
   cat <<'EOF'
@@ -16,95 +16,74 @@ usage: agent-routing <verb> [args]
 Run `agent-routing` with no verb for the routing guide.
 
   guide               print the routing guide (also the bare invocation)
-  models              print the model/effort matrix (models.toml)
+  models              print the catalog: models, tiers, prices, reachability
+  profiles            print the policy: profiles, seats, pools, fallbacks
+  delegation          print the backend, reachability and pool rows
+  all                 print the catalog, the policy and the field notes
+  dir                 print the data directory
+  root                print the repository root
+  doctrine            render the principles and the policy from the stores
+  mechanism           print the delegation mechanism canon (DELEGATION.md)
+  lint                validate the whole data set, naming each offending row
+  format [--check]    rewrite the stores in canonical form, or name those that are not
+  lint-consumers      reject concrete roster pins in delegation consumers
   seats [--json]      project profile/variant bindings and the declared head default
   routes --json [--backend <backend>] [--profile <profile>]
                       list resolvable picker routes and prohibited tiers
-  profiles            print the named delegation profiles (profiles.toml)
-  delegation          print the delegation mechanism matrix (delegation.toml)
-  mechanism           print the mechanism-routing prose canon (DELEGATION.md)
-  doctrine            print the authored routing policy in full
-  lint                check pass@1/cost cells, model coverage, and routes
   prices [--format tapes] [--output <file>]
-                      print the roster's API list prices, or write them as a
-                      tapes-price-table/2 file for tapes to read
-  lint-consumers      reject concrete roster pins in delegation consumers; fail when an
-                      accessor reports fewer sources than its declared floor
-  eras                list the model-era history files
-  dir                 print the routing data directory
-  root                print the repository root
-  all                 print all three manifests
+                      print API list prices, or write a tapes-price-table/2 file
   check <model> [eff] exit non-zero if that model/effort is prohibited
   resolve <profile> --backend <backend> [--variant <name>] [--author <model>[#effort]]
           [--purpose findings|clearance] [--allow-experimental] [--accept-ineligible]
           [--usage-file <file>] --json
                       resolve a caller-selected task profile
-  admit-review --author <model>[#effort] --usage-file <file> --base <base> --head <head> --json
-                      select quota-admitted independent review or typed review debt
-  assess --reviewer <model>#<effort> --author <model>[#<effort>] [--author ...]
-         [--purpose findings|clearance] [--as-of <RFC3339> [--accepted <ref>]] [--schema 1|2] [--json]
-                      assess any reviewer against the authors of a diff: whether
-                      its findings can be trusted and whether it clears debt
-  ladder --json [--history] [--accepted <ref>]
-                      export the dated capability ladder for Arc
-  frontier --author <model>[#<effort>] [--reads <model>#<effort>...] [--json]
-                      the strongest eligible review seat for an author, by
-                      review_tier and regardless of quota, and where each read
-                      stands against it
   validate --profile <profile> --backend <backend> --model <model>
            --effort <effort> --provider <provider> --reason <text>
            [--allow-experimental | --operator-named] [--allow-cross-pool] --json
                       validate an operator-directed tuple without resolving it
+  admit-review --author <model>[#effort] --usage-file <file> --base <base> --head <head> --json
+                      select quota-admitted independent review or typed review debt
+  assess --reviewer <model>#<effort> --author <model>[#<effort>] [--author ...]
+         [--purpose findings|clearance] [--as-of <RFC3339> [--accepted <ref>]] [--schema 1|2] [--json]
+                      whether a reviewer's findings can be trusted and whether it clears debt
+  ladder --json [--history] [--accepted <ref>]
+                      export the dated capability ladder for Arc
+  frontier --author <model>[#<effort>] [--reads <model>#<effort>...] [--json]
+                      the strongest eligible review seat for an author
+  emit claude-agents [--profile <shape>] [--variant <variant>] [--allow-experimental]
+                     [--output-dir <dir>] [--check]
+                      emit static Claude agent definitions and their pins
 
-`resolve` never classifies a task: the caller chooses the profile. It only maps
-that recorded choice to the current provider, model, and effort. `validate`
-keeps the profile as an execution shape while validating an explicit model
-selection. Both enforce declared backend/model effort support; opt-ins cannot
-waive it. `check` remains limited to the prohibition list.
-Every known tier has capability rank and floor, independent of routing seats.
-The scale is 1 bounded work, 2 working technical peer, 3 deliberate deep review;
-every floor must be met by another family. Lint enforces both declarations.
-Pool ordering uses seat_rank. assess compares rank against author floors and
-[review].clearance; reviewer-unseated is informational. Same-family reads can
-find but never clear unless a [[family_exception]] row names the pair; the
-same model at a lower effort cannot find.
-assess --as-of and ladder read the accepted first-parent history; --accepted
-selects its ref, defaulting to the repository default branch rather than HEAD.
-Tables land as no-ff merges or single accepted commits. Legacy answers follow
-the current reconstruction; dated witnesses use pinned era text. Run the guide
-for the complete contracts.
+`resolve` never classifies a task: the caller chooses the profile. Run the
+guide for the complete contracts.
 EOF
 }
 
-check() {
-  exec "$root/bin/routing-check" "$@"
-}
-
 case "${1:-}" in
-  admit-review) shift; exec "$root/bin/admit-review" "$@" ;;
   "")         cat "$root/doctrine/guide.md" ;;
   guide)      cat "$root/doctrine/guide.md" ;;
   help|-h|--help) usage ;;
-  emit)       shift; exec "$root/bin/emit-claude-agents" "$@" ;;
-  models)     cat "$routing_dir/models.toml" ;;
+  models)     cat "$data_dir/catalog.toml" ;;
+  profiles)   cat "$data_dir/policy.toml" ;;
+  delegation) exec "$root/bin/show-data" delegation ;;
+  all)        cat "$data_dir/catalog.toml"; echo; cat "$data_dir/policy.toml"; echo; cat "$data_dir/notes.jsonl" ;;
+  dir)        echo "$data_dir" ;;
+  root)       echo "$root" ;;
+  doctrine)   exec "$root/bin/show-data" doctrine ;;
+  mechanism)  cat "$root/DELEGATION.md" ;;
+  lint)       exec "$root/bin/lint-routing" ;;
+  format)     shift; exec "$root/bin/show-data" format "$@" ;;
+  lint-consumers) exec "$root/bin/lint-consumers" ;;
   seats)      shift; exec "$root/bin/show-seats" "$@" ;;
   routes)     shift; exec "$root/bin/list-routes" "$@" ;;
-  profiles)   cat "$routing_dir/profiles.toml" ;;
-  delegation) cat "$routing_dir/delegation.toml" ;;
-  mechanism)  cat "$root/DELEGATION.md" ;;
-  doctrine)   cat "$root/doctrine/model-routing.md" ;;
-  lint)       exec "$root/bin/lint-routing" ;;
   prices)     shift; exec "$root/bin/price-export" "$@" ;;
-  lint-consumers) exec "$root/bin/lint-consumers" ;;
-  eras)       ls -1 "$root/eras" ;;
-  dir)        echo "$routing_dir" ;;
-  root)       echo "$root" ;;
-  all)        cat "$routing_dir/models.toml"; echo; cat "$routing_dir/profiles.toml"; echo; cat "$routing_dir/delegation.toml" ;;
-  check)      shift; check "$@" ;;
+  check)      shift; exec "$root/bin/routing-check" "$@" ;;
+  resolve)    shift; exec "$root/bin/resolve-route" "$@" ;;
+  validate)   shift; exec "$root/bin/validate-selection" "$@" ;;
+  admit-review) shift; exec "$root/bin/admit-review" "$@" ;;
   assess)     shift; exec "$root/bin/assess-review" "$@" ;;
   ladder)     shift; exec "$root/bin/review-ladder" "$@" ;;
   frontier)   shift; exec "$root/bin/frontier-review" "$@" ;;
-  resolve)    shift; exec "$root/bin/resolve-route" "$@" ;;
-  validate)   shift; exec "$root/bin/validate-selection" "$@" ;;
+  emit)       shift; exec "$root/bin/emit-claude-agents" "$@" ;;
   *)          usage >&2; exit 2 ;;
 esac

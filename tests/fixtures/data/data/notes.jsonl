@@ -1,0 +1,2 @@
+{"id": "n0001", "date": "2030-01-04", "model": "ts-3-core", "effort": "max", "kind": "strength", "areas": ["implementation"], "claim": "Landed three bounded fixture slices green on the first snapshot.", "cause": "executor", "evidence": "fixture"}
+{"id": "n0002", "date": "2030-01-05", "model": "orbit-flash", "kind": "measurement", "areas": ["benchmark"], "claim": "A fixture board scores it at half.", "cause": "unknown", "evidence": "fixture", "metrics": {"board": "fixture board", "pass_at_1": 0.5}}

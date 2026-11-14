@@ -6,9 +6,11 @@ import os
 import pathlib
 import subprocess
 import sys
-import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+import stores  # noqa: E402
 
 
 def consumer_code_root():
@@ -27,11 +29,6 @@ def consumer_code_root():
 CODE = consumer_code_root()
 
 
-def load(path):
-    with path.open("rb") as handle:
-        return tomllib.load(handle)
-
-
 def files_under(path):
     if path.is_file():
         yield path
@@ -42,8 +39,8 @@ def files_under(path):
 
 
 def configured_consumers():
-    config = load(ROOT / "routing" / "consumers.toml")
-    repositories = config.get("repository", {})
+    config = stores.load(ROOT).policy
+    repositories = {row["id"]: row["name"] for row in config.get("repository", [])}
     consumers = []
     by_id = {}
     entries = []
@@ -67,7 +64,7 @@ def configured_consumers():
         accessor_id = accessor["id"]
         expected = accessor.get("expected_sources")
         if not isinstance(expected, list) or not expected or not all(isinstance(name, str) for name in expected):
-            raise SystemExit(f"{accessor_id}: routing/consumers.toml declares no expected_sources floor")
+            raise SystemExit(f"{accessor_id}: {stores.POLICY} declares no expected_sources floor")
         command = list(accessor["command"])
         if command and command[0] == "agent-harness":
             command[0] = os.environ.get("AGENT_HARNESS_BIN", command[0])
@@ -133,7 +130,7 @@ def configured_consumers():
     # names nothing is refused above; an inventory declaring no consumers and
     # no accessors leaves the same count of zero behind, silently.
     if not entries:
-        raise SystemExit("routing/consumers.toml declares no delegation consumers or accessors")
+        raise SystemExit(f"{stores.POLICY} declares no delegation consumers or accessors")
     return entries, proxy_pins, route_pins
 
 
@@ -158,8 +155,8 @@ def resolved_route(pin):
 
 
 def main():
-    models = load(ROOT / "routing" / "models.toml").get("model", [])
-    profiles = load(ROOT / "routing" / "profiles.toml").get("profile", [])
+    models = stores.load(ROOT).models
+    profiles = stores.load(ROOT).profiles
     literals = {model["id"] for model in models}
     for profile in profiles:
         for route in [profile, *profile.get("variant", [])]:

@@ -1,0 +1,347 @@
+# What `resolve` answers: pools, profiles, seats, fallbacks, ranks and consumer pins.
+# Written in canonical form; `agent-routing format` rewrites a hand edit into it.
+
+schema = "agent-routing-policy/1"
+
+[review]
+clearance = 2
+
+[admission]
+max_age_seconds = 300
+codex_author_families = ["ts-3", "ts-2"]
+codex_review_backend = "claude"
+other_review_backend = "codex"
+claude_minimum_remaining = 50
+
+[[pool]]
+provider = "flat-pool"
+plan = "a flat third-party plan"
+serves = ["ts-3-core", "orbit-flash", "orbit-trial"]
+pays_for = "tessel-plan for the Tessel frontier, northwind-plan for Northwind"
+why = "Cheap capacity off both standing windows."
+
+[[pool]]
+provider = "tessel-plan"
+plan = "the Tessel subscription"
+serves = ["ts-3-prime", "ts-3-core"]
+pays_for = "itself"
+usage_key = "codex"
+windows = ["seven_day"]
+why = "Tessel models run on the plan that pays for them."
+
+[[pool]]
+provider = "northwind-plan"
+plan = "the Northwind subscription"
+serves = ["nw-sage-2", "nw-atlas-2", "nw-swift-2"]
+pays_for = "itself"
+usage_key = "claude"
+windows = ["five_hour", "seven_day"]
+scarcer_than = ["tessel-plan"]
+why = "Northwind models run on the plan that pays for them."
+
+[[family_exception]]
+reviewer = "nw-sage-2"
+authors = ["nw-atlas-2", "nw-swift-2"]
+why = "The fixture's largest Northwind model may clear its siblings."
+since = "2030-01-03"
+
+[[fence]]
+model = "orbit-trial"
+profile = "review"
+why = "A trial model is never the reviewer of record."
+since = "2030-01-03"
+
+[[profile]]
+id = "extract"
+purpose = "one fixed-shape extraction"
+escalation_sources = ["plan", "review"]
+
+[[seat]]
+profile = "extract"
+backend = "codex"
+provider = "tessel-plan"
+model = "ts-3-core"
+effort = "low"
+stability = "stable"
+when = "Fixed-shape calls on the Tessel window."
+why = "The cheapest tier does fixed-shape work."
+since = "2030-01-03"
+
+[[seat]]
+profile = "extract"
+variant = "flat"
+backend = "pi"
+provider = "flat-pool"
+model = "orbit-flash"
+effort = "low"
+stability = "stable"
+default = true
+when = "Fixed-shape calls from pi."
+why = "The flat pool is cheapest."
+since = "2030-01-03"
+
+[[seat]]
+profile = "extract"
+variant = "swift"
+backend = "claude"
+provider = "northwind-plan"
+model = "nw-swift-2"
+effort = "high"
+stability = "stable"
+default = true
+when = "Fixed-shape calls from a Northwind session."
+why = "The small Northwind model is the cheap seat there."
+since = "2030-01-03"
+
+[[profile]]
+id = "implement"
+purpose = "bounded production work with named probes"
+escalation_sources = ["plan"]
+
+[[seat]]
+profile = "implement"
+backend = "codex"
+provider = "tessel-plan"
+model = "ts-3-core"
+effort = "max"
+stability = "stable"
+when = "Specified implementation on the Tessel window."
+why = "The workhorse at max lands bounded slices."
+since = "2030-01-03"
+
+[[seat]]
+profile = "implement"
+variant = "flat"
+backend = "pi"
+provider = "flat-pool"
+model = "orbit-flash"
+effort = "max"
+stability = "stable"
+default = true
+when = "Specified implementation from pi."
+why = "The flat pool's workhorse."
+since = "2030-01-03"
+
+[[seat]]
+profile = "implement"
+variant = "atlas"
+backend = "claude"
+provider = "northwind-plan"
+model = "nw-atlas-2"
+effort = "medium"
+stability = "stable"
+default = true
+when = "Specified implementation from a Northwind session."
+why = "The head model at medium."
+since = "2030-01-03"
+
+[[seat]]
+profile = "implement"
+variant = "atlas-high"
+backend = "claude"
+provider = "northwind-plan"
+model = "nw-atlas-2"
+effort = "high"
+stability = "stable"
+when = "Implementation that needs the head model's standing tier."
+why = "High is the head model's working tier."
+since = "2030-01-03"
+
+[[seat]]
+profile = "implement"
+variant = "trial"
+backend = "pi"
+provider = "flat-pool"
+model = "orbit-trial"
+effort = "high"
+stability = "experimental"
+when = "Operator-directed trial implementation."
+why = "The trial model is unmeasured."
+since = "2030-01-03"
+
+[[fallback]]
+profile = "implement"
+from_provider = "northwind-plan"
+backend = "codex"
+
+[[profile]]
+id = "plan"
+purpose = "read-only technical planning"
+escalation_sources = ["review"]
+
+[[seat]]
+profile = "plan"
+backend = "codex"
+provider = "tessel-plan"
+model = "ts-3-prime"
+effort = "xhigh"
+stability = "stable"
+when = "Planning on the Tessel window."
+why = "The strong Tessel tier plans."
+since = "2030-01-03"
+
+[[seat]]
+profile = "plan"
+variant = "sage"
+backend = "claude"
+provider = "northwind-plan"
+model = "nw-sage-2"
+effort = "high"
+stability = "stable"
+default = true
+when = "Planning from a Northwind session."
+why = "The largest model plans at its standing tier."
+since = "2030-01-03"
+
+[[seat]]
+profile = "plan"
+variant = "flat"
+backend = "pi"
+provider = "flat-pool"
+model = "orbit-flash"
+effort = "max"
+stability = "stable"
+default = true
+when = "Planning from pi."
+why = "The flat pool's default."
+since = "2030-01-03"
+
+[[profile]]
+id = "review"
+purpose = "read-only correctness review"
+escalation_sources = ["plan"]
+
+[[seat]]
+profile = "review"
+backend = "codex"
+provider = "tessel-plan"
+model = "ts-3-prime"
+effort = "xhigh"
+stability = "stable"
+when = "Review on the Tessel window."
+why = "The strong Tessel tier reviews."
+since = "2030-01-03"
+
+[[seat]]
+profile = "review"
+variant = "atlas"
+backend = "claude"
+provider = "northwind-plan"
+model = "nw-atlas-2"
+effort = "xhigh"
+stability = "stable"
+default = true
+when = "Review from a Northwind session."
+why = "The head model's deep tier reviews."
+since = "2030-01-03"
+
+[[seat]]
+profile = "review"
+variant = "flat"
+backend = "pi"
+provider = "flat-pool"
+model = "orbit-flash"
+effort = "max"
+stability = "stable"
+default = true
+when = "Review from pi."
+why = "The flat pool's default."
+since = "2030-01-03"
+
+[[fallback]]
+profile = "review"
+from_provider = "tessel-plan"
+backend = "claude"
+variant = "atlas"
+
+[[seat_rank]]
+model = "nw-atlas-2"
+effort = "medium"
+pool = "northwind-plan"
+rank = 2
+
+[[seat_rank]]
+model = "nw-atlas-2"
+effort = "high"
+pool = "northwind-plan"
+rank = 3
+
+[[seat_rank]]
+model = "nw-atlas-2"
+effort = "xhigh"
+pool = "northwind-plan"
+rank = 4
+
+[[seat_rank]]
+model = "nw-swift-2"
+effort = "high"
+pool = "northwind-plan"
+rank = 1
+
+[[seat_rank]]
+model = "ts-3-core"
+effort = "low"
+pool = "tessel-plan"
+rank = 1
+
+[[seat_rank]]
+model = "ts-3-core"
+effort = "max"
+pool = "tessel-plan"
+rank = 2
+
+[[seat_rank]]
+model = "ts-3-prime"
+effort = "xhigh"
+pool = "tessel-plan"
+rank = 3
+
+[[seat_rank]]
+model = "orbit-flash"
+effort = "low"
+pool = "flat-pool"
+rank = 1
+
+[[seat_rank]]
+model = "orbit-flash"
+effort = "max"
+pool = "flat-pool"
+rank = 1
+
+[[seat_rank]]
+model = "nw-sage-2"
+effort = "high"
+pool = "northwind-plan"
+rank = 5
+
+[[repository]]
+id = "harness"
+name = "fixture-harness"
+
+[[accessor]]
+id = "instructions"
+command = ["agent-harness", "delegation-sources"]
+expected_sources = ["settings"]
+
+[[consumer]]
+id = "harness-agents"
+repository = "harness"
+path = "agents"
+checks = ["roster-literals", "agent-frontmatter"]
+generated = "claude-agents"
+
+[[proxy]]
+consumer = "harness-agents"
+path = "proxy.md"
+model = "swift"
+effort = "low"
+
+[[pin]]
+consumer = "harness-agents"
+path = "implement-atlas.md"
+model = "atlas"
+effort = "medium"
+profile = "implement"
+variant = "atlas"
+backend = "claude"
+generated = true

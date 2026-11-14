@@ -1,0 +1,856 @@
+# What `resolve` answers: pools, profiles, seats, fallbacks, ranks and consumer pins.
+# Written in canonical form; `agent-routing format` rewrites a hand edit into it.
+
+schema = "agent-routing-policy/1"
+
+[review]
+clearance = 2
+
+[admission]
+max_age_seconds = 300
+codex_author_families = ["openai", "gpt-5.6", "gpt-5.5"]
+codex_review_backend = "claude"
+other_review_backend = "codex"
+claude_minimum_remaining = 50
+
+[[pool]]
+provider = "opencode-go"
+plan = "OpenCode Go, an optional flat subscription"
+serves = ["gpt-5.6-luna", "gpt-6-luna", "glm-5.3-flash", "mimo-v2.6-flash", "mimo-v2.6-pro", "deepseek-flash"]
+pays_for = "openai-codex for the GPT frontier tiers, anthropic for the Claude models"
+why = "A dollar-metered small plan whose value is cheap-tier capacity off both standing windows, not a cheaper way to buy a frontier tier."
+
+[[pool]]
+provider = "openai-codex"
+plan = "the Codex subscription"
+serves = ["gpt-5.6-sol", "gpt-5.6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-luna", "gpt-daybreak-blue"]
+pays_for = "itself: Sol runs here and nowhere else"
+usage_key = "codex"
+windows = ["seven_day"]
+why = "Sol belongs to the subscription that already covers it, and pi and opencode reach it with the same OpenAI login."
+
+[[pool]]
+provider = "anthropic"
+plan = "the Claude subscription"
+serves = ["opus-5.5", "fable-5.2", "sonnet-5.5", "haiku-5.5"]
+pays_for = "itself: never reach a Claude model through metered credits when the subscription covers it"
+usage_key = "claude"
+windows = ["five_hour", "seven_day"]
+scarcer_than = ["openai-codex"]
+why = "Claude models belong to the subscription that already covers them, never to metered credits."
+
+[[family_exception]]
+reviewer = "fable-5.2"
+authors = ["opus-5.5", "sonnet-5.5", "haiku-5.5"]
+why = "Fable 5.2 sits above Opus 5.5, Sonnet 5.5 and Haiku 5.5 in the Claude family and may clear their work, by operator direction."
+since = "2026-11-10"
+
+[[fence]]
+model = "muse-spark-1.2"
+profile = "review"
+why = "A probationary adversarial reviewer is never the reviewer of record alone."
+since = "2026-08-23"
+
+[[profile]]
+id = "extract"
+purpose = "one fixed-input, fixed-output classification, extraction, aggregation, or bounded summary"
+escalation_sources = ["plan", "review"]
+
+[[seat]]
+profile = "extract"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6-luna"
+effort = "low"
+stability = "stable"
+when = "One fixed-shape classification, extraction, aggregation or bounded summary on the Codex window."
+why = "Fixed-shape labor belongs on the cheapest Luna tier, and nothing agentic routes to low while its effort cliff is unmeasured."
+since = "2026-09-23"
+
+[[seat]]
+profile = "extract"
+variant = "deepseek-go"
+backend = "pi"
+provider = "opencode-go"
+model = "deepseek-flash"
+effort = "max"
+stability = "stable"
+default = true
+when = "Fixed-shape calls from a pi session on the Go pool."
+why = "Pi's default for every GPT profile is DeepSeek Flash at max on the Go pool, by operator direction, and every identifier it emits is checked against source."
+since = "2026-09-23"
+
+[[seat]]
+profile = "extract"
+variant = "haiku"
+backend = "claude"
+provider = "anthropic"
+model = "haiku-5.5"
+effort = "high"
+stability = "stable"
+default = true
+when = "Fixed-shape calls from a Claude session on the Claude subscription."
+why = "Haiku at high is the cheap Claude-subscription seat, reached only through the claude backend because API-billed routes pay a five-fold prompt surcharge above 100k tokens."
+since = "2026-10-09"
+
+[[profile]]
+id = "explore"
+purpose = "read-only codebase reconnaissance and source mapping without a verdict"
+escalation_sources = ["plan", "review"]
+
+[[seat]]
+profile = "explore"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6-luna"
+effort = "max"
+stability = "stable"
+when = "Read-only reconnaissance and source mapping on the Codex window."
+why = "Reconnaissance is bounded reading rather than judgment, so it takes the implementation workhorse."
+since = "2026-09-23"
+
+[[seat]]
+profile = "explore"
+variant = "deepseek-go"
+backend = "pi"
+provider = "opencode-go"
+model = "deepseek-flash"
+effort = "low"
+stability = "stable"
+default = true
+when = "Wide read-only scout fan-out from a pi session on the Go pool."
+why = "Scouts fan out wide and the lead verifies every reported fact against source, so the operator chose low over max here."
+since = "2026-10-27"
+
+[[seat]]
+profile = "explore"
+variant = "haiku"
+backend = "claude"
+provider = "anthropic"
+model = "haiku-5.5"
+effort = "high"
+stability = "stable"
+default = true
+when = "Read-only scouts from a Claude session."
+why = "The cheap Claude-subscription seat, whose cited reports are leads to verify rather than established facts."
+since = "2026-10-09"
+
+[[seat]]
+profile = "explore"
+variant = "opus"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "high"
+stability = "stable"
+when = "Reconnaissance on the Claude window whose reading needs judgment, named with --variant opus."
+why = "Opus reads at the head model's standing tier when a scout's judgment would not do."
+since = "2026-10-24"
+
+[[profile]]
+id = "implement"
+purpose = "bounded production work whose targets and acceptance probes are already named"
+escalation_sources = ["execute"]
+
+[[seat]]
+profile = "implement"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6-luna"
+effort = "max"
+stability = "stable"
+when = "Bounded production work whose targets and acceptance probes the brief names, on the Codex window."
+why = "GPT-6 Luna holds the workhorse seat at the tier 5.6 Luna max earned, six points over Sol medium at a third of its cost, because its own effort curve is unmeasured."
+since = "2026-09-23"
+
+[[seat]]
+profile = "implement"
+variant = "terra-medium"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-terra"
+effort = "medium"
+stability = "stable"
+when = "Codex implementation a lead names Terra for, at medium."
+why = "The operator's Pareto comparison places Terra medium, high and xhigh on the worthwhile effort line."
+since = "2026-10-26"
+
+[[seat]]
+profile = "implement"
+variant = "terra-high"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-terra"
+effort = "high"
+stability = "stable"
+when = "Codex implementation a lead names Terra for, at high."
+why = "The operator's Pareto comparison places Terra medium, high and xhigh on the worthwhile effort line."
+since = "2026-10-26"
+
+[[seat]]
+profile = "implement"
+variant = "terra-xhigh"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-terra"
+effort = "xhigh"
+stability = "stable"
+when = "Codex implementation a lead names Terra for, at xhigh."
+why = "The operator's Pareto comparison places Terra medium, high and xhigh on the worthwhile effort line."
+since = "2026-10-26"
+
+[[seat]]
+profile = "implement"
+variant = "deepseek-go"
+backend = "pi"
+provider = "opencode-go"
+model = "deepseek-flash"
+effort = "max"
+stability = "stable"
+default = true
+when = "Bounded implementation from a pi session on the Go pool."
+why = "Pi's default for every GPT profile is DeepSeek Flash at max on the Go pool, by operator direction, and every identifier it emits is checked against source."
+since = "2026-09-23"
+
+[[seat]]
+profile = "implement"
+variant = "opus-low"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "low"
+stability = "stable"
+default = true
+when = "First-party Claude implementation of a brief that names targets and probes, inspected by the lead."
+why = "Operator direction of 2026-10-24: Opus low is the default Claude implementer, and with high it covers most work."
+since = "2026-10-24"
+
+[[seat]]
+profile = "implement"
+variant = "opus-medium"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "medium"
+stability = "stable"
+when = "A slice low may miss that does not need the lead's depth."
+why = "Every Opus tier from low to xhigh is stable, and medium sits between the two that cover most work."
+since = "2026-10-24"
+
+[[seat]]
+profile = "implement"
+variant = "opus-high"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "high"
+stability = "stable"
+when = "Implementation that needs the lead's judgment."
+why = "High is the head model's standing tier."
+since = "2026-10-24"
+
+[[seat]]
+profile = "implement"
+variant = "opus-xhigh"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "xhigh"
+stability = "stable"
+when = "Implementation that needs hard reasoning."
+why = "Xhigh is the deep Opus tier, selected on purpose rather than as the routine seat."
+since = "2026-10-24"
+
+[[profile]]
+id = "generate"
+purpose = "high-volume or heavily steered candidate generation whose output is raw material rather than a deliverable: drafts to mine, options to sweep, defect candidates to adjudicate"
+
+[[seat]]
+profile = "generate"
+backend = "pi"
+provider = "opencode-go"
+model = "deepseek-flash"
+effort = "max"
+stability = "stable"
+when = "Steered candidate generation whose output a lead or reviewer-tier model checks before any use."
+why = "Generation is where Flash's speed, million-token context and price pay, on the Go pool pi's defaults already draw."
+since = "2026-09-23"
+
+[[profile]]
+id = "interactive"
+purpose = "default interactive Pi parent session before a task-specific child route is selected"
+
+[[seat]]
+profile = "interactive"
+backend = "pi"
+provider = "opencode-go"
+model = "deepseek-flash"
+effort = "max"
+stability = "stable"
+when = "The default interactive pi parent session before a child route is chosen."
+why = "Pi sessions default to DeepSeek Flash at max on the Go pool, by operator direction."
+since = "2026-09-23"
+
+[[profile]]
+id = "plan"
+purpose = "read-only technical planning where feasibility, failure modes, and ordered execution are the work"
+escalation_sources = ["review"]
+
+[[seat]]
+profile = "plan"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-sol"
+effort = "xhigh"
+stability = "stable"
+when = "Read-only technical planning delegated to the Codex window."
+why = "Operator direction of 2026-10-29: a lead on another harness delegates planning to Sol at xhigh, the strongest Codex tier."
+since = "2026-10-29"
+
+[[seat]]
+profile = "plan"
+variant = "deepseek-go"
+backend = "pi"
+provider = "opencode-go"
+model = "deepseek-flash"
+effort = "max"
+stability = "stable"
+default = true
+when = "Planning from a pi session on the Go pool."
+why = "Pi's default for every GPT profile is DeepSeek Flash at max on the Go pool, by operator direction, and every identifier it emits is checked against source."
+since = "2026-09-23"
+
+[[seat]]
+profile = "plan"
+variant = "astra-xhigh"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6-astra"
+effort = "xhigh"
+stability = "stable"
+when = "High-stakes planning, or resolving an argued discussion, named by variant."
+why = "Astra xhigh is the try-harder Codex planning tier."
+since = "2026-09-23"
+
+[[seat]]
+profile = "plan"
+variant = "opus"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "high"
+stability = "stable"
+default = true
+when = "Planning on the Claude window, the head default `seats` reports."
+why = "Planning is the head model's own seat, at its standing tier."
+since = "2026-10-24"
+
+[[seat]]
+profile = "plan"
+variant = "opus-xhigh"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "xhigh"
+stability = "stable"
+when = "Planning on the Claude window that needs deep reasoning."
+why = "Xhigh is the head model's routing ceiling and its deep-reasoning tier."
+since = "2026-10-24"
+
+[[profile]]
+id = "execute"
+purpose = "broad or multi-slice implementation where technical judgment and long-horizon persistence remain material"
+
+[[seat]]
+profile = "execute"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-sol"
+effort = "xhigh"
+stability = "stable"
+when = "Broad or multi-slice implementation where technical judgment and long-horizon persistence remain material."
+why = "Judgment-bearing arcs take the Codex-side technical peer, which carries a whole multi-slice arc in one run, rather than the bounded-work Luna seat."
+since = "2026-10-06"
+
+[[seat]]
+profile = "execute"
+variant = "deepseek-go"
+backend = "pi"
+provider = "opencode-go"
+model = "deepseek-flash"
+effort = "max"
+stability = "stable"
+default = true
+when = "Judgment-bearing execution from a pi session on the Go pool."
+why = "Pi's default for every GPT profile is DeepSeek Flash at max on the Go pool, by operator direction, and every identifier it emits is checked against source."
+since = "2026-09-23"
+
+[[seat]]
+profile = "execute"
+variant = "opus"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "low"
+stability = "stable"
+default = true
+when = "Execution on the Claude window where a wrong result is not costly."
+why = "On the Claude window the lead picks the tier by the work's stakes, and low is the default."
+since = "2026-10-24"
+
+[[seat]]
+profile = "execute"
+variant = "opus-high"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "high"
+stability = "stable"
+when = "Execution on the Claude window where a wrong result is costly."
+why = "High is the head model's standing tier, bought where the stakes justify it."
+since = "2026-10-24"
+
+[[fallback]]
+profile = "execute"
+from_provider = "openai-codex"
+backend = "claude"
+variant = "opus"
+
+[[fallback]]
+profile = "execute"
+from_provider = "anthropic"
+backend = "codex"
+
+[[profile]]
+id = "review"
+purpose = "read-only correctness and regression review of a bounded behavior-affecting change"
+escalation_sources = ["plan"]
+
+[[seat]]
+profile = "review"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-sol"
+effort = "xhigh"
+stability = "stable"
+when = "Read-only correctness and regression review of a behavior-affecting change, the first review gate."
+why = "Review moved to GPT-6.1 Sol on a 2026-09-29 field report of audits level with Astra's at about half the price, and xhigh is the operator's standing tier."
+since = "2026-10-06"
+
+[[seat]]
+profile = "review"
+variant = "deepseek-go"
+backend = "pi"
+provider = "opencode-go"
+model = "deepseek-flash"
+effort = "max"
+stability = "stable"
+default = true
+when = "Review from a pi session on the Go pool."
+why = "Pi's default for every GPT profile is DeepSeek Flash at max on the Go pool, by operator direction, and every identifier it emits is checked against source."
+since = "2026-09-23"
+
+[[seat]]
+profile = "review"
+variant = "opus"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "xhigh"
+stability = "stable"
+default = true
+when = "First-party Claude review, and the independent reader of GPT-authored diffs."
+why = "First-party review runs at xhigh, the deep tier above the head model's standing high, so GPT authors have a reviewer outside the Codex pool."
+since = "2026-10-06"
+
+[[seat]]
+profile = "review"
+variant = "astra"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6-astra"
+effort = "medium"
+stability = "stable"
+when = "A second Codex-side judgment beside the Sol review gate, named by variant."
+why = "Astra medium reads alike with high on the operator's evidence, so the lower tier holds the variant."
+since = "2026-09-29"
+
+[[seat]]
+profile = "review"
+variant = "high-stakes"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6-astra"
+effort = "xhigh"
+stability = "stable"
+when = "Review where a wrong approval is expensive: irreversible migrations, security boundaries, outside blast radius."
+why = "Astra xhigh is the try-harder Codex tier for high-stakes judgment."
+since = "2026-09-23"
+
+[[seat]]
+profile = "review"
+variant = "cyber"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-daybreak-blue"
+effort = "xhigh"
+stability = "stable"
+when = "Security-sensitive read-only review the standing Sol seat refuses on a cybersecurity flag, named by variant only."
+why = "Daybreak Blue is GPT-5.6 Sol with safeguards tuned for authorized defensive work, and an xhigh run completed a review GPT-6.1 Sol had refused."
+since = "2026-11-05"
+
+[[profile]]
+id = "design"
+purpose = "read-only judgment on UX, copy, API ergonomics, or architectural simplicity"
+
+[[seat]]
+profile = "design"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "high"
+stability = "stable"
+when = "Read-only judgment on UX, copy, API ergonomics or architectural simplicity."
+why = "Taste is the head model's axis, so design judgment takes its standing tier."
+since = "2026-10-24"
+
+[[seat]]
+profile = "design"
+variant = "xhigh"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "xhigh"
+stability = "stable"
+when = "Deep design review."
+why = "Xhigh is the deep Opus tier."
+since = "2026-10-24"
+
+[[profile]]
+id = "visual"
+purpose = "visual and identity design: the look of an interface, mockups, palettes, marks and icons, delivered as preview artifacts or a design spec"
+
+[[seat]]
+profile = "visual"
+backend = "claude"
+provider = "anthropic"
+model = "fable-5.2"
+effort = "high"
+stability = "stable"
+when = "The look of an interface, mockups, palettes, marks and icons, as preview artifacts or a design spec."
+why = "Operator direction of 2026-11-09, after adopting Fable 5.2's tray redesign and identity whole; high is the vendor default and the reasonable ceiling."
+since = "2026-11-09"
+
+[[seat]]
+profile = "visual"
+variant = "medium"
+backend = "claude"
+provider = "anthropic"
+model = "fable-5.2"
+effort = "medium"
+stability = "stable"
+when = "Visual work that does not need high's depth."
+why = "Medium buys two index points over low for +23%, a good increase for a small cost, by operator direction."
+since = "2026-11-09"
+
+[[profile]]
+id = "computer-use"
+purpose = "explicit visible-desktop tasks with bounded context and retained follow-ups"
+
+[[seat]]
+profile = "computer-use"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-sol"
+effort = "low"
+stability = "experimental"
+when = "Explicit visible-desktop tasks with bounded context and retained follow-ups."
+why = "Low is the experimental computer-use default, and task outcomes establish whether it suffices."
+since = "2026-09-29"
+
+[[seat]]
+profile = "computer-use"
+backend = "pi"
+provider = "openai-codex"
+model = "gpt-6.1-sol"
+effort = "low"
+stability = "experimental"
+when = "Explicit visible-desktop tasks with bounded context and retained follow-ups."
+why = "Low is the experimental computer-use default, and task outcomes establish whether it suffices."
+since = "2026-09-29"
+
+[[seat]]
+profile = "computer-use"
+variant = "terra-medium"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-terra"
+effort = "medium"
+stability = "experimental"
+when = "Bounded visual desktop tasks compared on Terra."
+why = "Medium is GPT-6.1 Terra's documented default effort, run as an opt-in comparison."
+since = "2026-11-11"
+
+[[seat]]
+profile = "computer-use"
+variant = "medium"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-sol"
+effort = "medium"
+stability = "experimental"
+when = "Computer-use comparison at medium, named by variant."
+why = "An explicit comparison tier with no automatic escalation or claimed effort curve."
+since = "2026-09-29"
+
+[[seat]]
+profile = "computer-use"
+variant = "medium"
+backend = "pi"
+provider = "openai-codex"
+model = "gpt-6.1-sol"
+effort = "medium"
+stability = "experimental"
+when = "Computer-use comparison at medium, named by variant."
+why = "An explicit comparison tier with no automatic escalation or claimed effort curve."
+since = "2026-09-29"
+
+[[seat]]
+profile = "computer-use"
+variant = "high"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-sol"
+effort = "high"
+stability = "experimental"
+when = "Computer-use comparison at high, named by variant."
+why = "An explicit comparison tier with no automatic escalation or claimed effort curve."
+since = "2026-09-29"
+
+[[seat]]
+profile = "computer-use"
+variant = "high"
+backend = "pi"
+provider = "openai-codex"
+model = "gpt-6.1-sol"
+effort = "high"
+stability = "experimental"
+when = "Computer-use comparison at high, named by variant."
+why = "An explicit comparison tier with no automatic escalation or claimed effort curve."
+since = "2026-09-29"
+
+[[seat]]
+profile = "computer-use"
+variant = "xhigh"
+backend = "codex"
+provider = "openai-codex"
+model = "gpt-6.1-sol"
+effort = "xhigh"
+stability = "experimental"
+when = "Computer-use comparison at xhigh, named by variant."
+why = "An explicit comparison tier with no automatic escalation or claimed effort curve."
+since = "2026-09-29"
+
+[[seat]]
+profile = "computer-use"
+variant = "opus"
+backend = "claude"
+provider = "anthropic"
+model = "opus-5.5"
+effort = "medium"
+stability = "experimental"
+when = "Computer use on the Claude window."
+why = "An experimental comparison route on the Claude subscription."
+since = "2026-09-25"
+
+[[seat_rank]]
+model = "opus-5.5"
+effort = "xhigh"
+pool = "anthropic"
+rank = 5
+
+[[seat_rank]]
+model = "opus-5.5"
+effort = "high"
+pool = "anthropic"
+rank = 4
+
+[[seat_rank]]
+model = "opus-5.5"
+effort = "medium"
+pool = "anthropic"
+rank = 3
+
+[[seat_rank]]
+model = "opus-5.5"
+effort = "low"
+pool = "anthropic"
+rank = 2
+
+[[seat_rank]]
+model = "fable-5.2"
+effort = "medium"
+pool = "anthropic"
+rank = 5
+
+[[seat_rank]]
+model = "fable-5.2"
+effort = "high"
+pool = "anthropic"
+rank = 6
+
+[[seat_rank]]
+model = "haiku-5.5"
+effort = "high"
+pool = "anthropic"
+rank = 1
+
+[[seat_rank]]
+model = "gpt-daybreak-blue"
+effort = "xhigh"
+pool = "openai-codex"
+rank = 2
+
+[[seat_rank]]
+model = "deepseek-flash"
+effort = "low"
+pool = "opencode-go"
+rank = 1
+
+[[seat_rank]]
+model = "deepseek-flash"
+effort = "max"
+pool = "opencode-go"
+rank = 1
+
+[[seat_rank]]
+model = "gpt-6-astra"
+effort = "medium"
+pool = "openai-codex"
+rank = 4
+
+[[seat_rank]]
+model = "gpt-6-astra"
+effort = "xhigh"
+pool = "openai-codex"
+rank = 5
+
+[[seat_rank]]
+model = "gpt-6-luna"
+effort = "low"
+pool = "openai-codex"
+rank = 1
+
+[[seat_rank]]
+model = "gpt-6-luna"
+effort = "max"
+pool = "openai-codex"
+rank = 2
+
+[[seat_rank]]
+model = "gpt-6.1-terra"
+effort = "medium"
+pool = "openai-codex"
+rank = 2
+
+[[seat_rank]]
+model = "gpt-6.1-terra"
+effort = "high"
+pool = "openai-codex"
+rank = 2
+
+[[seat_rank]]
+model = "gpt-6.1-terra"
+effort = "xhigh"
+pool = "openai-codex"
+rank = 2
+
+[[seat_rank]]
+model = "gpt-6.1-sol"
+effort = "xhigh"
+pool = "openai-codex"
+rank = 3
+
+[[repository]]
+id = "skills"
+name = "agent-harnesses"
+
+[[repository]]
+id = "delegate"
+name = "agent-delegate"
+
+[[accessor]]
+id = "instructions"
+command = ["agent-harness", "delegation-sources"]
+expected_sources = ["settings", "shared-fragments", "pi-fragments", "pi-agents", "pi-subagent"]
+
+[[consumer]]
+id = "delegate-agents"
+repository = "delegate"
+path = "agents"
+checks = ["roster-literals", "agent-frontmatter"]
+generated = "claude-agents"
+
+[[consumer]]
+id = "delegate-sources"
+repository = "delegate"
+path = "src"
+checks = ["roster-literals"]
+
+[[proxy]]
+consumer = "delegate-agents"
+path = "codex.md"
+model = "opus"
+effort = "low"
+
+[[proxy]]
+consumer = "delegate-agents"
+path = "pi.md"
+model = "opus"
+effort = "low"
+
+[[proxy]]
+consumer = "delegate-agents"
+path = "opencode.md"
+model = "opus"
+effort = "low"
+
+[[pin]]
+consumer = "delegate-agents"
+path = "implement-opus-low.md"
+model = "opus"
+effort = "low"
+profile = "implement"
+variant = "opus-low"
+backend = "claude"
+generated = true
+
+[[pin]]
+consumer = "delegate-agents"
+path = "implement-opus-medium.md"
+model = "opus"
+effort = "medium"
+profile = "implement"
+variant = "opus-medium"
+backend = "claude"
+generated = true
+
+[[pin]]
+consumer = "delegate-agents"
+path = "implement-opus-high.md"
+model = "opus"
+effort = "high"
+profile = "implement"
+variant = "opus-high"
+backend = "claude"
+generated = true
+
+[[pin]]
+consumer = "delegate-agents"
+path = "implement-opus-xhigh.md"
+model = "opus"
+effort = "xhigh"
+profile = "implement"
+variant = "opus-xhigh"
+backend = "claude"
+generated = true

@@ -76,10 +76,10 @@ class CheckChangeTest(unittest.TestCase):
     def test_a_fourth_witness_is_refused(self):
         """Claim: a change naming four distinct witnesses is refused before any
         of them runs. Rejects a gate whose witness phase grows with the change."""
-        names = ("test_seats.py::SeatViewTest.test_one", "test_seats.py::SeatViewTest.test_two",
-                 "test_quota.py::QuotaAdmissionTest.test_three", "test_quota.py::QuotaAdmissionTest.test_four")
+        names = ("test_stores.py::EmitterTest.test_one", "test_stores.py::EmitterTest.test_two",
+                 "test_resolve.py::ResolveTest.test_three", "test_resolve.py::ResolveTest.test_four")
         trailers = "".join(f"Witness: tests/{name}\n" for name in names)
-        self.commit(f"test: name four witnesses\n\n{trailers}", {"tests/test_seats.py": "\n"})
+        self.commit(f"test: name four witnesses\n\n{trailers}", {"tests/test_stores.py": "\n"})
         result = self.check()
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn(f"'tests/{names[3]}' is refused", result.stderr)

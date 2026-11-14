@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import pathlib
 import re
-import tomllib
+
+import stores
 
 STABILITIES = {"stable", "probationary", "experimental"}
 
@@ -71,23 +73,17 @@ class RouteRefusal(ValueError):
         return {"schema": REFUSAL_SCHEMA, "kind": self.kind, "message": self.message, **self.fields}
 
 
-def load_toml(path: pathlib.Path):
-    with path.open("rb") as handle:
-        return tomllib.load(handle)
+def data(root: pathlib.Path) -> stores.Data:
+    return stores.load(root)
 
 
 def route_version(root: pathlib.Path) -> str:
-    digest = hashlib.sha256()
-    for relative in ("routing/models.toml", "routing/profiles.toml", "routing/delegation.toml"):
-        digest.update(relative.encode())
-        digest.update(b"\0")
-        digest.update((root / relative).read_bytes())
-        digest.update(b"\0")
-    return digest.hexdigest()[:12]
+    """SHA-256 over the catalog and policy stores' paths and bytes, cut to twelve hex digits."""
+    return data(root).version
 
 
 def validation_problems(root: pathlib.Path) -> list[str]:
-    """Every problem the manifests carry, structural and economic alike."""
+    """Every problem the stores carry, structural and economic alike."""
     return structural_problems(root) + pool_problems(root)
 
 
@@ -95,11 +91,11 @@ def pool_problems(root: pathlib.Path) -> list[str]:
     """Routes that spend a pool's allowance on a model it does not serve.
 
     Kept apart from structural validity because it is a property of one route
-    rather than of the manifest: a violation in some other profile must not
+    rather than of the data: a violation in some other profile must not
     block resolving an unrelated one, and it is the only class of problem a
     caller may deliberately override.
     """
-    profiles = load_toml(root / "routing" / "profiles.toml").get("profile", [])
+    profiles = data(root).profiles
     by_pool = pools(root)
     problems: list[str] = []
     for profile in profiles:
@@ -112,13 +108,11 @@ def pool_problems(root: pathlib.Path) -> list[str]:
 
 
 def pools(root: pathlib.Path) -> dict[str, dict]:
-    delegation = load_toml(root / "routing" / "delegation.toml")
-    return {pool["provider"]: pool for pool in delegation.get("pool", [])}
+    return {pool["provider"]: pool for pool in data(root).pools}
 
 
 def backends(root: pathlib.Path) -> dict[str, dict]:
-    delegation = load_toml(root / "routing" / "delegation.toml")
-    return {backend["id"]: backend for backend in delegation.get("backend", [])}
+    return {backend["id"]: backend for backend in data(root).backends}
 
 
 def _effort_list(value: object) -> bool:
@@ -174,8 +168,8 @@ def model_effort_facts(root: pathlib.Path, requested_model: str, effort: str | N
     validation the same fence without making it a subprocess copy of
     ``bin/routing-check``.
     """
-    models = load_toml(root / "routing" / "models.toml").get("model", [])
-    profiles = load_toml(root / "routing" / "profiles.toml").get("profile", [])
+    models = data(root).models
+    profiles = data(root).profiles
     aliases = {
         route["backend_model"]: route["model"]
         for profile in profiles
@@ -207,7 +201,7 @@ def prohibited_efforts(model: dict | None, effort: str | None = None) -> list[st
     return [
         entry["effort"]
         for entry in model.get("effort", [])
-        if str(entry.get("use", "")).startswith("prohibited")
+        if entry.get("prohibited") is True
         and (effort is None or entry["effort"] == effort)
     ]
 
@@ -270,7 +264,7 @@ def _tier_rank(models: list[dict], model_id: str, effort: str, pool: str) -> int
 def rank_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict]) -> list[str]:
     """Ranks are operator policy that orders seated tiers within one pool.
 
-    A pool is the provider a route draws on, declared in ``delegation.toml``
+    A pool is the provider a route draws on, declared as a policy ``pool``
     or not: an undeclared provider is unconstrained, and a tier it seats is
     ranked under its name like any other. Every seated tier carries a rank for
     each pool that seats it and no other tier carries one; a rank never falls as effort rises within one model and
@@ -364,97 +358,52 @@ def _family(model: dict) -> str:
     return model["family"].strip()
 
 
-def family_problems(models: list[dict], rows: object) -> list[str]:
-    """Why the manifest's ``[[family]]`` rows do not declare one family relation.
-
-    Each row's ``id`` and ``aliases`` must be family values roster models
-    carry, and a value may name only one family, so the relation partitions
-    the roster's families.
-    """
-    if not isinstance(rows, list):
-        return ["[[family]] must be an array of tables"]
-    known = {model["family"] for model in models if _family_value(model.get("family"))}
-    claimed: dict[str, object] = {}
-    problems: list[str] = []
-    for row in rows:
-        if not isinstance(row, dict) or set(row) != {"id", "aliases"}:
-            problems.append("[[family]]: each row declares exactly id and aliases")
-            continue
-        family_id, aliases = row["id"], row["aliases"]
-        if not isinstance(aliases, list) or not aliases:
-            problems.append(f"family {family_id!r}: aliases must be a nonempty list of roster families")
-            continue
-        for value in [family_id, *aliases]:
-            if not isinstance(value, str) or value not in known:
-                problems.append(f"family {family_id!r}: {value!r} is not a roster model family")
-            elif value in claimed:
-                problems.append(f"family {family_id!r}: {value!r} already names family {claimed[value]!r}")
-            else:
-                claimed[value] = family_id
-    return problems
-
-
 def family_relation(root: pathlib.Path) -> dict[str, list[str]]:
-    """Each family value a ``[[family]]`` row names, with every value of its family.
+    """Each lineage a catalog ``[[family]]`` row names, with every lineage of its family.
 
     The one family relation review independence reads: ``assess`` calls a
     reviewer and an author the same family, and ``resolve review`` excludes a
-    seat for an author, exactly when the author's family is among the
-    reviewer's family values. A value no row names is a family of its own. A
-    manifest whose rows do not partition the roster's families refuses rather
-    than letting a family slip out of its relation.
+    seat for an author, exactly when the author's lineage is among the
+    reviewer's family values. A lineage no row names is a family of its own.
     """
-    manifest = load_toml(root / "routing" / "models.toml")
-    rows = manifest.get("family", [])
-    problems = family_problems(manifest.get("model", []), rows)
-    if problems:
-        raise RouteRefusal("manifest-invalid", "; ".join(problems))
-    return {value: [row["id"], *row["aliases"]] for row in rows for value in [row["id"], *row["aliases"]]}
+    return {value: row["values"] for row in data(root).families for value in row["values"]}
 
 
-def family_exception_problems(models: list[dict], profiles: list[dict], families: list[dict], rows: object) -> list[str]:
-    """Why the manifest's ``[[family_exception]]`` rows do not each declare one usable exception.
+def family_exception_problems(models: list[dict], profiles: list[dict], relation: dict[str, list[str]],
+                              rows: list[dict]) -> list[str]:
+    """Why the policy's ``[[family_exception]]`` rows do not each declare one usable exception.
 
-    A row names a roster ``reviewer`` and a nonempty list of roster
-    ``authors`` of its family other than itself, with a ``note`` naming who
-    directed it. A reviewer appears in one row and holds no seat on the
-    ``review`` profile, so ``resolve review`` and ``assess`` never disagree
-    about a seat. ``families`` must already be a valid ``[[family]]`` relation.
+    A row names a catalog ``reviewer`` and a nonempty list of catalog
+    ``authors`` of its family other than itself. A reviewer appears in one
+    row and holds no seat on the ``review`` profile, so ``resolve review`` and
+    ``assess`` never disagree about a seat.
     """
-    if not isinstance(rows, list):
-        return ["[[family_exception]] must be an array of tables"]
     by_id = {model["id"]: model for model in models if isinstance(model.get("id"), str)}
-    relation = {value: [row["id"], *row["aliases"]] for row in families for value in [row["id"], *row["aliases"]]}
     review = next((profile for profile in profiles if profile.get("id") == "review"), {})
     review_models = {route.get("model") for route in [review, *review.get("variant", [])]} if review else set()
     seen: set[str] = set()
     problems: list[str] = []
     for row in rows:
-        if not isinstance(row, dict) or set(row) != {"reviewer", "authors", "note"}:
-            problems.append("[[family_exception]]: each row declares exactly reviewer, authors and note")
-            continue
-        reviewer, authors = row["reviewer"], row["authors"]
-        if not isinstance(reviewer, str) or reviewer not in by_id:
-            problems.append(f"family exception {reviewer!r}: reviewer is not a roster model id")
+        reviewer, authors = row.get("reviewer"), row.get("authors", [])
+        where = f"{stores.POLICY} {stores.label('family_exception', row)}"
+        if reviewer not in by_id:
+            problems.append(f"{where}: reviewer is not a catalog model")
             continue
         if reviewer in seen:
-            problems.append(f"family exception {reviewer!r}: reviewer is already named by another row")
+            problems.append(f"{where}: reviewer is already named by another row")
         seen.add(reviewer)
-        if not _nonblank_string(row["note"]):
-            problems.append(f"family exception {reviewer!r}: note must say who directed it and when")
         if reviewer in review_models:
-            problems.append(f"family exception {reviewer!r}: reviewer holds a seat on the review profile")
-        if not isinstance(authors, list) or not authors:
-            problems.append(f"family exception {reviewer!r}: authors must be a nonempty list of roster model ids")
-            continue
+            problems.append(f"{where}: reviewer holds a seat on the review profile")
+        if not authors:
+            problems.append(f"{where}: authors must name at least one catalog model")
         reviewer_values = _family_values(relation, by_id[reviewer])
         for author in authors:
-            if not isinstance(author, str) or author not in by_id:
-                problems.append(f"family exception {reviewer!r}: {author!r} is not a roster model id")
+            if author not in by_id:
+                problems.append(f"{where}: {author!r} is not a catalog model")
             elif author == reviewer:
-                problems.append(f"family exception {reviewer!r}: a reviewer cannot except its own model")
+                problems.append(f"{where}: a reviewer cannot except its own model")
             elif _family(by_id[author]) not in reviewer_values:
-                problems.append(f"family exception {reviewer!r}: {author!r} is not of the reviewer's family")
+                problems.append(f"{where}: {author!r} is not of the reviewer's family")
     return problems
 
 
@@ -463,85 +412,54 @@ def family_exceptions(root: pathlib.Path) -> dict[str, list[str]]:
 
     The one reading of ``[[family_exception]]``: ``assess`` raises no
     ``same-family`` for exactly these pairs and lists the authors under
-    ``family_exception``. A manifest whose rows are invalid refuses.
+    ``family_exception``.
     """
-    manifest = load_toml(root / "routing" / "models.toml")
-    families = manifest.get("family", [])
-    rows = manifest.get("family_exception", [])
-    problems = family_problems(manifest.get("model", []), families) or family_exception_problems(
-        manifest.get("model", []), load_toml(root / "routing" / "profiles.toml").get("profile", []), families, rows)
-    if problems:
-        raise RouteRefusal("manifest-invalid", "; ".join(problems))
-    return {row["reviewer"]: list(row["authors"]) for row in rows}
+    return {row["reviewer"]: list(row["authors"]) for row in data(root).policy.get("family_exception", [])}
 
 
 def _family_values(relation: dict[str, list[str]], model: dict) -> list[str]:
-    """Every family value naming ``model``'s family: its row's id and aliases, else its own alone."""
+    """Every lineage of ``model``'s family: its row's carried lineages, else its own alone."""
     return relation.get(_family(model), [_family(model)])
 
 
-def clearance_problem(review: object) -> str | None:
-    """Why the manifest's ``[review]`` table does not declare one usable clearance floor."""
-    if not isinstance(review, dict) or set(review) != {"clearance"}:
-        return "[review] must declare exactly one clearance floor"
-    if type(review["clearance"]) is not int or review["clearance"] < 1:
-        return "[review].clearance must be a positive integer capability rank"
-    return None
-
-
 def clearance_floor(root: pathlib.Path) -> int:
-    """The capability rank a read must reach to clear review debt.
-
-    A manifest without a usable floor refuses rather than letting every read
-    clear.
-    """
-    review = load_toml(root / "routing" / "models.toml").get("review")
-    problem = clearance_problem(review)
-    if problem:
-        raise RouteRefusal("manifest-invalid", problem)
+    """The capability rank a read must reach to clear review debt."""
+    review = data(root).policy.get("review", {})
+    if type(review.get("clearance")) is not int or review["clearance"] < 1:
+        raise RouteRefusal("manifest-invalid", "[review].clearance must be a positive integer capability rank")
     return review["clearance"]
 
 
-def review_policy_problems(models: list[dict], profiles: list[dict], by_pool: dict[str, dict], families: list | None = None) -> list[str]:
-    """Every known tier has capability, and another family can meet its floor."""
-    from review_ladder import project, table_problems
-
-    return table_problems(project({"model": models, "family": families or []}, {"profile": profiles}))
-
-
 def structural_problems(root: pathlib.Path) -> list[str]:
-    profiles_path = root / "routing" / "profiles.toml"
-    profile_manifest = load_toml(profiles_path)
-    profiles = profile_manifest.get("profile", [])
-    models = load_toml(root / "routing" / "models.toml").get("model", [])
-    delegation = load_toml(root / "routing" / "delegation.toml")
+    """Every structural problem of the stores at `root`, computed once per loaded revision."""
+    loaded = data(root)
+    if loaded.structural is None:
+        loaded.structural = tuple(_structural_problems(root, loaded))
+    return list(loaded.structural)
+
+
+def _structural_problems(root: pathlib.Path, loaded: stores.Data) -> list[str]:
+    problems = stores.catalog_problems(loaded.catalog) + stores.policy_problems(loaded.policy, loaded.catalog)
+    if problems:
+        return problems
+    profiles = loaded.profiles
+    models = loaded.models
     by_model = {model["id"]: model for model in models}
-    by_backend = {backend["id"]: backend for backend in delegation.get("backend", [])}
-    problems: list[str] = []
-    admission = profile_manifest.get("admission")
-    if admission is not None:
-        if not isinstance(admission, dict) or set(admission) != {"max_age_seconds", "review"}:
-            problems.append("admission: expected max_age_seconds and review policy")
-        else:
-            age = admission["max_age_seconds"]
-            if type(age) is not int or age <= 0:
-                problems.append("admission: max_age_seconds must be a positive integer")
-            review = admission["review"]
-            keys = {"codex_author_families", "codex_review_backend", "other_review_backend", "claude_minimum_remaining"}
-            if not isinstance(review, dict) or set(review) != keys:
-                problems.append("admission.review: invalid policy keys")
-            else:
-                threshold = review["claude_minimum_remaining"]
-                if type(threshold) is not int or not 0 <= threshold < 100:
-                    problems.append("admission.review: threshold must be a percentage below 100")
-                families = review["codex_author_families"]
-                known_families = {_family(model) for model in models if _nonblank_string(model.get("family"))}
-                if (not isinstance(families, list) or not families
-                        or any(not isinstance(family, str) or family not in known_families for family in families)):
-                    problems.append("admission.review: author families must be known roster families")
-                for key in ("codex_review_backend", "other_review_backend"):
-                    if not isinstance(review[key], str) or review[key] not in by_backend:
-                        problems.append(f"admission.review: unknown backend in {key}")
+    by_backend = {backend["id"]: backend for backend in loaded.backends}
+    admission = loaded.policy["admission"]
+    where = f"{stores.POLICY} [admission]"
+    if admission["max_age_seconds"] <= 0:
+        problems.append(f"{where}: max_age_seconds must be a positive integer")
+    if not 0 <= admission["claude_minimum_remaining"] < 100:
+        problems.append(f"{where}: claude_minimum_remaining must be a percentage below 100")
+    known_families = {_family(model) for model in models}
+    if not admission["codex_author_families"] or any(
+            family not in known_families for family in admission["codex_author_families"]):
+        problems.append(f"{where}: codex_author_families must name catalog lineages")
+    for key in ("codex_review_backend", "other_review_backend"):
+        if admission[key] not in by_backend:
+            problems.append(f"{where}: {key} is not a catalog backend")
+    delegation = {"pool": loaded.pools}
     usage_keys = [pool.get("usage_key") for pool in delegation.get("pool", []) if "usage_key" in pool]
     if (any(not isinstance(key, str) or key not in {"codex", "claude"} for key in usage_keys)
             or len(usage_keys) != len(set(key for key in usage_keys if isinstance(key, str)))):
@@ -554,7 +472,7 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                 or any(window not in ("five_hour", "seven_day") for window in windows)):
             problems.append(f"pools: {pool.get('provider')} must declare the windows its plan has "
                             "(five_hour, seven_day)")
-    problems.extend(backend_effort_problems(delegation.get("backend", []), models))
+    problems.extend(backend_effort_problems(loaded.backends, models))
     by_pool = {pool["provider"]: pool for pool in delegation.get("pool", [])}
     for provider, pool in by_pool.items():
         scarcer_than = pool.get("scarcer_than", [])
@@ -652,8 +570,8 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                 tier = next((entry for entry in model.get("effort", []) if entry.get("effort") == effort), None)
                 if not tier:
                     problems.append(f"{label}: model {model_id!r} has no effort {effort!r}")
-                elif str(tier.get("use", "")).lower().startswith("prohibited"):
-                    problems.append(f"{label}: {model_id} {effort} is prohibited: {tier['use']}")
+                elif tier.get("prohibited") is True:
+                    problems.append(f"{label}: {model_id} {effort} is prohibited: {tier.get('reason')}")
                 elif tier.get("status") == "explicit-only":
                     problems.append(f"{label}: {model_id} {effort} requires an explicit model request and cannot back a profile")
                 model_status = model.get("status")
@@ -689,17 +607,13 @@ def structural_problems(root: pathlib.Path) -> list[str]:
                         problems.append(refusal.message)
     problems.extend(rank_problems(models, profiles, {pool.get("provider"): pool for pool in delegation.get("pool", [])}))
     problems.extend(escalation_source_problems(profiles))
-    model_manifest = load_toml(root / "routing" / "models.toml")
-    families = model_manifest.get("family", [])
-    family_errors = family_problems(models, families)
-    if not family_errors:
-        problems.extend(review_policy_problems(models, profiles, {}, families))
-        problems.extend(family_exception_problems(models, profiles, families,
-                                                  model_manifest.get("family_exception", [])))
-    problem = clearance_problem(model_manifest.get("review"))
-    if problem:
-        problems.append(problem)
-    problems.extend(family_errors)
+    from review_ladder import project_data, table_problems
+
+    problems.extend(table_problems(project_data(loaded)))
+    problems.extend(family_exception_problems(models, profiles, family_relation(root),
+                                              loaded.policy.get("family_exception", [])))
+    if loaded.policy["review"]["clearance"] < 1:
+        problems.append(f"{stores.POLICY} [review]: clearance must be a positive integer capability rank")
     for profile in profiles:
         rules = profile.get("fallback", [])
         if not isinstance(rules, list):
@@ -721,7 +635,7 @@ def structural_problems(root: pathlib.Path) -> list[str]:
 
 
 def _profile_records(root: pathlib.Path):
-    profiles = load_toml(root / "routing" / "profiles.toml").get("profile", [])
+    profiles = data(root).profiles
     for profile in profiles:
         yield profile, profile
         yield from ((profile, variant) for variant in profile.get("variant", []))
@@ -744,7 +658,7 @@ def _profile_for_selection(root: pathlib.Path, profile_id: str, backend: str) ->
             backend=backend,
             missing_fact="base execution profile",
         )
-    profiles = load_toml(root / "routing" / "profiles.toml").get("profile", [])
+    profiles = data(root).profiles
     profile = next((entry for entry in profiles if entry.get("id") == profile_id), None)
     if not profile:
         raise RouteRefusal(
@@ -770,125 +684,32 @@ def _profile_for_selection(root: pathlib.Path, profile_id: str, backend: str) ->
     return profile
 
 
-def _model_forms(model_id: str, model: dict, requested_model: str) -> list[str]:
-    forms: list[str] = []
-    values = [model_id, requested_model, *model.get("aliases", [])]
-    for value in values:
-        for form in (value, value.replace(".", "-"), value.split("/")[-1]):
-            if form and form not in forms:
-                forms.append(form)
-    return forms
-
-
-def _routed_backend_model(
-    root: pathlib.Path,
-    model_id: str,
-    requested_model: str,
-    provider: str,
-    backend: str,
-) -> str | None:
-    model = model_effort_facts(root, requested_model)["model"]
-    forms = _model_forms(model_id, model, requested_model) if model else [model_id, requested_model]
-    for profile, route in _profile_records(root):
-        if route.get("provider") != provider or backend not in route.get("backends", []):
-            continue
-        if route.get("model") == model_id or route.get("backend_model") in forms:
-            return route.get("backend_model", route.get("model"))
-    return None
-
-
-def _flag_model_candidates(flag: str) -> list[str]:
-    candidates: list[str] = []
-    for match in re.finditer(r"[A-Za-z0-9][A-Za-z0-9_./:-]*\{[^{}]+\}[A-Za-z0-9_./:-]*", flag):
-        token = match.group(0)
-        prefix, choices, suffix = re.fullmatch(r"(.*)\{([^{}]+)\}(.*)", token).groups()
-        candidates.extend(prefix + choice + suffix for choice in choices.split(","))
-    candidates.extend(re.findall(r"[A-Za-z0-9][A-Za-z0-9_./:-]+", flag))
-    # A flag string is prose as well as syntax: an id that closes a sentence
-    # carries the stop with it, and it is the id a caller must be handed.
-    return [candidate.rstrip(".:") for candidate in candidates]
-
-
-def _backend_model_identity(
-    root: pathlib.Path,
-    backend: str,
-    provider: str,
-    model_id: str,
-    requested_model: str,
-    model: dict,
-) -> str | None:
-    backend_fact = backends(root)[backend]
-    forms = _model_forms(model_id, model, requested_model)
-    routed = _routed_backend_model(root, model_id, requested_model, provider, backend)
-    if routed:
-        return routed
-
-    flag = str(backend_fact.get("model_flag", ""))
-    candidates = _flag_model_candidates(flag)
-    for candidate in candidates:
-        if any(form in candidate for form in forms):
-            return candidate
-
-    generic = re.search(r"([A-Za-z0-9_./:-]*)<model>([A-Za-z0-9_./:-]*)", flag)
-    if generic and model_id in pools(root).get(provider, {}).get("serves", []):
-        return f"{generic.group(1)}{model_id}{generic.group(2)}"
-    return None
+def _backend_model_identity(root: pathlib.Path, backend: str, provider: str, model_id: str) -> str | None:
+    """The model string `backend` is invoked with through `provider`, from the catalog's reach rows."""
+    return stores.reach_name(data(root).catalog, model_id, backend, provider)
 
 
 def _model_role_refusal(profile_id: str, model_id: str, model: dict) -> RouteRefusal | None:
+    """An unroutable model, or a policy fence keeping the model off this profile."""
     status = model.get("status")
-    role = str(model.get("role", ""))
-    lowered = role.lower()
     if status in UNROUTABLE_MODEL_STATUSES:
+        successor = model.get("successor")
         return RouteRefusal(
             "model-role",
-            f"model {model_id!r} is {status}: {role}",
+            f"model {model_id!r} is {status}" + (f"; its successor is {successor!r}" if successor else ""),
             profile=profile_id,
             model=model_id,
             model_status=status,
-            role=role,
+            successor=successor,
         )
-    if "never select" in lowered or "never for anything that ships" in lowered:
+    fence = model.get("fences", {}).get(profile_id)
+    if fence:
         return RouteRefusal(
             "model-role",
-            f"model {model_id!r} is not selectable for this execution shape: {role}",
+            f"model {model_id!r} cannot serve profile {profile_id!r}: {fence}",
             profile=profile_id,
             model=model_id,
-            role=role,
-        )
-    if profile_id == "plan" and "not a lead" in lowered:
-        return RouteRefusal(
-            "model-role",
-            f"model {model_id!r} cannot serve the lead profile {profile_id!r}",
-            profile=profile_id,
-            model=model_id,
-            role=role,
-        )
-    if profile_id == "interactive" and "interactive default" in lowered and "not a lead" in lowered:
-        return RouteRefusal(
-            "model-role",
-            f"model {model_id!r} cannot serve the interactive profile",
-            profile=profile_id,
-            model=model_id,
-            role=role,
-        )
-    if profile_id != "generate" and "generator" in lowered:
-        return RouteRefusal(
-            "model-role",
-            f"model {model_id!r} is generator-only and cannot serve profile {profile_id!r}",
-            profile=profile_id,
-            model=model_id,
-            role=role,
-        )
-    if profile_id == "review" and (
-        "never an adjudicator" in lowered or "never the reviewer of record" in lowered
-    ):
-        return RouteRefusal(
-            "model-role",
-            f"model {model_id!r} cannot be the reviewer of record for profile {profile_id!r}",
-            profile=profile_id,
-            model=model_id,
-            role=role,
+            fence=fence,
         )
     return None
 
@@ -954,8 +775,8 @@ def _classify_selection(
     profile on the requested backend and provider. A stable upgrade is an
     operator escalation; everything else stays operator-directed.
     """
-    models = load_toml(root / "routing" / "models.toml").get("model", [])
-    profiles = load_toml(root / "routing" / "profiles.toml").get("profile", [])
+    models = data(root).models
+    profiles = data(root).profiles
     by_id = {entry.get("id"): entry for entry in profiles}
     selected = (model_id, effort, provider)
 
@@ -1011,6 +832,12 @@ def _classify_selection(
     }
 
 
+def _seat_when(root: pathlib.Path, model: str, effort: str, provider: str) -> str | None:
+    """The `when` of the first policy seat binding this tier on this provider, if one does."""
+    return next((seat["when"] for seat in data(root).policy.get("seat", [])
+                 if (seat.get("model"), seat.get("effort"), seat.get("provider")) == (model, effort, provider)), None)
+
+
 def caller_confirmation(root: pathlib.Path, route: dict, canonical_model: str,
                         caller: str | None, caller_provider: str | None = None) -> dict | None:
     """Compare an observed caller seat with known pool-local ranks and scarcity."""
@@ -1062,7 +889,7 @@ def caller_confirmation(root: pathlib.Path, route: dict, canonical_model: str,
         "selection": {"model": route["model"], "effort": route["effort"],
                       "provider": provider, "rank": selected_rank,
                       "pool": by_pool.get(provider, {}).get("plan")},
-        "benefit": selected.get("use"),
+        "benefit": _seat_when(root, canonical_model, route["effort"], provider),
     }
 
 
@@ -1122,7 +949,7 @@ def validate_selection(
     if backend_fact is None:
         raise RouteRefusal(
             "unknown-backend",
-            f"unknown backend {backend!r}; delegation.toml has no backend fact for it",
+            f"unknown backend {backend!r}; the catalog has no backend fact for it",
             profile=profile_id,
             backend=backend,
             missing_fact=f"backend declaration for {backend!r}",
@@ -1153,9 +980,9 @@ def validate_selection(
     if model_fact is None:
         raise RouteRefusal(
             "unknown-model",
-            f"unknown model {model_id!r}; models.toml has no model fact for it; "
+            f"unknown model {model_id!r}; the catalog has no model fact for it; "
             "accepted routing ids: " + ", ".join(
-                entry["id"] for entry in load_toml(root / "routing" / "models.toml")["model"]
+                entry["id"] for entry in data(root).models
             ),
             profile=profile_id,
             backend=backend,
@@ -1203,7 +1030,7 @@ def validate_selection(
         model_id,
         allow_cross_pool,
     )
-    backend_model = _backend_model_identity(root, backend, provider, model_id, model, model_fact)
+    backend_model = _backend_model_identity(root, backend, provider, model_id)
     if backend_model is None:
         raise RouteRefusal(
             "unsupported-model",
@@ -1336,7 +1163,7 @@ def model_identities(root: pathlib.Path, model_id: str) -> list[str]:
     each route that denotes it. A string is listed only when
     ``model_effort_facts`` resolves it back to the same model.
     """
-    model = next((entry for entry in load_toml(root / "routing" / "models.toml").get("model", [])
+    model = next((entry for entry in data(root).models
                   if entry["id"] == model_id), None)
     candidates = {model_id, *(model or {}).get("aliases", [])}
     for _, route in _profile_records(root):
@@ -1380,7 +1207,7 @@ def _assessed_coordinate(root: pathlib.Path, coordinate: str, role: str, *, effo
         "floors": _floors(model, facts["tier"] if separator else None),
         "rank": min(tier["rank"] for tier in ([facts["tier"]] if separator else model["effort"])),
         "seated": (facts["model_id"], effort) in _seated_tiers(
-            load_toml(root / "routing" / "profiles.toml").get("profile", []), pools(root)),
+            data(root).profiles, pools(root)),
     }
 
 
@@ -1527,19 +1354,25 @@ def assess_review(
 
 def _assessment_at(root: pathlib.Path, reviewer: str, authors: list[str], as_of: str, *,
                    purpose: str, schema: int, accepted: str | None = None) -> dict:
-    from review_ladder import EVIDENCE, evidence_at, legacy, project, read_at, table_problems
+    from review_ladder import EVIDENCE, evidence_at, is_stores, legacy_manifests, read_at, table_at, table_problems
 
     try:
         revision, texts = read_at(root, as_of, accepted)
         evidence = evidence_at(root, revision)
-        manifest, profiles, delegation = (tomllib.loads(texts[name]) for name in ("models", "profiles", "delegation"))
-        models = project(manifest, profiles, historical=legacy(manifest))
+        models = table_at(root, texts)
         problems = table_problems(models)
         if problems:
             raise ValueError(f"version v-{revision}: {'; '.join(problems)}")
     except ValueError as error:
         raise RouteRefusal("historical-ladder", str(error)) from error
-    seated = _seated_tiers(profiles.get("profile", []), {row["provider"]: row for row in delegation.get("pool", [])})
+    if is_stores(texts):
+        recorded = stores.Data.from_texts(texts)
+        profiles, pool_rows, review = recorded.profiles, recorded.pools, recorded.policy.get("review")
+    else:
+        manifest, profile_document, delegation = legacy_manifests(texts)
+        profiles, pool_rows = profile_document.get("profile", []), delegation.get("pool", [])
+        review = manifest.get("review", {"clearance": 2})
+    seated = _seated_tiers(profiles, {row["provider"]: row for row in pool_rows})
 
     def coordinate(value: str, role: str) -> dict:
         name, separator, effort = value.partition("#")
@@ -1556,13 +1389,11 @@ def _assessment_at(root: pathlib.Path, reviewer: str, authors: list[str], as_of:
 
     if not authors:
         raise RouteRefusal("unknown-coordinate", "no author given", role="author")
-    review = manifest.get("review", {"clearance": 2})
-    problem = clearance_problem(review)
-    if problem:
-        raise RouteRefusal("manifest-invalid", problem)
+    if not isinstance(review, dict) or type(review.get("clearance")) is not int or review["clearance"] < 1:
+        raise RouteRefusal("manifest-invalid", "[review].clearance must be a positive integer capability rank")
     digest = hashlib.sha256()
-    for name in ("models", "profiles", "delegation"):
-        digest.update(f"routing/{name}.toml".encode() + b"\0" + texts[name].encode() + b"\0")
+    for name, text in texts.items():
+        digest.update(name.encode() + b"\0" + text.encode() + b"\0")
     digest.update(EVIDENCE.encode() + b"\0")
     digest.update(b"absent\0" if evidence is None else b"present\0" + evidence.encode())
     digest.update(dumps({"model": models}).encode())
@@ -1591,7 +1422,7 @@ def frontier_review(root: pathlib.Path, author: str, reads: list[str] | tuple[st
     version = route_version(root)
     written = _assessed_coordinate(root, author, "author", effort_required=False)
     rows, floor, floors_known = _author_rows([written])
-    profiles = load_toml(root / "routing" / "profiles.toml").get("profile", [])
+    profiles = data(root).profiles
 
     seated: dict[tuple[str, str], set[tuple[str, str]]] = {}
     for profile, route in _seating_routes(profiles, pools(root)):
@@ -1707,8 +1538,7 @@ def resolve(
             backend=backend,
         )
 
-    profiles_path = root / "routing" / "profiles.toml"
-    profiles = load_toml(profiles_path).get("profile", [])
+    profiles = data(root).profiles
     profile = next((entry for entry in profiles if entry["id"] == profile_id), None)
     if not profile:
         raise RouteRefusal(
@@ -1990,14 +1820,66 @@ def routes_view(root: pathlib.Path, *, backend: str | None = None,
             "default": coordinates[profile, variant, served_backend],
         })
     prohibited = []
-    for model in load_toml(root / "routing/models.toml").get("model", []):
+    for model in data(root).models:
         banned = prohibited_efforts(model)
         for tier in model.get("effort", []):
             if tier["effort"] in banned:
-                prohibited.append({"model": model["id"], "effort": tier["effort"], "reason": tier["use"]})
+                prohibited.append({"model": model["id"], "effort": tier["effort"], "reason": tier["reason"]})
     return {
         "schema": "agent-routing-routes/1",
         "route_version": view["route_version"],
         "routes": routes,
         "prohibited": sorted(prohibited, key=lambda row: (row["model"], row["effort"])),
     }
+
+
+def relation_problems(loaded: stores.Data) -> list[str]:
+    """Rank order along effort, family cache-write ratios and credit rates."""
+    problems = []
+    family_of = {value: row for row in loaded.catalog.get("family", [])
+                 for value in [row.get("id"), *row.get("lineages", [])]}
+    for model in loaded.models:
+        model_id = model["id"]
+        ranks = sorted((EFFORT_ORDER.index(tier["effort"]), tier["effort"], tier["rank"])
+                       for tier in model.get("effort", []) if tier.get("effort") in EFFORT_ORDER)
+        for (_, lower, lower_rank), (_, higher, higher_rank) in zip(ranks, ranks[1:]):
+            if higher_rank < lower_rank:
+                problems.append(f"{stores.CATALOG} [[tier]] model={model_id}: rank falls from {lower} "
+                                f"({lower_rank}) to {higher} ({higher_rank})")
+        family = family_of.get(model["family"], {})
+        prices = model.get("api_price_per_million", {})
+        for key, ratio_key in (("cache_write", "cache_write_ratio"), ("cache_write_1h", "cache_write_1h_ratio")):
+            ratio = family.get(ratio_key)
+            if ratio is not None and "input" in prices and not math.isclose(prices.get(key, math.nan),
+                                                                             ratio * prices["input"]):
+                problems.append(f"{stores.CATALOG} [[price]] model={model_id}: {key} must be {ratio:g} times "
+                                f"input ({ratio * prices['input']:g}), not {prices.get(key)}")
+        credits = model.get("subscription_credits_per_million", {})
+        rate = family.get("credits_per_dollar")
+        if credits and rate is None:
+            problems.append(f"{stores.CATALOG} [[credit]] model={model_id}: its family declares no credits_per_dollar")
+        for key, value in credits.items() if rate is not None else ():
+            expected = rate * prices.get(key, math.nan)
+            if not math.isclose(value, expected):
+                problems.append(f"{stores.CATALOG} [[credit]] model={model_id}: {key} credits must be {rate:g} per "
+                                f"API dollar ({expected:g}), not {value:g}")
+    return problems
+
+
+def data_problems(root: pathlib.Path) -> list[str]:
+    """Every problem in the data set: shape, canonical form, notes, routes, pools, prices and relations."""
+    from price_export import price_problems
+
+    try:
+        loaded = data(root)
+    except stores.StoreError as error:
+        return [str(error)]
+    problems = stores.canonical_problems(root)
+    try:
+        problems += stores.note_problems(stores.load_notes(root), loaded.catalog)
+    except stores.StoreError as error:
+        problems.append(str(error))
+    structural = structural_problems(root)
+    if structural:
+        return problems + structural
+    return (problems + pool_problems(root) + price_problems(loaded.models) + relation_problems(loaded))

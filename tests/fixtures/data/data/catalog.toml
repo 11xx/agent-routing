@@ -1,0 +1,372 @@
+# Facts about models: families, backends, models, tiers, prices and reachability.
+# Written in canonical form; `agent-routing format` rewrites a hand edit into it.
+
+schema = "agent-routing-catalog/1"
+
+[[family]]
+id = "northwind"
+lineages = ["nw"]
+cache_write_ratio = 1.25
+cache_write_1h_ratio = 2.0
+
+[[family]]
+id = "tessel"
+lineages = ["ts-3", "ts-2"]
+credits_per_dollar = 25.0
+
+[[backend]]
+id = "codex"
+status = "verified"
+providers = ["tessel-plan"]
+efforts = ["low", "medium", "high", "xhigh", "max"]
+
+[[backend]]
+id = "pi"
+status = "verified"
+providers = ["tessel-plan", "flat-pool"]
+efforts = ["low", "medium", "high"]
+
+[[backend]]
+id = "claude"
+status = "verified"
+providers = ["northwind-plan"]
+efforts = ["low", "medium", "high", "xhigh", "max"]
+
+[[backend]]
+id = "opencode"
+status = "verified"
+providers = ["flat-pool"]
+efforts = []
+
+[[model]]
+id = "nw-atlas-2"
+family = "nw"
+aliases = ["northwind-atlas-2"]
+
+[[tier]]
+model = "nw-atlas-2"
+effort = "max"
+rank = 3
+floor = 3
+prohibited = true
+reason = "Fixture ban: the top tier buys nothing over xhigh."
+
+[[tier]]
+model = "nw-atlas-2"
+effort = "xhigh"
+rank = 3
+floor = 2
+
+[[tier]]
+model = "nw-atlas-2"
+effort = "high"
+rank = 2
+floor = 2
+
+[[tier]]
+model = "nw-atlas-2"
+effort = "medium"
+rank = 2
+floor = 1
+
+[[tier]]
+model = "nw-atlas-2"
+effort = "low"
+rank = 1
+floor = 1
+
+[[price]]
+model = "nw-atlas-2"
+read = "2030-01-02"
+input = 4.0
+cached_input = 0.4
+cache_write = 5.0
+cache_write_1h = 8.0
+output = 20.0
+
+[[reach]]
+model = "nw-atlas-2"
+backend = "claude"
+provider = "northwind-plan"
+backend_model = "claude-atlas-2"
+agent_alias = "atlas"
+
+[[model]]
+id = "nw-sage-2"
+family = "nw"
+aliases = ["northwind-sage-2"]
+
+[[tier]]
+model = "nw-sage-2"
+effort = "high"
+rank = 3
+floor = 2
+
+[[tier]]
+model = "nw-sage-2"
+effort = "medium"
+rank = 3
+floor = 2
+
+[[price]]
+model = "nw-sage-2"
+read = "2030-01-02"
+input = 10.0
+cached_input = 1.0
+cache_write = 12.5
+cache_write_1h = 20.0
+output = 50.0
+
+[[reach]]
+model = "nw-sage-2"
+backend = "claude"
+provider = "northwind-plan"
+backend_model = "claude-sage-2"
+agent_alias = "sage"
+
+[[model]]
+id = "nw-atlas-1"
+family = "nw"
+aliases = ["northwind-atlas-1"]
+status = "superseded"
+successor = "nw-atlas-2"
+
+[[tier]]
+model = "nw-atlas-1"
+effort = "high"
+rank = 2
+floor = 2
+
+[[tier]]
+model = "nw-atlas-1"
+effort = "low"
+rank = 1
+floor = 1
+
+[[model]]
+id = "nw-swift-2"
+family = "nw"
+aliases = ["northwind-swift-2"]
+
+[[tier]]
+model = "nw-swift-2"
+effort = "max"
+rank = 1
+floor = 1
+stability = "explicit-only"
+
+[[tier]]
+model = "nw-swift-2"
+effort = "high"
+rank = 1
+floor = 1
+
+[[price]]
+model = "nw-swift-2"
+read = "2030-01-02"
+input = 1.0
+cached_input = 0.1
+cache_write = 1.25
+cache_write_1h = 2.0
+output = 5.0
+
+[[surcharge]]
+model = "nw-swift-2"
+threshold_input_tokens = 100000
+threshold_inclusive = false
+input_multiplier = 5.0
+cache_multiplier = 5.0
+output_multiplier = 5.0
+
+[[reach]]
+model = "nw-swift-2"
+backend = "claude"
+provider = "northwind-plan"
+backend_model = "claude-swift-2"
+agent_alias = "swift"
+
+[[model]]
+id = "ts-3-prime"
+family = "ts-3"
+
+[[tier]]
+model = "ts-3-prime"
+effort = "max"
+rank = 3
+floor = 3
+prohibited = true
+reason = "Fixture ban: max costs twice xhigh for one point."
+
+[[tier]]
+model = "ts-3-prime"
+effort = "xhigh"
+rank = 3
+floor = 2
+
+[[tier]]
+model = "ts-3-prime"
+effort = "high"
+rank = 2
+floor = 2
+
+[[tier]]
+model = "ts-3-prime"
+effort = "medium"
+rank = 2
+floor = 1
+
+[[tier]]
+model = "ts-3-prime"
+effort = "low"
+rank = 1
+floor = 1
+
+[[price]]
+model = "ts-3-prime"
+read = "2030-01-02"
+input = 2.0
+cached_input = 0.2
+output = 12.0
+
+[[price_window]]
+model = "ts-3-prime"
+from = "13:00"
+until = "17:00"
+multiplier = 2.0
+days = ["mon", "tue", "wed", "thu", "fri"]
+
+[[credit]]
+model = "ts-3-prime"
+input = 50.0
+cached_input = 5.0
+output = 300.0
+
+[[reach]]
+model = "ts-3-prime"
+backend = "codex"
+provider = "tessel-plan"
+backend_model = "ts-3-prime"
+
+[[reach]]
+model = "ts-3-prime"
+backend = "pi"
+provider = "tessel-plan"
+backend_model = "ts-3-prime"
+
+[[model]]
+id = "ts-3-core"
+family = "ts-3"
+
+[[tier]]
+model = "ts-3-core"
+effort = "max"
+rank = 2
+floor = 1
+
+[[tier]]
+model = "ts-3-core"
+effort = "high"
+rank = 1
+floor = 1
+
+[[tier]]
+model = "ts-3-core"
+effort = "low"
+rank = 1
+floor = 1
+
+[[price]]
+model = "ts-3-core"
+read = "2030-01-02"
+input = 0.2
+cached_input = 0.02
+output = 1.2
+
+[[reach]]
+model = "ts-3-core"
+backend = "codex"
+provider = "tessel-plan"
+backend_model = "ts-3-core"
+
+[[reach]]
+model = "ts-3-core"
+backend = "pi"
+provider = "tessel-plan"
+backend_model = "ts-3-core"
+
+[[reach]]
+model = "ts-3-core"
+backend = "pi"
+provider = "flat-pool"
+backend_model = "ts-3-core"
+
+[[effort_support]]
+model = "ts-3-core"
+backend = "pi"
+efforts = ["low", "high", "max"]
+
+[[model]]
+id = "ts-2-prime"
+family = "ts-2"
+status = "retired"
+successor = "ts-3-prime"
+
+[[tier]]
+model = "ts-2-prime"
+effort = "high"
+rank = 2
+floor = 2
+
+[[model]]
+id = "orbit-flash"
+family = "orbit"
+build = "0101"
+build_date = "2030-01-01"
+
+[[tier]]
+model = "orbit-flash"
+effort = "max"
+rank = 1
+floor = 1
+
+[[tier]]
+model = "orbit-flash"
+effort = "low"
+rank = 1
+floor = 1
+
+[[price]]
+model = "orbit-flash"
+read = "2030-01-02"
+cache_miss_input = 0.1
+cache_hit_input = 0.01
+output = 0.4
+
+[[reach]]
+model = "orbit-flash"
+backend = "pi"
+provider = "flat-pool"
+backend_model = "orbit-flash-0101"
+
+[[effort_support]]
+model = "orbit-flash"
+backend = "pi"
+efforts = ["low", "high", "max"]
+
+[[model]]
+id = "orbit-trial"
+family = "orbit"
+status = "experimental"
+
+[[tier]]
+model = "orbit-trial"
+effort = "high"
+rank = 1
+floor = 1
+stability = "experimental"
+
+[[reach]]
+model = "orbit-trial"
+backend = "pi"
+provider = "flat-pool"
+backend_model = "orbit-trial"

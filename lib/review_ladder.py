@@ -7,15 +7,21 @@ import pathlib
 import re
 import subprocess
 import tomllib
+import types
+
+import stores
 
 SCHEMA = "arc-review-ladder/1"
 NUMERIC_START = "dc54196"
+# The accepted commit whose ladder module projects every revision still kept
+# in the legacy routing files: its reconstruction of legacy tiers, its lab
+# names and its era-file sources are history, read from Git rather than
+# restated here.
+RECONSTRUCTION = "6f219e5bf2fd4a1a80b1de5041a536aa4eeb5353"
 GAP_START = "2026-08-01T00:00:00Z"
+# The ladder's design record, cited by every pre-numeric record; it lives in Git history.
 EVIDENCE = "eras/2026-11-04-capability-ladder.md"
-RETIRED = {"gpt-5.6-sol", "gpt-6-sol", "opus-5", "fable-5"}
-RECORDED_IDENTITIES = {"opus-5": ["claude-opus-5"], "fable-5": ["claude-fable-5"],
-                       "glm-5.3-flash": ["z-ai/glm-5.3-flash"]}
-EFFORT_ORDER = ("default", "low", "medium", "high", "xhigh", "max", "ultra")
+TABLE_PATHS = (stores.CATALOG, stores.POLICY, "routing/models.toml", "routing/profiles.toml")
 
 
 def instant(value: str) -> dt.datetime:
@@ -40,99 +46,60 @@ def git(root: pathlib.Path, *args: str) -> str:
     return result.stdout
 
 
-def historical_manifest(root: pathlib.Path, revision: str, name: str) -> dict:
-    return tomllib.loads(git(root, "show", f"{revision}:routing/{name}.toml"))
+def snapshot(root: pathlib.Path, revision: str) -> dict[str, str]:
+    """The routing data at `revision`: the stores where they exist, else the legacy routing files."""
+    present = git(root, "ls-tree", "--name-only", revision, "--", stores.CATALOG).strip()
+    names = (stores.CATALOG, stores.POLICY) if present else (
+        "routing/models.toml", "routing/profiles.toml", "routing/delegation.toml")
+    return {name: git(root, "show", f"{revision}:{name}") for name in names}
 
 
-def capability(model: str, effort: str) -> int:
-    """The sourced reconstruction judgments for tiers without numeric capability."""
-    if model == "gpt-6.1-sol":
-        return 3 if effort in {"high", "xhigh", "max"} else 1
-    if model == "gpt-6-astra":
-        return 3 if effort in {"high", "xhigh", "max"} else 2
-    if model in {"opus-5.5", "fable-5.1", "sonnet-5.5"}:
-        return 3 if effort == "max" else 2 if effort in {"high", "xhigh"} else 1
-    if model == "opus-5" and effort == "medium":
-        return 2
-    if model in {"opus-5", "fable-5", "gpt-5.6-sol", "gpt-6-sol", "gpt-6.1-sol", "gpt-5.5"}:
-        return 2 if effort in {"high", "xhigh", "max", "ultra"} else 1
-    if model == "gpt-6.1-terra":
-        return 2
-    if model == "gpt-5.6-terra":
-        return 2 if effort == "max" else 1
-    if model == "kimi-k3":
-        return 2
-    return 1
+def is_stores(texts: dict[str, str]) -> bool:
+    return stores.CATALOG in texts
 
 
-def author_floor(model: str, effort: str) -> int:
-    """The least reviewer rank for authored work, independent of reviewer strength."""
-    if model == "gpt-6.1-sol" and effort in {"high", "xhigh", "max"}:
-        return 2
-    return capability(model, effort)
+def legacy_manifests(texts: dict[str, str]) -> tuple[dict, dict, dict]:
+    return tuple(tomllib.loads(texts[f"routing/{name}.toml"]) for name in ("models", "profiles", "delegation"))
 
 
-def canonical_efforts(model: dict) -> list[dict]:
-    """Restore effort-less predecessor rows from their recorded era evidence."""
-    tiers = model.get("effort", [])
-    if tiers:
-        return tiers
-    names = {
-        "fable-5": ("low", "medium", "high", "xhigh", "max"),
-        "opus-4.8": ("high", "max"),
-        "sonnet-5": ("low", "medium", "high", "xhigh", "max"),
-        "gpt-5.5": ("low", "medium", "high", "xhigh", "max"),
-        "kimi-k3": ("max",),
-        "small-model-class": ("default",),
-    }.get(model["id"])
-    if names is None:
-        raise ValueError(f"no recorded effort set for {model['id']!r}")
-    return [{"effort": effort} for effort in names]
+_HISTORICAL: dict = {}
 
 
-def legacy(manifest: dict) -> bool:
-    return not any("floor" in tier or "seat_rank" in tier or type(tier.get("rank")) is int
-                   for model in manifest.get("model", []) for tier in model.get("effort", []))
+def historical(root: pathlib.Path) -> types.ModuleType:
+    """The ladder module as accepted at RECONSTRUCTION, which reads the legacy routing files."""
+    key = str(pathlib.Path(root).resolve())
+    if key not in _HISTORICAL:
+        module = types.ModuleType("review_ladder_at_reconstruction")
+        source = git(root, "show", f"{RECONSTRUCTION}:lib/review_ladder.py")
+        exec(compile(source, f"{RECONSTRUCTION}:lib/review_ladder.py", "exec"), module.__dict__)
+        _HISTORICAL[key] = module
+    return _HISTORICAL[key]
 
 
-def project(manifest: dict, profiles: dict, *, historical: bool = False) -> list[dict]:
-    relation = {value: row["id"] for row in manifest.get("family", [])
-                for value in [row["id"], *row.get("aliases", [])]}
+def project_data(data: "stores.Data") -> list[dict]:
+    """The capability table of the stores: each model's lab, identities, retirement and tiers."""
+    labs = {value: row["lab"] for row in data.families for value in row["values"]}
     models = []
-    for model in manifest.get("model", []):
-        model_id = model["id"]
-        family = model.get("family")
-        family = relation.get(family, family) if isinstance(family, str) else ""
-        if family in {"gpt-5.6", "gpt-5.5"}:
-            family = "openai"
-        if family == "claude":
-            family = "anthropic"
-        identities = {model_id, *model.get("aliases", []), *RECORDED_IDENTITIES.get(model_id, [])}
-        for profile in profiles.get("profile", []):
+    for model in data.models:
+        identities = {model["id"], *model.get("aliases", [])}
+        for profile in data.profiles:
             for route in [profile, *profile.get("variant", [])]:
-                if route.get("model") == model_id and route.get("backend_model"):
+                if route.get("model") == model["id"] and route.get("backend_model"):
                     identities.add(route["backend_model"])
-        efforts = []
-        for tier in canonical_efforts(model) if historical else model.get("effort", []):
-            effort = tier["effort"]
-            if historical:
-                for field in ("review_tier", "author_floor"):
-                    if field in tier and (type(tier[field]) is not int or tier[field] < 1):
-                        raise ValueError(f"{model_id}#{effort}: legacy {field} rank/floor must be a positive integer")
-                # Legacy 4 expressed an unreachable seat, not measured capability.
-                recorded_rank = tier.get("review_tier")
-                recorded_floor = tier.get("author_floor", recorded_rank)
-                rank = recorded_rank if recorded_rank is not None and recorded_rank < 4 else capability(model_id, effort)
-                floor = recorded_floor if recorded_floor is not None and recorded_floor < 4 else author_floor(model_id, effort)
-                if model_id == "gpt-6.1-sol":
-                    rank, floor = capability(model_id, effort), author_floor(model_id, effort)
-            else:
-                rank, floor = tier.get("rank"), tier.get("floor")
-            efforts.append({"effort": effort, "rank": rank, "floor": floor})
-        models.append({"model": model_id, "identities": sorted(identities), "family": family,
-                       "superseded": model.get("superseded", model.get("status") in {"superseded", "retired"}),
-                       "efforts": sorted(efforts, key=lambda row: row["effort"])})
+        models.append({"model": model["id"], "identities": sorted(identities),
+                       "family": labs.get(model["family"], model["family"]), "superseded": model["superseded"],
+                       "efforts": sorted(({"effort": tier["effort"], "rank": tier["rank"], "floor": tier["floor"]}
+                                          for tier in model["effort"]), key=lambda row: row["effort"])})
     return sorted(models, key=lambda row: row["model"])
+
+
+def table_at(root: pathlib.Path, texts: dict[str, str]) -> list[dict]:
+    """The capability table a revision's data declares."""
+    if is_stores(texts):
+        return project_data(stores.Data.from_texts(texts))
+    module = historical(root)
+    manifest, profiles, _ = legacy_manifests(texts)
+    return module.project(manifest, profiles, historical=module.legacy(manifest))
 
 
 def table_problems(models: list[dict]) -> list[str]:
@@ -231,7 +198,7 @@ def commits(root: pathlib.Path, accepted: str | None = None) -> list[tuple[str, 
     revision = accepted_revision(root, accepted)
     start = git(root, "rev-parse", NUMERIC_START).strip()
     entries = git(root, "log", "--first-parent", "--reverse", "--format=%H %cI",
-                  f"{start}^..{revision}", "--", "routing/models.toml", "routing/profiles.toml").splitlines()
+                  f"{start}^..{revision}", "--", *TABLE_PATHS).splitlines()
     if not entries or entries[0].split()[0] != start:
         raise ValueError(f"numeric capability history from {NUMERIC_START} is unavailable on the accepted ref")
     return [(rev, utc(date)) for rev, date in (line.split() for line in entries)]
@@ -255,8 +222,7 @@ def read_at(root: pathlib.Path, as_of: str, accepted: str | None = None) -> tupl
     if not eligible:
         raise ValueError(f"ladder-gap: no numeric capability record at {as_of}")
     rev, _ = eligible[-1]
-    return rev, {name: git(root, "show", f"{rev}:routing/{name}.toml")
-                 for name in ("models", "profiles", "delegation")}
+    return rev, snapshot(root, rev)
 
 
 def evidence_at(root: pathlib.Path, revision: str) -> str | None:
@@ -268,17 +234,19 @@ def evidence_at(root: pathlib.Path, revision: str) -> str | None:
 
 def version_at(root: pathlib.Path, revision: str, date: str) -> dict:
     try:
-        manifest = historical_manifest(root, revision, "models")
-        profiles = historical_manifest(root, revision, "profiles")
-        if legacy(manifest) and not any(
-            "review_tier" in tier or "author_floor" in tier
-            for model in manifest.get("model", []) for tier in model.get("effort", [])
-        ):
-            raise ValueError("ladder-gap: the accepted revision predates the numeric capability record")
-        table = project(manifest, profiles, historical=legacy(manifest))
+        texts = snapshot(root, revision)
+        if not is_stores(texts):
+            module = historical(root)
+            manifest, _, _ = legacy_manifests(texts)
+            if module.legacy(manifest) and not any(
+                "review_tier" in tier or "author_floor" in tier
+                for model in manifest.get("model", []) for tier in model.get("effort", [])
+            ):
+                raise ValueError("ladder-gap: the accepted revision predates the numeric capability record")
+        table = table_at(root, texts)
     except (ValueError, KeyError, TypeError) as error:
         raise ValueError(f"version v-{revision}: {error}") from error
-    version = {"id": f"v-{revision}", "effective_from": date, "source": source(root, revision),
+    version = {"id": f"v-{revision}", "effective_from": date, "source": source(root, revision, texts),
                "gap": False, "model": table}
     validate({"schema": SCHEMA, "version": [version]})
     return version
@@ -286,8 +254,7 @@ def version_at(root: pathlib.Path, revision: str, date: str) -> dict:
 
 def current_version(root: pathlib.Path, accepted: str) -> dict:
     """The first accepted commit of the current table, including shallow snapshots."""
-    entries = git(root, "log", "--first-parent", "--format=%H %cI", accepted, "--",
-                  "routing/models.toml", "routing/profiles.toml").splitlines()
+    entries = git(root, "log", "--first-parent", "--format=%H %cI", accepted, "--", *TABLE_PATHS).splitlines()
     current = None
     for entry in entries:
         revision, date = entry.split()
@@ -302,12 +269,10 @@ def current_version(root: pathlib.Path, accepted: str) -> dict:
     return current
 
 
-def source(root: pathlib.Path, rev: str) -> str:
-    eras = git(root, "ls-tree", "-r", "--name-only", rev, "--", "eras").splitlines()
-    eras = [name for name in eras if any(term in name for term in (
-        "fable", "opus", "gpt-6", "haiku", "sonnet", "author-floor", "workhorse", "field-test", "september", "mimo",
-    ))]
-    return f"agent-routing routing/models.toml at {rev}; reconstruction: {EVIDENCE}; era evidence: " + ", ".join(eras)
+def source(root: pathlib.Path, rev: str, texts: dict[str, str]) -> str:
+    if is_stores(texts):
+        return f"agent-routing {stores.CATALOG} at {rev}"
+    return historical(root).source(root, rev)
 
 
 def export(root: pathlib.Path, *, history: bool = False, accepted: str | None = None) -> dict:

@@ -6,14 +6,11 @@ import math
 import pathlib
 import time
 
-from routing_profiles import RouteRefusal, _review_author, load_toml, pools, resolve, route_version, structural_problems
+from routing_profiles import RouteRefusal, _review_author, data, pools, resolve, route_version, structural_problems
 
 
 def admission_policy(root):
-    policy = load_toml(root / "routing/profiles.toml").get("admission")
-    if policy is None:
-        raise RouteRefusal("manifest-invalid", "quota admission requires an admission policy")
-    return policy
+    return data(root).policy["admission"]
 
 
 def _number(value: object) -> bool:
@@ -106,7 +103,7 @@ def admit_review(root: pathlib.Path, author: str, usage: dict, base: str, head: 
         written = _review_author(root, author, "review", "claude")
     except RouteRefusal as refusal:
         return debt(refusal.fields.get("reason", refusal.kind))
-    policy = admission_policy(root)["review"]
+    policy = admission_policy(root)
     codex_author = written["family"] in policy["codex_author_families"]
     backend = policy["codex_review_backend"] if codex_author else policy["other_review_backend"]
     try:

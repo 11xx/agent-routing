@@ -8,12 +8,11 @@ judgment and stays with the caller.
 
 import pathlib
 import sys
-import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 
-from routing_profiles import UNROUTABLE_MODEL_STATUSES, prohibited_efforts  # noqa: E402
+from routing_profiles import UNROUTABLE_MODEL_STATUSES, data, prohibited_efforts  # noqa: E402
 
 
 def main(argv):
@@ -21,21 +20,14 @@ def main(argv):
         print("usage: agent-routing check <model> [effort]", file=sys.stderr)
         return 2
     model_id, effort = argv[0], (argv[1] if len(argv) > 1 else None)
-    with (ROOT / "routing" / "models.toml").open("rb") as handle:
-        models = tomllib.load(handle)["model"]
-
-    with (ROOT / "routing" / "profiles.toml").open("rb") as handle:
-        profiles = tomllib.load(handle).get("profile", [])
+    loaded = data(ROOT)
+    models = loaded.models
     aliases = {}
-    for profile in profiles:
+    for profile in loaded.profiles:
         for route in [profile, *profile.get("variant", [])]:
             if route.get("backend_model"):
-                if not route.get("model"):
-                    print(f"invalid route {route.get('id', '<missing>')!r}: backend_model requires model", file=sys.stderr)
-                    return 2
                 aliases[route["backend_model"]] = route["model"]
     model_id = aliases.get(model_id, model_id)
-
     match = next(
         (m for m in models if model_id in (m["id"], *m.get("aliases", []))),
         None,
@@ -66,7 +58,8 @@ def main(argv):
             return 0
 
     if match.get("status") in UNROUTABLE_MODEL_STATUSES:
-        print(f"{match['status']}: {model_id} — {match.get('role', '')}")
+        successor = match.get("successor")
+        print(f"{match['status']}: {model_id}" + (f" — its successor is {successor}" if successor else ""))
         return 0
     print(f"not prohibited: {model_id}" + (f" at {effort}" if effort else ""))
     return 0

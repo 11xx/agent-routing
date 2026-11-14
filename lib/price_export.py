@@ -19,7 +19,8 @@ import math
 import pathlib
 import re
 
-from routing_profiles import load_toml, model_identities, route_version
+import stores
+from routing_profiles import data, model_identities, route_version
 
 SCHEMA = "tapes-price-table/2"
 CURRENCY = "USD"
@@ -234,7 +235,7 @@ def time_of_day_terms(windows: list[dict], per_million: dict) -> list[dict]:
 def price_export(root: pathlib.Path) -> dict:
     """The priced rows, which categories each leaves unpriced, and the terms
     each is priced by per request."""
-    models = load_toml(root / "routing" / "models.toml").get("model", [])
+    models = data(root).models
     problems = price_problems(models)
     if problems:
         raise ValueError("; ".join(problems))
@@ -263,7 +264,7 @@ def price_export(root: pathlib.Path) -> dict:
                 "effective": model["api_price_read"],
                 "effective_from": start,
                 "effective_until": periods[index + 1][0] if index + 1 < len(periods) else None,
-                "source": f"agent-routing routing/models.toml {model['id']} {origin}, route version {version}",
+                "source": f"agent-routing {stores.CATALOG} {model['id']} {origin}, route version {version}",
                 "per_million": per_million,
                 "unpriced": [category for category in CATEGORIES if category not in per_million],
                 "long_context": long_context_term(surcharge, per_million) if surcharge is not None else None,
@@ -293,7 +294,7 @@ def tapes_table(export: dict) -> str:
     """The export as `tapes-price-table/2` TOML."""
     lines = [
         "# A tapes price table exported by `agent-routing prices --format tapes` from",
-        f"# routing/models.toml at route version {export['route_version']}. Prices are API list",
+        f"# {stores.CATALOG} at route version {export['route_version']}. Prices are API list",
         "# prices; a category a row does not price is left out. A long-context term",
         "# applies to API per-token billing only: a subscription plan pays no surcharge.",
         "",

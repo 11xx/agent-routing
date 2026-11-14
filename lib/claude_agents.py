@@ -4,7 +4,9 @@ import json
 import pathlib
 import re
 
-from routing_profiles import RouteRefusal, load_toml, resolve, route_version, structural_problems
+import stores
+
+from routing_profiles import RouteRefusal, data, resolve, route_version, structural_problems
 
 
 def claude_agent_bundle(root: pathlib.Path, *, profile_id=None, variant_id=None,
@@ -14,11 +16,15 @@ def claude_agent_bundle(root: pathlib.Path, *, profile_id=None, variant_id=None,
         raise RouteRefusal("manifest-invalid", "; ".join(problems))
     if variant_id is not None and profile_id is None:
         raise RouteRefusal("unknown-profile", "--variant requires --profile")
-    profiles = load_toml(root / "routing/profiles.toml")["profile"]
+    profiles = data(root).profiles
     if profile_id is not None:
         profiles = [profile for profile in profiles if profile["id"] == profile_id]
         if not profiles:
             raise RouteRefusal("unknown-profile", f"unknown profile {profile_id!r}")
+    consumer = next((row["id"] for row in data(root).policy.get("consumer", [])
+                     if row.get("generated") == "claude-agents"), None)
+    if consumer is None:
+        raise RouteRefusal("manifest-invalid", f"{stores.POLICY} declares no consumer generated from claude-agents")
     files = {}
     pins = []
     for profile in profiles:
@@ -34,11 +40,11 @@ def claude_agent_bundle(root: pathlib.Path, *, profile_id=None, variant_id=None,
                 continue
             route = resolve(root, profile["id"], "claude", variant_id=variant,
                             allow_experimental=allow_experimental)
-            alias = re.fullmatch(r"(opus|sonnet|haiku|fable)-[0-9.]+", selected["model"])
+            reach = stores.reach_row(data(root).catalog, selected["model"], "claude", selected["provider"])
+            alias = (reach or {}).get("agent_alias")
             if alias is None:
                 raise RouteRefusal("unsupported-model", "no Claude native alias for the routed model",
                                    model=selected["model"])
-            alias = alias.group(1)
             name = f"{profile['id']}-{variant or alias}"
             if not re.fullmatch(r"[a-z][a-z0-9-]*", name):
                 raise RouteRefusal("manifest-invalid", "unsafe native agent name", name=name)
@@ -66,7 +72,7 @@ def claude_agent_bundle(root: pathlib.Path, *, profile_id=None, variant_id=None,
                                     else "Write only within the targets and authority the brief names.")
             files[f"agents/{name}.md"] = (f"---\nname: {name}\ndescription: {description}\n"
                                           f'tools: "*"\nmodel: {alias}\neffort: {route["effort"]}\n---\n\n{body}')
-            pin = dict(consumer="delegate-agents", path=f"{name}.md", model=alias,
+            pin = dict(consumer=consumer, path=f"{name}.md", model=alias,
                        effort=route["effort"], profile=profile["id"], backend="claude", generated=True)
             if variant is not None:
                 pin["variant"] = variant

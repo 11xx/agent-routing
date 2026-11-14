@@ -1,192 +1,32 @@
 #!/usr/bin/env python3
-"""Check that the authored doctrine and the machine manifest still agree.
+"""Validate the whole data set: every store, route, pool, price and relation.
 
-Two representations of the roster exist on purpose. `routing/models.toml` is
-data — queryable, complete, one row per effort. `doctrine/model-routing.md` is
-the text `agent-routing doctrine` prints on demand, and it is *authored*: it
-compresses adjacent tiers into one row, orders rows for a reader rather than a
-parser, and phrases each role in prose. Generating either from the other
-destroys the other's reason to exist; earlier attempts to do so lost the
-compression, the ordering, and the wording in turn.
-
-What can be mechanised is narrow: an unknown model in the doctrine, a model in
-the manifest the doctrine never mentions, or a pass@1 or cost cell that appears
-in both and differs. A row whose live build is unmeasured carries the figures of
-the build it replaces, and those are held to the same agreement wherever the
-doctrine puts them, so retiring a measurement does not release its numbers. It
-also validates route structure, so every profile and variant has to name a real
-model, effort, backend, and provider, with declared backend/model effort support,
-and API prices, so every `api_price_per_million` uses known category keys and
-carries an `api_price_read` date, and every `long_context_surcharge` has a
-positive threshold, says whether a prompt of exactly the threshold pays it,
-and has input, cache and output multipliers of at least one, and every
-`time_of_day_prices` window has HH:MM UTC bounds, a multiplier of at least
-zero, days of the week named once each from mon..sun, and no overlap with
-another in any hour of the week, and every `api_price_changes` entry is
-dated after the read date and the change before it and prices the same keys
-as the row.
-
-Three relations hold across every row. A model's review rank never falls as
-its effort rises, so a deeper tier is never reviewed below a shallower one.
-Every priced Claude row writes its cache at Anthropic's published multipliers
-of its input price: 1.25 times for five minutes and twice for an hour. Every
-Codex row with subscription credits charges 25 credits per API dollar of the
-same token class, the ratio the quota weighting converts on.
-
-Everything else is outside its reach — the output-token column, every other
-number carried in prose, and the wording of both documents. A rule stated
-wrongly in sentences passes here and is caught by review or not at all. It
-rewrites nothing.
+Each problem names its store and row. The catalog and policy must be in the
+canonical form the emitter writes, notes must be well formed, every route
+must resolve to a real model, effort, backend and provider, and every price
+must carry the terms the price export can describe.
 """
 
-import math
 import pathlib
-import re
 import sys
-import tomllib
-
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "lib"))
-from price_export import price_problems  # noqa: E402
-from routing_profiles import EFFORT_ORDER, validation_problems  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DOCTRINE = ROOT / "doctrine" / "model-routing.md"
-MANIFEST = ROOT / "routing" / "models.toml"
+sys.path.insert(0, str(ROOT / "lib"))
 
-# "opus-5 · high", "gpt-5.6-luna · low/medium", and separator-less rows such as
-# "small-model class" whose whole class is one line.
-ROW = re.compile(
-    r"^\|\s*([a-z0-9.\- ]+?)\s*(?:·\s*([^|]+?)\s*)?\|([^|]*)\|([^|]*)\|([^|]*)\|"
-)
-NUMBER = re.compile(r"\d+(?:\.\d+)?")
-CLAUDE_CACHE_WRITES = {"cache_write": 1.25, "cache_write_1h": 2.0}
-CODEX_CREDITS_PER_API_DOLLAR = 25.0
+import stores  # noqa: E402
+from routing_profiles import data_problems  # noqa: E402
 
 
-def efforts_in(cell):
-    """Split a compressed effort cell into the tiers it covers."""
-    return [part.strip() for part in re.split(r"[/,]| and ", cell) if part.strip()]
-
-
-def numbers_in(cell):
-    return set(NUMBER.findall(cell.replace(",", "")))
-
-
-def expected_cell(value, scale):
-    """Spell a manifest value the way the doctrine writes it."""
-    return f"{round(value * scale)}" if scale == 100 else f"{value:.2f}"
-
-
-def carries(cell, value, scale):
-    expected = expected_cell(value, scale)
-    found = numbers_in(cell)
-    return expected in found or expected.rstrip("0").rstrip(".") in found
-
-
-def relation_problems(models):
-    """Rank order along effort, Claude cache-write prices and Codex credit rates."""
-    problems = []
-    for model in models:
-        model_id = model["id"]
-        ranks = sorted((EFFORT_ORDER.index(tier["effort"]), tier["effort"], tier["rank"])
-                       for tier in model.get("effort", [])
-                       if tier.get("effort") in EFFORT_ORDER and type(tier.get("rank")) is int)
-        for (_, lower, lower_rank), (_, higher, higher_rank) in zip(ranks, ranks[1:]):
-            if higher_rank < lower_rank:
-                problems.append(f"{model_id}: rank falls from {lower} ({lower_rank}) to {higher} ({higher_rank})")
-        prices = model.get("api_price_per_million", {})
-        if model.get("family") == "claude" and "input" in prices:
-            for key, multiplier in CLAUDE_CACHE_WRITES.items():
-                if not math.isclose(prices.get(key, math.nan), multiplier * prices["input"]):
-                    problems.append(f"{model_id}: {key} must be {multiplier:g} times input "
-                                    f"({multiplier * prices['input']:g}), not {prices.get(key)}")
-        for key, credits in model.get("subscription_credits_per_million", {}).items():
-            expected = CODEX_CREDITS_PER_API_DOLLAR * prices.get(key, math.nan)
-            if not math.isclose(credits, expected):
-                problems.append(f"{model_id}: {key} credits must be {CODEX_CREDITS_PER_API_DOLLAR:g} per API "
-                                f"dollar ({expected:g}), not {credits:g}")
-    return problems
-
-
-def main():
-    with MANIFEST.open("rb") as handle:
-        models = tomllib.load(handle)["model"]
-    by_id = {m["id"]: m for m in models}
-
-    problems = []
-    mentioned = set()
-
-    for line in DOCTRINE.read_text().splitlines():
-        match = ROW.match(line)
-        if not match:
-            continue
-        model_id, effort_cell, pass_cell, usd_cell, out_cell = match.groups()
-        # The doctrine writes a class name with spaces where the manifest uses
-        # an id; compare on the id spelling.
-        model_id = model_id.replace(" ", "-")
-        effort_cell = effort_cell or ""
-        if model_id in {"model-·-effort", ":---"}:
-            continue
-        if model_id not in by_id:
-            problems.append(f"doctrine names unknown model {model_id!r}")
-            continue
-        mentioned.add(model_id)
-        model = by_id[model_id]
-        tiers = {e["effort"]: e for e in model.get("effort", [])}
-
-        for effort in efforts_in(effort_cell):
-            if effort in {"any", "class"} or effort not in tiers:
-                continue
-            entry = tiers[effort]
-            for label, cell, key, scale in (
-                ("pass@1", pass_cell, "pass_at_1", 100),
-                ("$", usd_cell, "usd_per_task", 1),
-            ):
-                value = entry.get(key)
-                if value is None:
-                    continue
-                if not numbers_in(cell) or carries(cell, value, scale):
-                    continue
-                problems.append(
-                    f"{model_id} {effort}: doctrine {label} cell {cell.strip()!r} "
-                    f"does not contain manifest value {expected_cell(value, scale)}"
-                )
-
-            # A superseded build's figures stay on the row as predecessor
-            # evidence once the live build's own cells go empty. The doctrine
-            # compresses them into whichever of the two compared cells reads
-            # best, so they are matched against the pair rather than a column.
-            measured = pass_cell + usd_cell
-            for label, key, scale in (
-                ("predecessor pass@1", "predecessor_pass_at_1", 100),
-                ("predecessor $", "predecessor_usd_per_task", 1),
-            ):
-                value = entry.get(key)
-                if value is None or carries(measured, value, scale):
-                    continue
-                problems.append(
-                    f"{model_id} {effort}: the doctrine row carries no "
-                    f"{label} {expected_cell(value, scale)} for the "
-                    f"{entry.get('predecessor', 'superseded')} build it records"
-                )
-
-    for model_id in by_id:
-        if model_id not in mentioned:
-            problems.append(f"manifest has {model_id!r}; the doctrine table never lists it")
-
-    problems.extend(validation_problems(ROOT))
-    problems.extend(price_problems(models))
-    problems.extend(relation_problems(models))
-
+def main() -> int:
+    problems = data_problems(ROOT)
     for problem in problems:
         print(problem)
     if problems:
-        print(f"\n{len(problems)} disagreement(s) — reconcile by hand; neither file is generated")
+        print(f"\n{len(problems)} problem(s) in {stores.DATA}/")
         return 1
-    print(
-        f"pass@1, cost, and model coverage agree across {len(mentioned)} models; "
-        "route structure valid"
-    )
+    loaded = stores.load(ROOT)
+    print(f"{stores.DATA}/ valid: {len(loaded.models)} models, {len(loaded.policy.get('seat', []))} seats, "
+          f"{len(stores.load_notes(ROOT))} notes; route version {loaded.version}")
     return 0
 
 
