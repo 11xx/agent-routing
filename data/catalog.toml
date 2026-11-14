@@ -879,6 +879,12 @@ backend = "opencode"
 provider = "opencode-go"
 backend_model = "opencode-go/deepseek-flash"
 
+[[reach]]
+model = "deepseek-flash"
+backend = "pi"
+provider = "openai-codex"
+backend_model = "deepseek-v4.1-flash"
+
 [[effort_support]]
 model = "deepseek-flash"
 backend = "pi"
@@ -1075,6 +1081,12 @@ backend = "pi"
 provider = "openai-codex"
 backend_model = "gpt-6-astra"
 
+[[reach]]
+model = "gpt-6-astra"
+backend = "pi"
+provider = "opencode-go"
+backend_model = "gpt-6-astra"
+
 [[model]]
 id = "gpt-6-luna"
 family = "openai"
@@ -1267,6 +1279,12 @@ backend = "pi"
 provider = "openai-codex"
 backend_model = "gpt-6.1-sol"
 
+[[reach]]
+model = "gpt-6.1-sol"
+backend = "pi"
+provider = "opencode-go"
+backend_model = "gpt-6.1-sol"
+
 [[model]]
 id = "gpt-6-sol"
 family = "openai"
@@ -1359,6 +1377,12 @@ backend = "opencode"
 provider = "opencode-go"
 backend_model = "opencode-go/mimo-v2.6-flash"
 
+[[reach]]
+model = "mimo-v2.6-flash"
+backend = "pi"
+provider = "openai-codex"
+backend_model = "mimo-v2.6-flash"
+
 [[model]]
 id = "mimo-v2.6-pro"
 family = "xiaomi"
@@ -1396,3 +1420,9 @@ model = "mimo-v2.6-pro"
 backend = "opencode"
 provider = "opencode-go"
 backend_model = "opencode-go/mimo-v2.6-pro"
+
+[[reach]]
+model = "mimo-v2.6-pro"
+backend = "pi"
+provider = "openai-codex"
+backend_model = "mimo-v2.6-pro"
