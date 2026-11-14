@@ -10,8 +10,7 @@ data set and names the offending row. `load` checks the raw shape of what
 routing decides from first and projects the stores into the route and tier
 records the resolver works on only when that shape is sound. The guards and
 the notes are outside the deciding path both ways: no decision reads them, and
-`standing_problems`, which lint and the doctrine report, is the only check
-that does.
+only `standing_problems`, which lint and the doctrine report, checks them.
 """
 
 from __future__ import annotations
@@ -111,7 +110,8 @@ NOTE_KEYS = (("id", "str", True), ("date", "date", True), ("model", "str", True)
 HEADERS = {
     CATALOG: "# Facts about models: families, backends, models, tiers, prices and reachability.\n"
              "# Written in canonical form; `agent-routing format` rewrites a hand edit into it.\n",
-    POLICY: "# What routing decides from: pools, fences, profiles, seats, fallbacks, ranks and consumer pins; and the guards no decision reads.\n"
+    POLICY: "# What routing decides from: pools, fences, profiles, seats, fallbacks, ranks and consumer pins; "
+            "and the guards no decision reads.\n"
             "# Written in canonical form; `agent-routing format` rewrites a hand edit into it.\n",
 }
 
