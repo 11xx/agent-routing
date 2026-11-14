@@ -44,7 +44,8 @@ ranks that apply them follow, rendered from the stores.
 
 - The reviewer is never the author, and independence is never manufactured. A lead that did not write delegated work may review it and record that verdict.
 - Independent review is an escalation for repository policy, an explicit user requirement, or a costly wrong approval. Otherwise the lead inspects, runs the gates and records the deferred coverage as Arc debt, which never overrides changes-requested.
-- A reviewer from another lab is the stronger check where independence matters; route eligibility is never a verdict or an identity check.
+- Rank measures a reader's capability; independence is the lab, since a reader from the author's own lab shares its blind spots. A review's purpose says which it needs: clearing a change needs independence at the author's floor, an exhaustive read of a whole surface needs the highest rank whatever the lab, and findings for someone else to adjudicate need neither.
+- A reviewer from another lab is the stronger check where independence matters, even when it ranks below the author; route eligibility is never a verdict or an identity check.
 - A change jointly authored across two labs is reviewed by the stronger of the two labs' review seats; its verdict discharges the debt without claiming independence from its own lab's commits.
 - Re-run a finding's failing input before recording it, resolve a contradiction across rounds on the merits, and read a strictness finding as a claim about where the guard belongs.
 - Scope a review brief to the range it should read, and treat a missing verdict as an incomplete run, not a verdict.

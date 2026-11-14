@@ -106,6 +106,27 @@ class DatedAssessmentTest(LadderCase):
         self.commit("2030-01-05T00:00:00Z")
         self.assertEqual((self.tier("2030-01-04T00:00:00Z"), self.tier("2030-01-06T00:00:00Z")), (2, 3))
 
+    def test_dated_answers_keep_each_purpose_and_never_clear_an_exhaustive_read(self):
+        """Claim: a dated assessment answers clearance and findings from the
+        table in force then, identically whichever is asked, and an
+        exhaustive read never clears at any instant. Rejects a purpose
+        changing a dated answer it does not own."""
+        edit(self.root, stores.CATALOG, HIGH, RAISED)
+        self.commit("2030-01-05T00:00:00Z")
+        for purpose in ("clearance", "findings"):
+            with self.subTest(purpose=purpose):
+                before = assess_review(self.root, "nw-atlas-2#high", ["ts-3-core#max", "orbit-flash#max"],
+                                       as_of="2030-01-04T00:00:00Z", purpose=purpose)
+                after = assess_review(self.root, "nw-atlas-2#high", ["ts-3-prime#xhigh", "orbit-flash#max"],
+                                      as_of="2030-01-06T00:00:00Z", purpose=purpose)
+                self.assertEqual([(answer["reviewer"]["review_tier"], answer["floor"], answer["findings"],
+                                   answer["clears"], answer["qualifiers"]) for answer in (before, after)],
+                                 [(2, 1, "eligible", True, []), (3, 2, "eligible", True, [])])
+        exhaustive = assess_review(self.root, "nw-atlas-2#high", ["nw-swift-2#high"],
+                                   as_of="2030-01-06T00:00:00Z", purpose="exhaustive")
+        self.assertEqual((exhaustive["clears"], exhaustive["qualifiers"], exhaustive["purpose_qualifiers"]),
+                         (False, ["same-family"], ["not-chosen-for-independence"]))
+
     def test_malformed_and_pre_record_instants_are_refused(self):
         """Claim: an instant that is not RFC 3339, and one before the numeric
         record, are refused as historical-ladder without an answer, and

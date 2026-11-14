@@ -1291,8 +1291,11 @@ def _review_author(
 
 ASSESSMENT_SCHEMAS = {1: "agent-routing-assessment/1", 2: "agent-routing-assessment/2"}
 ASSESSMENT_SCHEMA = ASSESSMENT_SCHEMAS[2]
-REVIEW_PURPOSES = ("findings", "clearance")
+REVIEW_PURPOSES = stores.REVIEW_PURPOSES
 INELIGIBLE_REVIEW_DEBT_KIND = "ineligible-review"
+# Why an exhaustive read never clears. It stays outside the closed qualifier
+# set, which Arc refuses to extend by an unknown name.
+EXHAUSTIVE_QUALIFIER = "not-chosen-for-independence"
 
 
 def model_identities(root: pathlib.Path, model_id: str) -> list[str]:
@@ -1390,6 +1393,13 @@ def _assessment(
     ``findings`` asks only that the reviewer's tier reach each author's floor,
     rejecting its own model at a lower effort. Schema 1 carries the
     independence answer alone.
+
+    An exhaustive read is chosen for capability, never for independence, so
+    it never clears and carries ``purpose_qualifiers`` saying so. That reason
+    lies outside the closed qualifier set a reader validates, so an
+    exhaustive answer exists only where a closed qualifier already makes the
+    read ineligible: an independent reviewer is refused rather than reported
+    as an eligible read that does not clear.
     """
     review_tier = reader["rank"]
     author_rows, floor, floors_known = _author_rows(written)
@@ -1410,7 +1420,16 @@ def _assessment(
     if not reader["seated"]:
         qualifiers.append("reviewer-unseated")
     independent = not [qualifier for qualifier in qualifiers if qualifier not in {"below-clearance", "reviewer-unseated"}]
-    clears = not [q for q in qualifiers if q != "reviewer-unseated"]
+    clears = not [q for q in qualifiers if q != "reviewer-unseated"] and purpose != "exhaustive"
+    if purpose == "exhaustive" and independent:
+        raise RouteRefusal(
+            "exhaustive-independent",
+            f"reviewer {reader['model']}{'#' + reader['effort'] if reader['effort'] else ''} is independent of "
+            "every author, and the assessment's closed qualifier set has no name for a read chosen for capability; "
+            "an exhaustive answer is given only where a qualifier already makes the read ineligible",
+            role="reviewer",
+            reason="no-closed-qualifier",
+        )
 
     assessment = {
         "schema": ASSESSMENT_SCHEMAS[schema],
@@ -1430,6 +1449,8 @@ def _assessment(
     }
     if excepted:
         assessment["family_exception"] = excepted
+    if purpose == "exhaustive":
+        assessment["purpose_qualifiers"] = [EXHAUSTIVE_QUALIFIER]
     if schema > 1:
         findings = review_tier is not None and floors_known and all(
             review_tier >= row["floor"] and not (
@@ -1694,7 +1715,7 @@ def resolve(
             profile=profile_id,
             backend=backend,
         )
-    if purpose is not None and (profile_id != "review" or author is None):
+    if purpose is not None and (profile_id != "review" or (author is None and purpose != "exhaustive")):
         raise RouteRefusal(
             "invalid-purpose",
             "--purpose needs review and the diff --author to judge against",
@@ -1712,6 +1733,13 @@ def resolve(
         raise RouteRefusal(
             "invalid-author",
             "--accept-ineligible needs the diff --author to assess against",
+            profile=profile_id,
+            backend=backend,
+        )
+    if accept_ineligible and purpose == "exhaustive":
+        raise RouteRefusal(
+            "invalid-purpose",
+            "--accept-ineligible records debt for clearance or findings; an exhaustive read clears nothing",
             profile=profile_id,
             backend=backend,
         )
@@ -1771,32 +1799,40 @@ def resolve(
     if profile_id == "review":
         constraints = _review_constraints(root, selected)
         review = {"author": None, "independence": "unverified", **constraints}
-        if author is not None:
+        if author is not None or purpose == "exhaustive":
             purpose = _purpose(purpose)
             clearance = clearance_floor(root)
-            author_facts = _review_author(
-                root, author, resolved_profile, backend, allow_unknown_floor=accept_ineligible
-            )
-            candidates = [selected] if variant_id else [selected, *(
+            author_facts = None if author is None else _review_author(
+                root, author, resolved_profile, backend,
+                allow_unknown_floor=accept_ineligible or purpose == "exhaustive")
+            ordered = [selected] if variant_id else [selected, *(
                 route for route in [profile, *profile.get("variant", [])] if route is not selected
             )]
+            def available(route: dict) -> bool:
+                return (backend in route.get("backends", []) and route["stability"] == "stable"
+                        and (allow_cross_pool or not pool_refusal(pools(root), profile_id, route["provider"],
+                                                                   route["model"])))
+            seats = [route for route in ordered if available(route)]
+            # A named variant is the caller's choice; otherwise the policy's
+            # review seat for the purpose, the author's lab and the backend.
+            if variant_id:
+                choice = selected
+            else:
+                lab = None if author_facts is None else _lab(data(root).families, author_facts["family"])
+                row = review_seat_row(data(root), purpose, lab, backend)
+                choice = None if row is None else _review_seat_route(profile, row)
+            choice = next((seat for seat in seats if seat is choice), None)
             eligible = None
-            seats = []
-            for candidate in candidates:
-                if backend not in candidate.get("backends", []) or candidate["stability"] != "stable":
-                    continue
-                constraints = _review_constraints(root, candidate)
-                if pool_refusal(pools(root), profile_id, candidate["provider"], candidate["model"]) and not allow_cross_pool:
-                    continue
-                seats.append(candidate)
-                answers = _seat_answers(author_facts, constraints, clearance, f"{candidate["model"]}#{candidate["effort"]}")
-                # An excluded-family seat is never a fallback: a findings read
-                # from the author's own family comes only from the route the
-                # caller resolved, so a cost-gated variant is reached by name.
-                if answers["clears"] if purpose == "clearance" else (
-                        answers["findings"] and (candidate is selected or not answers["excluded"])):
-                    eligible = candidate
-                    break
+            if choice is not None:
+                constraints = _review_constraints(root, choice)
+                if purpose == "exhaustive":
+                    top = max(_review_constraints(root, route)["reviewer_tier"]
+                              for route in [profile, *profile.get("variant", [])] if available(route))
+                    serves = constraints["reviewer_tier"] >= top
+                else:
+                    answers = _seat_answers(author_facts, constraints, clearance, f"{choice['model']}#{choice['effort']}")
+                    serves = answers["clears"] if purpose == "clearance" else answers["findings"]
+                eligible = choice if serves else None
             accepted = False
             if eligible is None and accept_ineligible and seats:
                 # The strongest seat by review tier; max keeps the first of
@@ -1804,6 +1840,16 @@ def resolve(
                 eligible = max(seats, key=lambda seat: _review_constraints(root, seat)["reviewer_tier"])
                 constraints = _review_constraints(root, eligible)
                 accepted = True
+            if eligible is None and purpose == "exhaustive":
+                raise RouteRefusal(
+                    "review-purpose",
+                    f"no exhaustive review seat on backend {backend!r} ranks with its highest-ranked stable "
+                    "review route",
+                    profile=resolved_profile,
+                    backend=backend,
+                    purpose=purpose,
+                    reason="no-review-seat" if choice is None else "below-top-rank",
+                )
             if eligible is None:
                 raise RouteRefusal(
                     "review-independence",
@@ -1824,20 +1870,26 @@ def resolve(
                 )
             selected = eligible
             resolved_profile = profile_id if selected is profile else f"{profile_id}:{selected['id']}"
-            assessment = assess_review(
-                root, f"{selected['model']}#{selected['effort']}", [author_facts["coordinate"]], purpose=purpose
-            )
-            answers = _seat_answers(author_facts, constraints, clearance, f"{selected["model"]}#{selected["effort"]}")
-            review = {
-                "author": author_facts["coordinate"],
-                "author_tier": author_facts["tier"],
-                "purpose": purpose,
-                "independence": "eligible" if answers["independent"] else "ineligible",
-                "findings": "eligible" if answers["findings"] else "ineligible",
-                "clears": answers["clears"],
-                "qualifiers": assessment["qualifiers"],
-                **constraints,
-            }
+            reader = f"{selected['model']}#{selected['effort']}"
+            if author_facts is None:
+                review = {"author": None, "purpose": purpose, "independence": "unverified", "clears": False,
+                          "purpose_qualifiers": [EXHAUSTIVE_QUALIFIER], **constraints}
+            else:
+                assessment = assess_review(root, reader, [author_facts["coordinate"]],
+                                           purpose="findings" if purpose == "exhaustive" else purpose)
+                answers = _seat_answers(author_facts, constraints, clearance, reader)
+                review = {
+                    "author": author_facts["coordinate"],
+                    "author_tier": author_facts["tier"],
+                    "purpose": purpose,
+                    "independence": "eligible" if answers["independent"] else "ineligible",
+                    "findings": "eligible" if answers["findings"] else "ineligible",
+                    "clears": answers["clears"] and purpose != "exhaustive",
+                    "qualifiers": assessment["qualifiers"],
+                    **constraints,
+                }
+                if purpose == "exhaustive":
+                    review["purpose_qualifiers"] = [EXHAUSTIVE_QUALIFIER]
             if accepted:
                 review.update(recommendation="record-debt", debt_kind=INELIGIBLE_REVIEW_DEBT_KIND)
     stability = selected["stability"]

@@ -271,40 +271,62 @@ RESOLVE A ROUTE
   --allow-experimental — a whole profile as much as a variant — so a route that
   is not ready cannot be reached by accident.
 
-  For independent review, add --author '<model>#<effort>' using the diff
-  author's recorded coordinate, and --purpose for what the read is for.
-  --purpose clearance, the default, asks for a read that may clear review
-  debt: a stable seat outside the author's excluded families, at or above both
-  the author's capability floor and the policy's [review] clearance.
-  --purpose findings asks only for a read whose findings can be trusted: a seat
-  at or above the author's tier, including its own family except the same model
-  at a lower effort, only on the route resolved (the backend default or the
-  named --variant), never as a fallback. A route's excluded families are its
-  reviewer's family: the lineages the catalog's [[family]] row groups with the
-  reviewer's own, the same relation assess reads for same-family. Capability
-  grants no routing seat. A default that does not serve the purpose may select
-  a variant that does on the same backend; --variant confines the choice. No
-  such route means a refusal recommending Arc review debt, not a weaker
-  reviewer. Unknown author floors also recommend debt. Omitting #effort uses
-  the highest declared author floor; missing floors are not inferred.
+  For review, add --author '<model>#<effort>' using the diff author's
+  recorded coordinate, and --purpose for what the read is for. The answer is
+  the policy's review seat for that purpose, the author's lab and the
+  backend: the lab's own [[review_seat]] row, else its `any` row. resolve
+  checks that seat against the purpose's requirement and refuses, naming
+  it, when the seat does not meet it:
+    clearance   the default; the independent read of a change, the one that
+                may clear review debt: a stable seat outside the author's lab,
+                at or above both the author's capability floor and the
+                policy's [review] clearance
+    findings    candidate defects for someone else to adjudicate: a seat at or
+                above the author's tier, its own lab included, except the
+                same model at a lower effort
+    exhaustive  a whole-surface read chosen for capability: a seat among the
+                backend's highest-ranked stable review routes, the author's
+                own lab and model included; it never clears, and --author is
+                optional
+  A route's excluded families are its reviewer's family: the lineages the
+  catalog's [[family]] row groups with the reviewer's own, the same relation
+  assess reads for same-family. --variant names the route instead of the
+  policy's seat and is checked the same way. Capability grants no routing
+  seat. A missing seat, or one the author's facts do not satisfy, is a
+  refusal, never a weaker reviewer: for clearance and findings
+  "review-independence" recommending Arc review debt, for exhaustive
+  "review-purpose" with reason "no-review-seat" or "below-top-rank". Unknown
+  author floors also recommend debt, except for exhaustive, which needs no
+  floor. Omitting #effort uses the highest declared author floor; missing
+  floors are not inferred.
 
-  Without --author, review JSON carries independence: "unverified", the
-  excluded author families, and the reviewer tier inside `review`; --purpose
-  then refuses, since there is nothing to judge. With an author it carries the
-  author floor, the purpose, and the seat's three answers: independence
-  ("eligible" when outside the excluded families and at the author's tier),
-  findings ("eligible" or "ineligible") and clears (true or false), with the
-  assessment qualifiers. A findings route may say independence "ineligible"
-  and clears false; only clears true discharges debt. Eligibility is not a
-  verdict. ARC_MODEL is never used as the author, since the caller may not have
-  written the diff. --author and --purpose are only valid for review.
+  Without --author or --purpose, review JSON carries the backend's default
+  review route with independence: "unverified", the excluded author
+  families, and the reviewer tier inside `review`; --purpose clearance or
+  findings then refuses, since there is nothing to judge. With an author it
+  carries the author floor, the purpose, and the seat's three answers:
+  independence ("eligible" when outside the excluded families and at the
+  author's tier), findings ("eligible" or "ineligible") and clears (true or
+  false), with the assessment qualifiers. A findings route may say
+  independence "ineligible" and clears false; only clears true discharges
+  debt. An exhaustive answer always says clears false and adds
+  purpose_qualifiers: ["not-chosen-for-independence"]. Eligibility is not a
+  verdict. ARC_MODEL is never used as the author, since the caller may not
+  have written the diff. --author and --purpose are only valid for review.
 
-  When no route serves the purpose, --accept-ineligible (which needs --author)
-  returns the strongest stable seat instead of refusing, ties broken by the
-  profile's order of preference. Its `review` block carries the seat's answers
-  and qualifiers, recommendation: "record-debt" and debt_kind:
-  "ineligible-review". Where a route serves the purpose the answer is the same
-  with or without the flag.
+  When no route serves the purpose, --accept-ineligible (which needs --author
+  and refuses exhaustive, which clears nothing) returns the strongest stable
+  seat instead of refusing, ties broken by the profile's order of
+  preference. Its `review` block carries the seat's answers and qualifiers,
+  recommendation: "record-debt" and debt_kind: "ineligible-review". Where a
+  route serves the purpose the answer is the same with or without the flag.
+
+  Which review answers are rows and which are ranks: resolve review with
+  --author or --purpose, and admit-review through it, answer the policy's
+  review seats, bounded by ranks, floors and labs. The rest is computed from
+  ranks and labs: assess judges any pair; frontier is the strongest eligible
+  review route for an author; ladder exports the capability table; and the
+  strongest seat --accept-ineligible returns is chosen by rank.
 
 LIST ROUTES FOR A PICKER
   agent-routing routes --json [--backend <backend>] [--profile <profile>]
@@ -363,7 +385,7 @@ QUOTA ADMISSION BEFORE DISPATCH
 ASSESS A REVIEW
   agent-routing assess --reviewer <model>[#<effort>]
     --author <model>[#<effort>] [--author ...]
-    [--purpose findings|clearance] [--as-of <RFC3339> [--accepted <ref>]]
+    [--purpose findings|clearance|exhaustive] [--as-of <RFC3339> [--accepted <ref>]]
     [--schema 1|2] [--json]
 
   Every catalog tier has a capability rank and author floor: 1 bounded work,
@@ -383,7 +405,16 @@ ASSESS A REVIEW
   model pairs a policy [[family_exception]] row names. An effort-less reviewer
   uses its minimum rank; an effort-less author its maximum floor. --purpose
   records the question asked and leads the text; both answers are always
-  given. --as-of reads the accepted branch's first-parent history at the
+  given.
+
+  An exhaustive read is chosen for capability, not independence, so
+  --purpose exhaustive never clears and adds purpose_qualifiers:
+  ["not-chosen-for-independence"], outside the closed qualifier set, in
+  both schemas. A reader of the closed set must see why the read does not
+  clear, so the answer is given only when a closed qualifier already makes
+  the read ineligible (same-model, same-family, below-floor or
+  floor-unknown). A reviewer independent of every author is refused as
+  "exhaustive-independent". --as-of reads the accepted branch's first-parent history at the
   instant; --accepted <ref> selects that history explicitly. The default is
   the repository's default branch, never the checkout's HEAD. Remote
   origin/HEAD identifies the local default branch when available; a sole local
@@ -412,7 +443,8 @@ ASSESS A REVIEW
   rank; authors carry floor. Each coordinate includes its known identities. The
   shape is independent of --as-of. --schema 1 emits the independence answer
   without purpose, clearance, findings, clears or below-clearance; it refuses
-  --purpose findings. Without --json the answer is one line.
+  --purpose findings. Without --json the answer is one line, ending with any
+  purpose qualifier.
 
   Qualifiers are a closed set:
     same-model         the reviewer is an author's model, at any effort
@@ -460,9 +492,10 @@ FIND THE REVIEW FRONTIER
   agent-routing frontier --author <model>[#<effort>]
     [--reads <model>#<effort>...] [--json]
 
-  frontier answers the strongest review seat eligible for an author, so a
-  caller can tell whether a recorded read is still the best routing can buy. A
-  seat is a stable review route on any backend whose pool serves its model, a
+  frontier answers, from ranks rather than review seat rows, the strongest
+  review route eligible for an author, so a caller can tell whether a
+  recorded read is still the best routing can buy. A seat is a stable review
+  route on any backend whose pool serves its model, a
   route of the review profile, the kind resolve review can sell; a seat on
   another profile never raises the frontier. It is eligible exactly when assess
   calls it independent, so frontier carries no independence rule of its own.
