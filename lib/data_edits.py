@@ -466,16 +466,22 @@ def row_changes(before, after):
 
 
 def stale_consumers(before, after, root):
-    def inputs(texts, backend, profile=None):
-        catalog = stores.parse_toml(texts[stores.CATALOG], stores.CATALOG)
-        policy = stores.parse_toml(texts[stores.POLICY], stores.POLICY)
+    def documents(texts):
+        # The shared parse validation already made of these texts; only read here.
+        loaded = stores.Data.from_texts(texts)
+        return loaded.catalog, loaded.policy
+
+    before, after = documents(before), documents(after)
+
+    def inputs(documents, backend, profile=None):
+        catalog, policy = documents
         seats = [{key: value for key, value in row.items() if key not in {"when", "why", "since"}}
                  for row in policy.get("seat", []) if backend in row["backends"]
                  and (profile is None or row["profile"] == profile)]
         models = {row["model"] for row in seats}
         return (seats, [row for row in catalog.get("reach", []) if row["model"] in models and row["backend"] == backend],
                 [row for row in policy.get("profile", []) if row["id"] in {seat["profile"] for seat in seats}])
-    policy = stores.parse_toml(after[stores.POLICY], stores.POLICY)
+    policy = after[1]
     repositories = {row["id"]: row["name"] for row in policy.get("repository", [])}
     stale = []
     for row in policy.get("consumer", []):
@@ -487,7 +493,7 @@ def stale_consumers(before, after, root):
             stale.append(dict(consumer=row["id"], path=target,
                               refresh=f"agent-routing emit claude-agents --output-dir {shlex.quote(staging)}"))
     interactive_changed = any(inputs(before, backend, "interactive") != inputs(after, backend, "interactive")
-                              for backend in {row["id"] for row in stores.parse_toml(after[stores.CATALOG], stores.CATALOG).get("backend", [])})
+                              for backend in {row["id"] for row in after[0].get("backend", [])})
     if interactive_changed and any(row.get("command", [None])[0] == "agent-harness" for row in policy.get("accessor", [])):
         stale.append(dict(consumer="harness-settings", path="interactive route settings",
                           refresh="agent-harness build"))
