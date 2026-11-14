@@ -127,6 +127,81 @@ class AssessTest(unittest.TestCase):
         self.assertEqual((reviewer["reviewer"]["review_tier"], reviewer["clears"]), (1, False))
 
 
+def review_seat(purpose, backend, model, effort, family="any"):
+    return {"purpose": purpose, "author_family": family, "backend": backend, "model": model, "effort": effort,
+            "when": "A fixture read.", "why": "A fixture reason.", "since": "2030-01-09"}
+
+
+def change_policy(root, change):
+    """Rewrite the policy store after `change` edits its parsed tables."""
+    path = root / stores.POLICY
+    document = stores.parse_toml(path.read_text(), stores.POLICY)
+    change(document)
+    path.write_text(stores.emit_policy(document))
+
+
+def drop_review_seat(document, purpose, backend, family="any"):
+    rows = document["review_seat"]
+    rows.remove(next(row for row in rows if (row["purpose"], row["backend"], row["author_family"])
+                     == (purpose, backend, family)))
+
+
+def seat_row(variant, backend, provider, model, effort):
+    return {"profile": "review", "variant": variant, "backends": [backend], "provider": provider, "model": model,
+            "effort": effort, "stability": "stable", "when": "A fixture read.", "why": "A fixture reason.",
+            "since": "2030-01-09"}
+
+
+class ReviewSeatValidationTest(unittest.TestCase):
+    WHERE = "data/policy.toml [[review_seat]] purpose="
+
+    def test_a_row_that_can_never_satisfy_its_purpose_is_named(self):
+        """Claim: the validator names, by its row, a review seat that can
+        never serve its purpose: a clearance seat in the lab of the authors it
+        is for, a clearance seat below the clearance floor, and an exhaustive
+        seat below its backend's highest-ranked review route. Rejects a policy
+        whose review seat could only ever refuse, or be sold for a purpose it
+        cannot meet."""
+        root = scratch(self)
+
+        def change(document):
+            document["seat"].append(seat_row("core", "codex", "tessel-plan", "ts-3-core", "max"))
+            drop_review_seat(document, "exhaustive", "codex")
+            document["review_seat"] += [review_seat("clearance", "codex", "ts-3-prime", "xhigh", "tessel"),
+                                        review_seat("clearance", "pi", "orbit-flash", "max"),
+                                        review_seat("exhaustive", "codex", "ts-3-core", "max")]
+        change_policy(root, change)
+        self.assertEqual(sorted(data_problems(root)), [
+            f"{self.WHERE}clearance author_family=any backend=pi: rank 1 is below the [review] clearance floor 2, "
+            "which a clearance seat must meet",
+            f"{self.WHERE}clearance author_family=tessel backend=codex: the seat shares the lab tessel of the "
+            "authors it is for, so it can never clear them",
+            f"{self.WHERE}exhaustive author_family=any backend=codex: rank 2 is below the highest-ranked review "
+            "route on backend 'codex' (rank 3); an exhaustive seat must be among them"])
+
+    def test_a_row_names_a_stable_review_route_on_its_backend(self):
+        """Claim: a review seat must name a stable route of the review profile
+        on its backend, so removing that route or naming another backend's
+        model is refused by the row. Rejects a seat resolve could never
+        dispatch."""
+        root = scratch(self)
+        change_policy(root, lambda document: document["review_seat"].append(
+            review_seat("findings", "codex", "ts-3-core", "max", "orbit")))
+        self.assertEqual(data_problems(root), [f"{self.WHERE}findings author_family=orbit backend=codex: ts-3-core "
+                                               "max is no stable route of the review profile on backend 'codex'"])
+
+    def test_a_lab_with_seated_authors_keeps_a_clearance_seat_outside_it(self):
+        """Claim: once no clearance seat outside a lab can serve it, the
+        validator names that lab when one of its models holds a seat outside
+        review. Rejects a policy that leaves a lab's authored work no
+        independent reader at all."""
+        self.assertEqual(data_problems(FIXTURE), [])
+        root = scratch(self)
+        change_policy(root, lambda document: drop_review_seat(document, "clearance", "claude"))
+        self.assertEqual(data_problems(root), [f"{self.WHERE}clearance: lab tessel has seated authors and no "
+                                               "clearance seat outside it"])
+
+
 class ReviewResolutionTest(unittest.TestCase):
     def refusal(self, *args, **options):
         with self.assertRaises(RouteRefusal) as caught:

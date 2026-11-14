@@ -47,7 +47,8 @@ def candidate_problems(texts):
     if loaded.problems:
         return errors
     errors += routes._structural_problems(None, loaded)
-    errors += routes.loaded_pool_problems(loaded) + price_problems(loaded.models) + routes.relation_problems(loaded)
+    errors += (routes.loaded_pool_problems(loaded) + price_problems(loaded.models) + routes.relation_problems(loaded)
+               + routes.review_coverage_problems(loaded))
     # Profile-shaped diagnostics identify the underlying store row at the write boundary.
     return [error if error.startswith("data/") else f"{stores.POLICY} [[seat/profile]] {error}" for error in errors]
 

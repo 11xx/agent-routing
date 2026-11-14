@@ -33,6 +33,8 @@ NOTES = f"{DATA}/notes.jsonl"
 CATALOG_SCHEMA = "agent-routing-catalog/1"
 POLICY_SCHEMA = "agent-routing-policy/1"
 
+REVIEW_PURPOSES = ("findings", "clearance", "exhaustive")
+ANY_FAMILY = "any"
 EFFORTS = ("default", "low", "medium", "high", "xhigh", "max", "ultra")
 MODEL_STATUSES = ("experimental", "superseded", "retired", "deprecated", "inactive", "restricted")
 TIER_STABILITIES = ("explicit-only", "probationary", "experimental")
@@ -90,6 +92,9 @@ POLICY_TABLES = {
              ("role_exception", "str", False), ("when", "str", True), ("why", "str", True), ("since", "date", True)),
     "fallback": (("profile", "str", True), ("from_provider", "str", True), ("backend", "str", True),
                  ("variant", "str", False)),
+    "review_seat": (("purpose", "str", True), ("author_family", "str", True), ("backend", "str", True),
+                    ("model", "str", True), ("effort", "str", True), ("when", "str", True), ("why", "str", True),
+                    ("since", "date", True)),
     "seat_rank": (("model", "str", True), ("effort", "str", True), ("pool", "str", True), ("rank", "int", True)),
     "repository": (("id", "str", True), ("name", "str", True)),
     "accessor": (("id", "str", True), ("command", "strs", True), ("expected_sources", "strs", True)),
@@ -104,7 +109,7 @@ POLICY_TABLES = {
 STANDING_TABLES = ("guard",)
 DECIDING_TABLES = {name: spec for name, spec in POLICY_TABLES.items() if name not in STANDING_TABLES}
 POLICY_LAYOUT = (("pool", "family_exception", "fence", "guard"), "profile", ("seat", "fallback"),
-                 ("seat_rank", "repository", "accessor", "consumer", "proxy", "pin"))
+                 ("seat_rank", "review_seat", "repository", "accessor", "consumer", "proxy", "pin"))
 NOTE_KEYS = (("id", "str", True), ("date", "date", True), ("model", "str", True), ("effort", "str", False),
              ("kind", "str", True), ("areas", "strs", True), ("claim", "str", True), ("cause", "str", True),
              ("evidence", "str", True), ("metrics", "metrics", False))
@@ -494,6 +499,7 @@ def label(table: str, row: dict) -> str:
             "pool": ("provider",), "family_exception": ("reviewer",), "fence": ("model", "profile"),
             "guard": ("model", "effort", "profile"),
             "profile": ("id",), "seat": ("profile", "variant"), "fallback": ("profile", "backend"),
+            "review_seat": ("purpose", "author_family", "backend"),
             "seat_rank": ("model", "effort", "pool"), "repository": ("id",), "accessor": ("id",),
             "consumer": ("id",), "proxy": ("consumer", "path"), "pin": ("consumer", "path")}.get(table, ())
     parts = [f"{key}={row[key]}" if isinstance(row[key], str) else f"{key}={row[key]!r}"
@@ -705,6 +711,24 @@ def policy_problems(policy: dict, catalog: dict) -> list[str]:
     for row in policy.get("pin", []):
         if row.get("profile") not in profiles:
             problems.append(f"{store} {label('pin', row)}: profile is not a policy profile")
+    labs = {value for row in catalog.get("family", []) for value in [row.get("id"), *row.get("lineages", [])]}
+    grouped = {value for row in catalog.get("family", []) for value in row.get("lineages", [])}
+    families = ({row.get("id") for row in catalog.get("family", [])}
+                | {row.get("family") for row in catalog.get("model", []) if row.get("family") not in labs}
+                | {ANY_FAMILY})
+    for row in policy.get("review_seat", []):
+        unique("review_seat", row, ("review_seat", row.get("purpose"), row.get("author_family"), row.get("backend")))
+        where = f"{store} {label('review_seat', row)}"
+        if row.get("purpose") not in REVIEW_PURPOSES:
+            problems.append(f"{where}: purpose must be one of {', '.join(REVIEW_PURPOSES)}")
+        if row.get("author_family") not in families:
+            hint = " (name its family row's id)" if row.get("author_family") in grouped else ""
+            problems.append(f"{where}: author_family must be a catalog family or {ANY_FAMILY}{hint}")
+        if row.get("backend") not in backends:
+            problems.append(f"{where}: backend is not a catalog backend")
+        if row.get("model") not in models:
+            problems.append(f"{where}: model {row.get('model')!r} is not a catalog model")
+        problems += _sentence_problems(where, row)
     return problems
 
 

@@ -1006,6 +1006,56 @@ effort = "xhigh"
 pool = "openai-codex"
 rank = 3
 
+[[review_seat]]
+purpose = "clearance"
+author_family = "any"
+backend = "codex"
+model = "gpt-6.1-sol"
+effort = "xhigh"
+when = "The independent read of a change on the Codex window."
+why = "The Codex review gate reads every lab's work but its own at the top rank."
+since = "2026-11-14"
+
+[[review_seat]]
+purpose = "clearance"
+author_family = "any"
+backend = "claude"
+model = "opus-5.5"
+effort = "xhigh"
+when = "The independent read of a change from a Claude session."
+why = "First-party Claude review is the reader outside the Codex pool for GPT-authored work."
+since = "2026-11-14"
+
+[[review_seat]]
+purpose = "findings"
+author_family = "any"
+backend = "codex"
+model = "gpt-6.1-sol"
+effort = "xhigh"
+when = "Candidate defects for adjudication on the Codex window."
+why = "The Codex review gate also reads its own lab's work, for findings that do not clear."
+since = "2026-11-14"
+
+[[review_seat]]
+purpose = "findings"
+author_family = "any"
+backend = "claude"
+model = "opus-5.5"
+effort = "xhigh"
+when = "Candidate defects for adjudication from a Claude session."
+why = "First-party Claude review also reads its own lab's work, for findings that do not clear."
+since = "2026-11-14"
+
+[[review_seat]]
+purpose = "findings"
+author_family = "any"
+backend = "pi"
+model = "deepseek-flash"
+effort = "max"
+when = "Candidate defects for adjudication from a pi session."
+why = "Pi's review default finds within its rank, and every identifier it emits is checked against source."
+since = "2026-11-14"
+
 [[repository]]
 id = "skills"
 name = "agent-harnesses"

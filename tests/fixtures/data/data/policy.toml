@@ -351,6 +351,86 @@ effort = "high"
 pool = "tessel-plan"
 rank = 1
 
+[[review_seat]]
+purpose = "clearance"
+author_family = "any"
+backend = "codex"
+model = "ts-3-prime"
+effort = "xhigh"
+when = "Independent review on the Tessel window."
+why = "The strong Tessel tier clears other labs' work."
+since = "2030-01-03"
+
+[[review_seat]]
+purpose = "clearance"
+author_family = "any"
+backend = "claude"
+model = "nw-atlas-2"
+effort = "xhigh"
+when = "Independent review from a Northwind session."
+why = "The head model's deep tier clears other labs' work."
+since = "2030-01-03"
+
+[[review_seat]]
+purpose = "findings"
+author_family = "any"
+backend = "codex"
+model = "ts-3-prime"
+effort = "xhigh"
+when = "Candidate defects on the Tessel window."
+why = "The strong Tessel tier finds in any lab's work."
+since = "2030-01-03"
+
+[[review_seat]]
+purpose = "findings"
+author_family = "any"
+backend = "claude"
+model = "nw-atlas-2"
+effort = "xhigh"
+when = "Candidate defects from a Northwind session."
+why = "The head model's deep tier finds in any lab's work."
+since = "2030-01-03"
+
+[[review_seat]]
+purpose = "findings"
+author_family = "any"
+backend = "pi"
+model = "orbit-flash"
+effort = "max"
+when = "Candidate defects from pi."
+why = "The flat pool's default finds within its rank."
+since = "2030-01-03"
+
+[[review_seat]]
+purpose = "exhaustive"
+author_family = "any"
+backend = "codex"
+model = "ts-3-prime"
+effort = "xhigh"
+when = "A whole-surface read on the Tessel window."
+why = "Chosen for capability, not independence: the top-ranked review route there."
+since = "2030-01-03"
+
+[[review_seat]]
+purpose = "exhaustive"
+author_family = "any"
+backend = "claude"
+model = "nw-atlas-2"
+effort = "xhigh"
+when = "A whole-surface read from a Northwind session."
+why = "Chosen for capability, not independence: the top-ranked review route there."
+since = "2030-01-03"
+
+[[review_seat]]
+purpose = "exhaustive"
+author_family = "any"
+backend = "pi"
+model = "orbit-flash"
+effort = "max"
+when = "A whole-surface read from pi."
+why = "Chosen for capability, not independence: the only review route there."
+since = "2030-01-03"
+
 [[repository]]
 id = "harness"
 name = "fixture-harness"

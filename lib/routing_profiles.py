@@ -434,6 +434,106 @@ def _family_values(relation: dict[str, list[str]], model: dict) -> list[str]:
     return relation.get(_family(model), [_family(model)])
 
 
+def _lab(families: list[dict], lineage: str) -> str:
+    """The lab a lineage belongs to: its catalog ``[[family]]`` row's id, else the lineage itself."""
+    return next((row["lab"] for row in families if lineage in row["values"]), lineage)
+
+
+def _review_routes(profile: dict) -> list[dict]:
+    """The review profile's routes in its order of preference: its own seat, then its variants."""
+    return [route for route in [profile, *profile.get("variant", [])] if route.get("backends")]
+
+
+def _review_seat_route(profile: dict, row: dict) -> dict | None:
+    """The stable review route a ``[[review_seat]]`` row names: its backend, model and effort."""
+    return next((route for route in _review_routes(profile)
+                 if row["backend"] in route["backends"] and route.get("model") == row["model"]
+                 and route.get("effort") == row["effort"] and route.get("stability") == "stable"), None)
+
+
+def review_seat_row(loaded: stores.Data, purpose: str, lab: str | None, backend: str) -> dict | None:
+    """The review seat for a purpose, an author's lab and a backend: the lab's own row, else the any row."""
+    rows = [row for row in loaded.policy.get("review_seat", [])
+            if row["purpose"] == purpose and row["backend"] == backend]
+    return (next((row for row in rows if lab is not None and row["author_family"] == lab), None)
+            or next((row for row in rows if row["author_family"] == stores.ANY_FAMILY), None))
+
+
+def _tier_of(by_model: dict[str, dict], model: str, effort: str) -> dict | None:
+    return next((tier for tier in by_model.get(model, {}).get("effort", []) if tier.get("effort") == effort), None)
+
+
+def review_seat_problems(loaded: stores.Data) -> list[str]:
+    """Each ``[[review_seat]]`` row that can never satisfy its purpose.
+
+    A row names a stable route of the review profile on its backend. A
+    clearance seat reaches the ``[review]`` clearance floor and sits outside
+    the lab of the authors it is for. A clearance or findings seat reaches at
+    least the lowest floor of those authors. An exhaustive seat ranks with the
+    highest-ranked stable review routes its backend's pools serve.
+    """
+    profile = next((entry for entry in loaded.profiles if entry["id"] == "review"), None)
+    by_model = loaded.by_model()
+    by_pool = {pool["provider"]: pool for pool in loaded.pools}
+    clearance = loaded.policy["review"]["clearance"]
+    problems = []
+    for row in loaded.policy.get("review_seat", []):
+        where = f"{stores.POLICY} {stores.label('review_seat', row)}"
+        route = _review_seat_route(profile, row) if profile else None
+        tier = _tier_of(by_model, row["model"], row["effort"])
+        if route is None or tier is None:
+            problems.append(f"{where}: {row['model']} {row['effort']} is no stable route of the review profile "
+                            f"on backend {row['backend']!r}")
+            continue
+        rank, family = tier["rank"], row["author_family"]
+        seat_lab = _lab(loaded.families, _family(by_model[row["model"]]))
+        floors = [entry["floor"] for model in loaded.models
+                  if family == stores.ANY_FAMILY or _lab(loaded.families, _family(model)) == family
+                  for entry in model.get("effort", [])]
+        if row["purpose"] == "clearance":
+            if rank < clearance:
+                problems.append(f"{where}: rank {rank} is below the [review] clearance floor {clearance}, "
+                                "which a clearance seat must meet")
+            if family == seat_lab:
+                problems.append(f"{where}: the seat shares the lab {family} of the authors it is for, "
+                                "so it can never clear them")
+        if row["purpose"] in {"clearance", "findings"} and floors and rank < min(floors):
+            problems.append(f"{where}: rank {rank} is below every floor of the authors it is for "
+                            f"(the least is {min(floors)})")
+        if row["purpose"] == "exhaustive":
+            ranks = [_tier_of(by_model, other["model"], other["effort"])["rank"] for other in _review_routes(profile)
+                     if row["backend"] in other["backends"] and other.get("stability") == "stable"
+                     and not pool_refusal(by_pool, "review", other.get("provider"), other.get("model"))
+                     and _tier_of(by_model, other["model"], other["effort"])]
+            if ranks and rank < max(ranks):
+                problems.append(f"{where}: rank {rank} is below the highest-ranked review route on backend "
+                                f"{row['backend']!r} (rank {max(ranks)}); an exhaustive seat must be among them")
+    return problems
+
+
+def review_coverage_problems(loaded: stores.Data) -> list[str]:
+    """Each lab with seated authors that no clearance review seat can serve.
+
+    A lab has authors in the policy when one of its models holds a seat on a
+    profile other than review. On each backend its clearance seat is its own
+    row, else the any row; at least one of those must sit outside its lab.
+    """
+    by_model = loaded.by_model()
+    authoring = sorted({_lab(loaded.families, _family(by_model[route["model"]]))
+                        for profile in loaded.profiles if profile["id"] != "review"
+                        for route in [profile, *profile.get("variant", [])]
+                        if route.get("backends") and route.get("model") in by_model})
+    backends = sorted({row["backend"] for row in loaded.policy.get("review_seat", [])})
+    problems = []
+    for lab in authoring:
+        seats = [review_seat_row(loaded, "clearance", lab, backend) for backend in backends]
+        if not any(row is not None and row["model"] in by_model
+                   and _lab(loaded.families, _family(by_model[row["model"]])) != lab for row in seats):
+            problems.append(f"{stores.POLICY} [[review_seat]] purpose=clearance: lab {lab} has seated authors "
+                            "and no clearance seat outside it")
+    return problems
+
+
 def clearance_floor(root: pathlib.Path) -> int:
     """The capability rank a read must reach to clear review debt."""
     review = data(root).policy.get("review", {})
@@ -635,6 +735,7 @@ def _structural_problems(root: pathlib.Path, loaded: stores.Data) -> list[str]:
                                               loaded.policy.get("family_exception", [])))
     if loaded.policy["review"]["clearance"] < 1:
         problems.append(f"{stores.POLICY} [review]: clearance must be a positive integer capability rank")
+    problems.extend(review_seat_problems(loaded))
     for profile in profiles:
         rules = profile.get("fallback", [])
         if not isinstance(rules, list):
@@ -1920,4 +2021,5 @@ def data_problems(root: pathlib.Path) -> list[str]:
     structural = structural_problems(root)
     if structural:
         return problems + structural
-    return (problems + pool_problems(root) + price_problems(loaded.models) + relation_problems(loaded))
+    return (problems + pool_problems(root) + price_problems(loaded.models) + relation_problems(loaded)
+            + review_coverage_problems(loaded))

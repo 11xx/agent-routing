@@ -16,8 +16,9 @@ THE STORES
   data/policy.toml    what the resolver, validate, assess, frontier and
                       admit-review decide from: review clearance, admission
                       thresholds, pools, family exceptions, fences, profiles,
-                      seats, fallbacks, pool-local seat ranks and the consumer
-                      inventory; and the guards, standing instructions for
+                      seats, fallbacks, pool-local seat ranks, review seats by
+                      purpose and the consumer inventory; and the guards,
+                      standing instructions for
                       using a tier (a model, optionally an effort and a
                       profile) that leads follow. No verb that selects,
                       validates or refuses a route reads a guard.
@@ -44,6 +45,18 @@ THE STORES
   its `since` the date it took effect. A guard's `rule` and `why` are one
   sentence each, and its `because` names the notes it rests on. A ban carries
   a one-sentence reason.
+
+  A review seat is the operator's choice of reader for one review purpose
+  (clearance, findings or exhaustive), one author lab, and one backend: its
+  `author_family` is a catalog [[family]] id, a lineage no family row groups,
+  or `any`, and its model and effort name a stable route of the review
+  profile on that backend. Lint refuses a review seat that can never serve
+  its purpose: a clearance seat below the [review] clearance floor or in the
+  lab of the authors it is for, a clearance or findings seat below every
+  floor of those authors, and an exhaustive seat below the highest-ranked
+  stable review route its backend's pools serve. It also names a lab whose
+  models hold a seat outside review when no clearance seat outside that lab
+  can serve it.
 
   `lint` checks each store's raw shape (tables, key types, required and
   unknown keys) before anything reads it; every verb refuses a problem in

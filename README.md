@@ -35,7 +35,7 @@ a price table; tapes reads only that file.
 | path | holds |
 | :-- | :-- |
 | `data/catalog.toml` | facts about models: families, backends, tiers, prices, reachability |
-| `data/policy.toml` | what routing decides from: profiles, seats, pools, fallbacks, fences, admission; and the guards leads follow |
+| `data/policy.toml` | what routing decides from: profiles, seats, review seats by purpose, pools, fallbacks, fences, admission; and the guards leads follow |
 | `data/notes.jsonl` | dated field notes; no routing decision reads them |
 | `doctrine/principles.md` | the standing principles |
 | `doctrine/guide.md` | the routing guide and verb contracts |
