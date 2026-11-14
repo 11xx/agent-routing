@@ -33,7 +33,8 @@ ranks that apply them follow, rendered from the stores.
 - Do not hand a broad ambiguous arc to a cheaper executor because its rate is low; give it bounded slices with observable stop conditions.
 - Verify a brief's premises against source before delegating. A brief that asserts something untrue about the code is the lead's defect, not the executor's.
 - Acceptance probes make a workhorse floor safe: a brief routed below the judgment-bearing tier names runnable probes for its material risks, or it is not ready.
-- If a workhorse-authored semantic defect passes its named probe and first review, make probes declarable so they gate before buying a higher tier.
+- If a workhorse-authored semantic defect passes its named probe and first review, or two of a fixed six-change workhorse cohort need extra verdict rounds for executor-caused defects, make acceptance probes declarable so they gate; escalate the tier only if the defect recurs once they do. Changing the workhorse model does not reset the cohort.
+- Each delegated change records the exact model and effort that implemented it, and each review round is classified brief-caused, executor-caused or integration-staleness; only executor-caused rounds count against a workhorse floor.
 - A user instruction outranks a model's picture of its environment: check the environment claim before deviating from the instruction.
 - Drive a long delegation directly with a backgrounded call, never through a proxy agent free to invent its own wait.
 - Defect generation and adjudication are separable: a model below the reviewer floor may generate candidates under an adversarial brief, and each stays a candidate until a reviewer-tier model or the lead confirms it against source.
