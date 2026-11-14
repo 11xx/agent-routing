@@ -132,8 +132,9 @@ target branch `arc show --json` names):
    and every shell script in `bin/` passes `bash -n`.
 2. **Invariants.** `checks/invariants.toml`, read from the base plus entries
    the candidate adds under new names, within 3 seconds: `lint-routing`
-   validates the live data, and `roster-ids` refuses any catalog id in code,
-   templates or tests.
+   validates the live data, `roster-ids` refuses any catalog id in code,
+   templates or tests, and `notes-grow-only` rejects any revision that rewrites
+   earlier field evidence.
 3. **Tests.** Every module under `tests/`, once, each in its own process and
    all at the same time. A failure, an error or a skip fails it.
 4. **Witnesses.** The tests the change's commits name, at most three, each run

@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+"""Refuse revisions that rewrite earlier field evidence, even when a later revision restores it."""
+
+import argparse
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+import data_edits
+import stores
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base", required=True)
+    parser.add_argument("--head", default="HEAD")
+    args = parser.parse_args()
+    try:
+        errors = data_edits.notes_history_problems(ROOT, args.base, args.head)
+    except (OSError, stores.StoreError) as error:
+        errors = [str(error)]
+    print("\n".join(errors) if errors else "notes history grows only")
+    return int(bool(errors))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

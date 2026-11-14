@@ -65,7 +65,8 @@ def problems(records, catalog):
         if "event" not in row:
             errors += [error for error in stores._note_problems([row], catalog)
                        if "id must be" not in error]
-            if len(row["claim"]) > 1000 or re.search(r"[.!?]\s+[A-Z]", row["claim"]):
+            if (len(row["claim"]) > 1000 or "\n" in row["claim"] or "\r" in row["claim"]
+                    or re.search(r"[.!?]\s+\S", row["claim"])):
                 errors.append(f"{where}: claim must be one sentence of at most 1000 characters")
             tiers = stores._keys(catalog, "tier", "model", "effort")
             if "effort" in row and (row["model"], row["effort"]) not in tiers:

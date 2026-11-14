@@ -164,7 +164,8 @@ FILE AND READ FIELD EVIDENCE
       Append a corrected note, inheriting unspecified fields, then a
       supersession referencing it. The earlier note becomes inactive.
   Recurrence and disposition commands also take --dry-run and --json.
-  No note command needs --why. Earlier lines are never rewritten.
+  No note command needs --why. Earlier lines are never rewritten; the
+  notes-grow-only change invariant checks every intervening revision.
 
   agent-routing notes [MODEL] [--kind KIND] [--area AREA]
     [--liveness live|inactive|all] [--json]

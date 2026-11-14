@@ -13,3 +13,8 @@ command = "bin/lint-routing"
 [[invariant]]
 name = "roster-ids"
 command = "bin/lint-roster-ids"
+
+# Every revision preserves the bytes of all earlier field evidence.
+[[invariant]]
+name = "notes-grow-only"
+command = 'bin/check-notes-growth --base "$AGENT_ROUTING_CHECK_BASE"'

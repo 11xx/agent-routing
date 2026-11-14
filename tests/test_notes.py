@@ -51,7 +51,9 @@ class NoteTest(GitStoreTest):
         """Claim: append-only validation rejects an earlier byte edit; rejects checking line count alone."""
         before = self.texts()[stores.NOTES].encode()
         self.assertEqual(field_notes.grows_only(before, before + b'{}\n'), [])
-        self.assertIn("append-only", field_notes.grows_only(before, before.replace(b"fixture", b"changed", 1))[0])
+        errors = field_notes.grows_only(before, before.replace(b"fixture", b"changed", 1))
+        self.assertTrue(errors, "rewritten prefix was accepted")
+        self.assertIn("append-only", errors[0])
 
     def test_card_marks_inheritance(self):
         """Claim: a successor sees predecessor notes as inherited and unverified; rejects presenting them as direct evidence."""
@@ -71,6 +73,10 @@ class NoteTest(GitStoreTest):
         rows = stores.load_notes(self.root)
         self.assertEqual(len(field_notes.select(rows, model="ts-3-core", kind="strength", area="implementation")), 2)
         self.assertEqual(field_notes.select(rows, area="unknown"), [])
+        for claim in ("One claim. another claim.", "One claim\nanother claim"):
+            malformed = copy.deepcopy(rows)
+            malformed[0]["claim"] = claim
+            self.assertTrue(stores.note_problems(malformed, stores.load(self.root).catalog))
         for event in (dict(id="n0004", date="2030-02-02", event="again", note="n9999", evidence="fixture"),
                       dict(id="n0004", date="2030-02-02", event="supersede", note="n0001", reason="Wrong.", replacement="n9999")):
             self.assertTrue(stores.note_problems([*copy.deepcopy(rows), event], stores.load(self.root).catalog))

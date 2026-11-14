@@ -393,7 +393,9 @@ def main():
         base = resolve_base(args.base)
         if git("status", "--porcelain").strip():
             raise Refusal("base", "the checkout differs from HEAD; commit the candidate first")
-        run = Run(started, base, head, isolated_environment(private), receipt)
+        environment = isolated_environment(private)
+        environment["AGENT_ROUTING_CHECK_BASE"] = base
+        run = Run(started, base, head, environment, receipt)
         witnesses = declarations(base)
         receipt["witnesses"] = witnesses
         listed = invariants(base)

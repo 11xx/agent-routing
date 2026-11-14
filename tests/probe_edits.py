@@ -153,7 +153,7 @@ PROBES = [
     (NoteTest, "test_again_changes_card_order", note_order_variant, "n0001", "recency replaces recurrence ordering"),
     (NoteTest, "test_events", live_variant, "n0002", "dispositions leave old notes live"),
     (NoteTest, "test_growth_rejects_earlier_changes", lambda: patch.object(field_notes, "grows_only", return_value=[]),
-     "IndexError", "growth check accepts changed prefix"),
+     "rewritten prefix was accepted", "growth check accepts changed prefix"),
     (NoteTest, "test_history_catches_a_rewrite_hidden_by_restoration", net_growth_variant,
      "[] is not true", "only net history checked"),
     (NoteTest, "test_card_marks_inheritance", inherited_variant, "n0001", "predecessor evidence omitted"),
