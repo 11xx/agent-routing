@@ -922,18 +922,7 @@ def _classify_selection(
     effort: str,
     provider: str,
 ) -> dict[str, object]:
-    return classify_selection(data(root), profile, backend, model_id, effort, provider)
-
-
-def classify_selection(
-    loaded: stores.Data,
-    profile: dict,
-    backend: str,
-    model_id: str,
-    effort: str,
-    provider: str,
-) -> dict[str, object]:
-    """Place a directed tuple relative to the profile's own route, in one loaded data set.
+    """Place a directed tuple relative to the profile's own route.
 
     ``direction`` compares policy ranks within the selection's pool: ``same``
     for the baseline itself, ``upgrade``, ``lateral`` or ``downgrade`` when
@@ -945,8 +934,8 @@ def classify_selection(
     profile on the requested backend and provider. A stable upgrade is an
     operator escalation; everything else stays operator-directed.
     """
-    models = loaded.models
-    profiles = loaded.profiles
+    models = data(root).models
+    profiles = data(root).profiles
     by_id = {entry.get("id"): entry for entry in profiles}
     selected = (model_id, effort, provider)
 

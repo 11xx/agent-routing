@@ -130,38 +130,44 @@ def require_one(rows, where, **key):
 
 
 def selection_classes(texts, pools):
-    """How validate classifies each directed selection drawing on these pools, in one data set.
+    """validate's classification of every directed selection it answers in these pools, in one data set.
 
-    Every profile and backend it serves, by every routable, unprohibited tier
-    the backend reaches through the pool: the direction against the
-    profile's own seat, the stability and the selection kind.
+    Every profile, by every tier of every model a backend reaches through
+    one of the pools, asked of validate itself (as --allow-experimental
+    would) on a scratch copy of the stores: a selection it refuses, for
+    any reason, has no classification here.
     """
     import routing_profiles as routes
 
-    loaded = stores.Data.from_texts(texts)
-    by_model = loaded.by_model()
-    classes = {}
-    for profile in loaded.profiles:
-        served = dict.fromkeys(backend for route in [profile, *profile.get("variant", [])]
-                               for backend in route.get("backends", []))
-        for backend in served:
-            for reach in loaded.catalog.get("reach", []):
-                model = by_model.get(reach["model"])
-                if (reach["backend"] != backend or reach["provider"] not in pools or model is None
-                        or model.get("status") in routes.UNROUTABLE_MODEL_STATUSES):
-                    continue
-                for tier in model["effort"]:
-                    if tier.get("prohibited"):
+    with tempfile.TemporaryDirectory(prefix="agent-routing-classes-") as scratch:
+        root = pathlib.Path(scratch)
+        for name in PATHS:
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_text(texts[name])
+        try:
+            loaded = stores.load(root)
+            by_model = loaded.by_model()
+            classes = {}
+            for profile in loaded.profiles:
+                for reach in loaded.catalog.get("reach", []):
+                    if reach["provider"] not in pools or reach["model"] not in by_model:
                         continue
-                    answer = routes.classify_selection(loaded, profile, backend, model["id"], tier["effort"],
-                                                       reach["provider"])
-                    classes[profile["id"], backend, model["id"], tier["effort"], reach["provider"]] = {
-                        key: answer[key] for key in ("direction", "stability", "selection_kind")}
-    return classes
+                    for tier in by_model[reach["model"]].get("effort", []):
+                        key = (profile["id"], reach["backend"], reach["model"], tier["effort"], reach["provider"])
+                        try:
+                            answer = routes.validate_selection(root, *key, "Compare the pool ranks.",
+                                                               allow_experimental=True)
+                        except routes.RouteRefusal:
+                            continue
+                        classes[key] = {name: answer[name] for name in ("direction", "stability", "selection_kind")}
+            return classes
+        finally:
+            stores.forget(root)
 
 
 def classification_changes(before, after, changes):
-    """The directed selections whose classification an edit of pool ranks changes, in the pools it touches."""
+    """The directed selections in the pools an edit of pool ranks touches that validate answers both before and
+    after it, classified differently."""
     pools = {row[side]["pool"] for row in changes if row["table"] == "seat_rank" for side in ("before", "after")
              if row[side]}
     if not pools:
