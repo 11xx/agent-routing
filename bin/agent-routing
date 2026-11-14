@@ -43,6 +43,7 @@ Run `agent-routing` with no verb for the routing guide.
   commit / undo                            commit hand edits or reverse a verb edit
     Edit verbs take --dry-run and --json; catalog and policy edits require --why.
     Run an edit verb with --help for its arguments.
+  page [--no-open]    serve a local page that reads the stores and edits them through these verbs
   check <model> [eff] exit non-zero if that model/effort is prohibited
   resolve <profile> --backend <backend> [--variant <name>] [--author <model>[#effort]]
           [--purpose findings|clearance|exhaustive] [--allow-experimental] [--accept-ineligible]
@@ -98,5 +99,6 @@ case "${1:-}" in
   set-seat|remove-seat|default-seat|prohibit|allow|rank|set-fallback|remove-fallback|set-review-seat|remove-review-seat|set-guard|retire-guard|add-model|supersede-model|note|again|retract|supersede|notes|card|commit|log|undo)
               exec "$root/bin/edit-data" "$@" ;;
   emit)       shift; exec "$root/bin/emit-claude-agents" "$@" ;;
+  page)       shift; exec "$root/bin/routing-page" "$@" ;;
   *)          usage >&2; exit 2 ;;
 esac

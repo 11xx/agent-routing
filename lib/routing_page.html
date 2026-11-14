@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>routing</title>
+<style>
+:root {
+  --bg: #faf9f6; --panel: #ffffff; --ink: #1f1e1c; --muted: #6f6b64; --faint: #e9e6df; --line: #dedad2;
+  --bad: #b3261e; --bad-bg: #fdecea; --warn: #8a5a00; --warn-bg: #fff4d6; --ok: #2f7d4f;
+  --button: #1f1e1c; --button-ink: #faf9f6; --shadow: 0 1px 2px rgb(0 0 0 / .06), 0 4px 14px rgb(0 0 0 / .05);
+  --chip-l: 93%; --chip-s: 70%; --chip-edge-l: 72%; --chip-ink-l: 27%; --flash: #ffe9a8;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, sans-serif;
+  color: var(--ink); background: var(--bg);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161618; --panel: #1f1f22; --ink: #ecebe8; --muted: #9c988f; --faint: #2a2a2e; --line: #34343a;
+    --bad: #ff8a80; --bad-bg: #3a1f1d; --warn: #ffd27a; --warn-bg: #3a2f14; --ok: #7ccf9a;
+    --button: #ecebe8; --button-ink: #161618; --shadow: 0 1px 2px rgb(0 0 0 / .4);
+    --chip-l: 21%; --chip-s: 35%; --chip-edge-l: 40%; --chip-ink-l: 84%; --flash: #5a4a12;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+.mono, code { font-family: var(--mono); font-size: .92em; }
+header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1rem;
+  padding: .55rem 1rem; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: .45rem; font-weight: 650; letter-spacing: .01em; }
+.brand .dots { display: inline-flex; gap: 2px; }
+.brand .dots i { width: 7px; height: 7px; border-radius: 50%; background: hsl(var(--h) 60% 55%); }
+nav { display: flex; gap: .15rem; }
+nav button { border: 0; background: none; padding: .3rem .65rem; border-radius: 999px; cursor: pointer; color: var(--muted); }
+nav button[aria-current="page"] { background: var(--faint); color: var(--ink); font-weight: 600; }
+nav button:hover { color: var(--ink); }
+.spacer { flex: 1; }
+.version { display: flex; align-items: center; gap: .4rem; color: var(--muted); font-size: .9em; }
+.version .live { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.version .live.down { background: var(--bad); }
+.version code { color: var(--ink); background: var(--faint); padding: .05rem .35rem; border-radius: 5px; }
+main { padding: 1rem; max-width: 1280px; margin: 0 auto; }
+#banners { max-width: 1280px; margin: 0 auto; padding: 0 1rem; }
+.banner { margin-top: .7rem; padding: .5rem .75rem; border-radius: 8px; display: flex; gap: .6rem; align-items: start; }
+.banner.info { background: var(--faint); }
+.banner.warn { background: var(--warn-bg); color: var(--warn); }
+.banner.bad { background: var(--bad-bg); color: var(--bad); }
+.banner .text { flex: 1; white-space: pre-wrap; }
+.legend { display: flex; flex-wrap: wrap; gap: .3rem .9rem; color: var(--muted); font-size: .9em; margin: 0 0 .7rem; }
+.legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  margin-right: .35rem; background: hsl(var(--h) 60% 55%); vertical-align: 0; }
+.scroll { overflow-x: auto; }
+table.board { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 640px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
+.board th, .board td { padding: .45rem .6rem; vertical-align: top; text-align: left; border-top: 1px solid var(--faint); }
+.board thead th { border-top: 0; color: var(--muted); font-weight: 500; font-size: .9em; }
+.board tbody > tr:first-child > * { border-top: 0; }
+.board th.rowhead { width: 15rem; font-weight: 400; }
+.rowhead .name { font-family: var(--mono); font-weight: 600; }
+.rowhead .sub { color: var(--muted); font-size: .85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 15rem; display: block; }
+.rowhead .sub.open { white-space: normal; }
+.cell { display: flex; flex-direction: column; gap: .25rem; align-items: flex-start; }
+.seat { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+.variant { font-family: var(--mono); font-size: .8em; color: var(--muted); }
+.chip { display: inline-flex; align-items: baseline; gap: .35rem; padding: .12rem .5rem; border-radius: 999px;
+  border: 1px solid hsl(var(--h) var(--chip-s) var(--chip-edge-l)); background: hsl(var(--h) var(--chip-s) var(--chip-l));
+  color: hsl(var(--h) 60% var(--chip-ink-l)); cursor: pointer; line-height: 1.35; }
+.chip .id { font-family: var(--mono); font-size: .9em; }
+.chip .eff { font-size: .82em; opacity: .85; }
+.chip.small { padding: 0 .4rem; font-size: .92em; }
+.chip.unstable { border-style: dashed; }
+.chip.gone { text-decoration: line-through; opacity: .7; }
+.chip[aria-expanded="true"] { outline: 2px solid hsl(var(--h) 60% 50%); outline-offset: 1px; }
+.chip:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--ink); outline-offset: 2px; }
+.mark { font-size: .75em; color: var(--muted); }
+.mark.default::before { content: "● "; color: var(--ok); }
+.empty { color: var(--muted); }
+.add { border: 1px dashed var(--line); background: none; border-radius: 999px; color: var(--muted); padding: .05rem .55rem;
+  cursor: pointer; font-size: .85em; }
+.add:hover { color: var(--ink); border-color: var(--muted); }
+.fallback { color: var(--muted); font-size: .8em; }
+@keyframes flash { from { background-color: var(--flash); } to { background-color: transparent; } }
+.flash { animation: flash 1.6s ease-out 1; }
+.chip.flash { animation: none; box-shadow: 0 0 0 3px var(--flash); transition: box-shadow 1.6s ease-out; }
+@media (prefers-reduced-motion: reduce) { .flash { animation: none; outline: 2px solid var(--flash); } }
+tr.ed-row > td { background: var(--bg); }
+.editor { margin: .4rem 0; padding: .7rem .8rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow); max-width: 52rem; }
+.ed-head { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; margin-bottom: .45rem; }
+.ed-head .title { font-family: var(--mono); font-weight: 600; }
+.ed-head .meta { color: var(--muted); font-size: .85em; }
+.ed-head .close { margin-left: auto; border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 1.1em; }
+.facts { color: var(--muted); font-size: .9em; margin: 0 0 .5rem; display: grid; grid-template-columns: max-content 1fr; gap: .1rem .6rem; }
+.facts dt { font-weight: 500; }
+.facts dd { margin: 0; color: var(--ink); }
+.field { display: grid; grid-template-columns: 6.5rem 1fr; gap: .1rem .6rem; align-items: center; margin: .3rem 0; }
+.field > label, .field > .label { color: var(--muted); font-size: .9em; }
+.field input[type=text], .field input[type=number], .field select { width: 100%; padding: .3rem .45rem; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); }
+.field input[type=number] { width: 6rem; }
+.field .checks { display: flex; flex-wrap: wrap; gap: .2rem .8rem; }
+.field .checks label { display: inline-flex; gap: .25rem; align-items: center; font-family: var(--mono); font-size: .9em; }
+.field .hint, .field .ferr { grid-column: 2; font-size: .85em; }
+.field .hint { color: var(--muted); }
+.ferr, .ed-error { color: var(--bad); white-space: pre-wrap; }
+.field.invalid input, .field.invalid select { border-color: var(--bad); }
+.actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .55rem; align-items: center; }
+.actions .keys { color: var(--muted); font-size: .8em; margin-left: auto; }
+button.act { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: .28rem .7rem; cursor: pointer; }
+button.act:hover { border-color: var(--muted); }
+button.act.primary { background: var(--button); color: var(--button-ink); border-color: var(--button); }
+button.act.danger { color: var(--bad); }
+button.act:disabled { opacity: .5; cursor: default; }
+.preview { margin-top: .6rem; border-top: 1px dashed var(--line); padding-top: .55rem; }
+.preview .row-name { font-family: var(--mono); font-size: .88em; margin-top: .3rem; }
+.preview .kv { display: grid; grid-template-columns: 6.5rem 1fr; gap: .6rem; padding-left: .8rem; font-size: .92em; }
+.preview .kv .k { color: var(--muted); font-family: var(--mono); font-size: .9em; }
+.preview .old { text-decoration: line-through; color: var(--muted); }
+.preview .arrow { color: var(--muted); padding: 0 .3rem; }
+.preview .footer { margin-top: .45rem; color: var(--muted); font-size: .88em; }
+.preview .notice { margin-top: .45rem; padding: .35rem .55rem; border-radius: 6px; background: var(--warn-bg); color: var(--warn); }
+.preview .stale { color: var(--warn); }
+.preview details { margin-top: .4rem; font-size: .85em; color: var(--muted); }
+.preview pre { white-space: pre-wrap; word-break: break-all; margin: .3rem 0 0; }
+h2 { font-size: 1.05rem; margin: 1.3rem 0 .5rem; }
+h3 { font-size: .95rem; margin: 1rem 0 .4rem; }
+.models { display: grid; grid-template-columns: minmax(12rem, 18rem) 1fr; gap: 1.2rem; align-items: start; }
+@media (max-width: 760px) { .models { grid-template-columns: 1fr; } .board th.rowhead { width: 9rem; } }
+.lablist section { margin-bottom: .8rem; }
+.lablist h3 { margin: 0 0 .3rem; font-weight: 600; display: flex; gap: .4rem; align-items: center; }
+.lablist h3::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: hsl(var(--h) 60% 55%); }
+.lablist .chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: .8rem 1rem; box-shadow: var(--shadow); }
+.panel > h2:first-child { margin-top: 0; }
+.list { display: flex; flex-direction: column; gap: .2rem; }
+.line { display: flex; gap: .5rem; flex-wrap: wrap; align-items: baseline; padding: .2rem .3rem; border-radius: 6px; }
+.line .why { color: var(--muted); }
+table.tiers { border-collapse: collapse; font-size: .92em; }
+.tiers th, .tiers td { padding: .25rem .7rem .25rem 0; text-align: left; border-top: 1px solid var(--faint); }
+.tiers thead th { color: var(--muted); font-weight: 500; border-top: 0; }
+.tiers tr.tier { cursor: pointer; }
+.tiers tr.tier:hover td { background: var(--faint); }
+.ban { color: var(--bad); }
+.note { padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--faint); margin: .3rem 0; }
+.note .top { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; font-size: .85em; color: var(--muted); }
+.note .count { font-weight: 650; color: var(--ink); }
+.note .claim { margin: .2rem 0; }
+.note .ev { font-size: .85em; color: var(--muted); }
+.note .ev code { color: var(--ink); }
+.note .buttons { display: flex; gap: .3rem; margin-top: .3rem; }
+.note .buttons button { font-size: .82em; padding: .1rem .5rem; }
+.note.inactive { opacity: .75; }
+.tag { font-size: .8em; padding: 0 .35rem; border-radius: 4px; background: var(--faint); color: var(--muted); }
+.guard { padding: .35rem .5rem; border-left: 3px solid var(--line); margin: .3rem 0; }
+.guard .rule { font-weight: 500; }
+.guard .why { color: var(--muted); font-size: .9em; }
+.history .entry { display: grid; grid-template-columns: 7.5rem 6.5rem 1fr; gap: .2rem .8rem; padding: .45rem .3rem;
+  border-top: 1px solid var(--faint); }
+.history .entry:first-child { border-top: 0; }
+.history .reason { color: var(--muted); grid-column: 3; font-size: .9em; }
+@media (max-width: 600px) { .history .entry { grid-template-columns: 1fr; } .history .reason { grid-column: 1; } }
+.verb { font-family: var(--mono); font-size: .82em; }
+.terminal { margin-top: 2rem; color: var(--muted); font-size: .85em; border-top: 1px solid var(--faint); padding-top: .7rem; }
+.terminal code { margin-right: .7rem; white-space: nowrap; }
+#toast { position: fixed; right: 1rem; bottom: 1rem; background: var(--button); color: var(--button-ink); padding: .5rem .8rem;
+  border-radius: 8px; box-shadow: var(--shadow); opacity: 0; transition: opacity .25s; pointer-events: none; }
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dots" id="brand-dots"></span>routing</div>
+  <nav id="tabs" aria-label="views"></nav>
+  <div class="spacer"></div>
+  <div class="version" title="The route version of the catalog and policy this page shows"><span class="live" id="live"></span>route <code id="route">…</code></div>
+</header>
+<div id="banners" aria-live="polite"></div>
+<main id="main"></main>
+<div id="toast" role="status"></div>
+<script>
+"use strict";
+const TOKEN = new URLSearchParams(location.search).get("token") || "";
+const HUES = [212, 24, 152, 280, 340, 46, 186, 0, 100, 250];
+const EFFORTS = ["default", "low", "medium", "high", "xhigh", "max", "ultra"];
+const VIEWS = [["seats", "Seats"], ["models", "Models"], ["review", "Review"], ["history", "History"]];
+const KINDS = ["strength", "weakness", "observation", "measurement"];
+const CAUSES = ["brief", "executor", "integration", "unknown"];
+const S = { view: "seats", model: null, stores: null, seats: null, routes: null, card: null, inactive: null,
+  showInactive: false, log: null, stamp: null, version: null, sigs: null, editors: new Map(), banners: [] };
+
+// --- small helpers -----------------------------------------------------------
+
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  for (const [key, value] of Object.entries(props || {})) {
+    if (value === null || value === undefined || value === false) continue;
+    if (key === "class") el.className = value;
+    else if (key.startsWith("on")) el.addEventListener(key.slice(2), value);
+    else if (key === "dataset") Object.assign(el.dataset, value);
+    else el.setAttribute(key, value === true ? "" : value);
+  }
+  for (const kid of kids.flat(Infinity)) {
+    if (kid === null || kid === undefined || kid === false) continue;
+    el.append(kid instanceof Node ? kid : String(kid));
+  }
+  return el;
+}
+
+async function api(path, body) {
+  const init = { headers: { "X-Routing-Token": TOKEN } };
+  if (body) {
+    init.method = "POST";
+    init.headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body);
+  }
+  let response;
+  try { response = await fetch(path, init); }
+  catch (error) { return { ok: false, status: 0, error: "the page server is not answering; start it again with `agent-routing page`" }; }
+  const payload = await response.json().catch(() => ({ error: response.statusText }));
+  return { ...payload, ok: response.ok, status: response.status };
+}
+
+function hue(lab) {
+  const index = S.stores ? S.stores.labs.indexOf(lab) : -1;
+  return HUES[(index < 0 ? 0 : index) % HUES.length];
+}
+const labOf = model => (S.stores && S.stores.lab_of[model]) || model;
+const modelRow = id => S.stores.models.find(model => model.id === id);
+const policy = table => (S.stores.policy[table] || []);
+const catalog = table => (S.stores.catalog[table] || []);
+
+function chip(model, effort, props = {}, extra = []) {
+  const row = S.stores ? modelRow(model) : null;
+  const classes = ["chip", props.small ? "small" : "", props.unstable ? "unstable" : "", row && row.superseded ? "gone" : ""];
+  return h(props.onclick ? "button" : "span", {
+    class: classes.join(" ").trim(), style: `--h:${hue(labOf(model))}`, type: props.onclick ? "button" : null,
+    title: props.title || `${model}${effort ? " · " + effort : ""} · ${labOf(model)}`,
+    onclick: props.onclick, "aria-expanded": props.expanded === undefined ? null : String(props.expanded),
+    dataset: props.row ? { row: props.row } : undefined,
+  }, h("span", { class: "id" }, model), effort ? h("span", { class: "eff" }, effort) : null, extra);
+}
+
+function value(item) {
+  if (item === null || item === undefined) return "(absent)";
+  if (Array.isArray(item)) return item.map(value).join(", ") || "none";
+  if (typeof item === "object") return Object.entries(item).map(([k, v]) => `${k}: ${value(v)}`).join("; ") || "none";
+  return String(item);
+}
+
+function rowName(table, row) {
+  if (table === "seat") return `seat ${row.profile}${row.variant ? ":" + row.variant : ""} (backends: ${row.backends.join(", ")})`;
+  if (table === "review_seat") return `review seat ${row.purpose} for ${row.author_family} on ${row.backend}`;
+  if (table === "note" || table === "event") return `${table} ${row.id || ""}${row.model ? " for " + row.model : ""}`;
+  if (table === "fallback") return `fallback ${row.profile} from ${row.from_provider} on ${row.backend}`;
+  const keys = { guard: ["model", "effort", "profile"], tier: ["model", "effort"], reach: ["model", "backend", "provider"] }[table]
+    || ["id", "model", "profile", "provider", "path"];
+  return [table, ...keys.filter(key => key in row).map(key => row[key])].join(" ");
+}
+
+function toast(text) {
+  const el = document.getElementById("toast");
+  el.textContent = text;
+  el.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove("show"), 4000);
+}
+
+function banner(kind, text, key) {
+  S.banners = S.banners.filter(item => !key || item.key !== key);
+  if (text) S.banners.push({ kind, text, key });
+  drawBanners();
+}
+
+function drawBanners() {
+  const box = document.getElementById("banners");
+  box.replaceChildren(...S.banners.map(item => h("div", { class: `banner ${item.kind}` },
+    h("div", { class: "text" }, item.text),
+    h("button", { class: "act", type: "button", "aria-label": "dismiss", onclick: () => {
+      S.banners = S.banners.filter(other => other !== item); drawBanners(); } }, "×"))));
+}
+
+// --- loading and noticing change underneath ---------------------------------
+
+function signatures() {
+  const sigs = new Map();
+  const put = (key, row) => sigs.set(key, JSON.stringify(row));
+  for (const row of policy("seat")) put(seatKey(row.profile, row.variant), row);
+  for (const row of policy("review_seat")) put(reviewKey(row.purpose, row.author_family, row.backend), row);
+  for (const row of policy("guard")) put(guardKey(row), row);
+  for (const row of catalog("tier")) put(`tier:${row.model}:${row.effort}`, row);
+  if (S.card) for (const row of S.card.notes) put(`note:${row.id}`, [row.occurrences, row.live, row.claim]);
+  return sigs;
+}
+
+async function refresh() {
+  const [version, stores, seats, routes] = await Promise.all(
+    [api("/api/version"), api("/api/stores"), api("/api/seats"), api("/api/routes")]);
+  const failed = [version, stores, seats, routes].find(answer => !answer.ok);
+  setLive(version.ok);
+  if (failed) {
+    banner("bad", `The stores could not be read: ${failed.error}\n\`agent-routing lint\` names every problem.`, "load");
+    if (version.ok) S.stamp = version.stamp;
+    return;
+  }
+  banner(null, null, "load");
+  const previous = S.sigs;
+  if (S.stamp !== version.stamp) for (const ed of S.editors.values()) if (ed.pending) markStale(ed);
+  S.stamp = version.stamp;
+  S.stores = stores; S.seats = seats; S.routes = routes;
+  if (S.model && !modelRow(S.model)) S.model = null;
+  if (S.model) await loadCard();
+  if (S.view === "history") await loadLog();
+  const problems = stores.standing_problems || [];
+  banner(problems.length ? "warn" : null, problems.length ?
+    `Guards or notes have problems no route decision reads:\n${problems.join("\n")}` : null, "standing");
+  S.sigs = signatures();
+  const changed = previous ? [...S.sigs].filter(([key, sig]) => previous.get(key) !== sig).map(([key]) => key) : [];
+  showVersion(version.route_version);
+  render();
+  for (const key of changed)
+    for (const el of document.querySelectorAll(`[data-row="${CSS.escape(key)}"]`)) {
+      el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+      setTimeout(() => el.classList.remove("flash"), 1700);
+    }
+}
+
+async function loadCard() {
+  const card = await api(`/api/card?model=${encodeURIComponent(S.model)}`);
+  S.card = card.ok ? card : null;
+  if (!card.ok) banner("bad", card.error, "card");
+  else banner(null, null, "card");
+  if (S.showInactive) {
+    const notes = await api(`/api/notes?model=${encodeURIComponent(S.model)}&liveness=inactive`);
+    S.inactive = notes.ok ? notes.notes : [];
+  }
+}
+
+async function loadLog() {
+  const log = await api("/api/log?limit=30");
+  S.log = log.ok ? log.edits : null;
+  if (!log.ok) banner("bad", log.error, "log");
+}
+
+function setLive(up) {
+  const dot = document.getElementById("live");
+  dot.classList.toggle("down", !up);
+  dot.title = up ? "watching the stores" : "the page server is not answering";
+}
+
+function showVersion(version) {
+  const el = document.getElementById("route");
+  if (S.version && S.version !== version) {
+    banner("info", `The stores changed: route ${S.version} → ${version}.`, "moved");
+    el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+  }
+  S.version = version;
+  el.textContent = version;
+}
+
+async function poll() {
+  const version = await api("/api/version");
+  setLive(version.ok);
+  if (version.ok && version.stamp !== S.stamp) await refresh();
+}
+
+// --- editors: in place, keyboard driven, kept across reloads ----------------
+
+function editor(key, anchor, spec) {
+  if (S.editors.has(key)) { closeEditor(key); return; }
+  const ed = { key, anchor, context: context(), spec, inputs: {}, errors: {}, pending: null };
+  const fields = spec.fields.map(field => fieldNode(ed, field));
+  ed.error = h("div", { class: "ed-error", role: "alert" });
+  ed.preview = h("div", { class: "preview", hidden: true });
+  const buttons = spec.actions.map((action, index) => h("button", {
+    type: "button", class: `act ${index === 0 ? "primary" : ""} ${action.danger ? "danger" : ""}`,
+    onclick: () => preview(ed, action) }, action.label));
+  ed.el = h("div", { class: "editor", role: "group", "aria-label": spec.title, dataset: { editor: key },
+    onkeydown: event => keys(ed, event) },
+    h("div", { class: "ed-head" }, h("span", { class: "title" }, spec.title), spec.meta ? h("span", { class: "meta" }, spec.meta) : null,
+      h("button", { type: "button", class: "close", "aria-label": "close", onclick: () => closeEditor(key) }, "×")),
+    spec.facts && spec.facts.length ? h("dl", { class: "facts" }, spec.facts.map(([term, text]) => [h("dt", {}, term), h("dd", {}, text)])) : null,
+    fields,
+    h("div", { class: "actions" }, buttons, h("span", { class: "keys" }, "enter previews · esc cancels")),
+    ed.error, ed.preview);
+  S.editors.set(key, ed);
+  render();
+  const first = ed.el.querySelector("input:not([type=checkbox]), select, input");
+  if (first) first.focus();
+}
+
+function fieldNode(ed, field) {
+  const id = `f-${Math.random().toString(36).slice(2)}`;
+  let input;
+  if (field.type === "select") {
+    input = h("select", { id }, (field.options || []).map(([value, text, disabled]) =>
+      h("option", { value, disabled: !!disabled, selected: value === field.value }, text)));
+  } else if (field.type === "checks") {
+    input = h("div", { class: "checks", id, role: "group" }, field.options.map(option =>
+      h("label", {}, h("input", { type: "checkbox", value: option, checked: field.value.includes(option) }), option)));
+  } else if (field.type === "choice") {
+    input = h("select", { id, disabled: true });
+    loadChoices(ed, field, input);
+  } else {
+    input = h("input", { id, type: field.type === "number" ? "number" : "text", value: field.value ?? "", spellcheck: field.mono ? "false" : null,
+      class: field.mono ? "mono" : null, autocomplete: "off" });
+  }
+  ed.inputs[field.name] = input;
+  ed.hints = ed.hints || {};
+  ed.hints[field.name] = h("div", { class: "hint", hidden: !field.hint }, field.hint || "");
+  const error = h("div", { class: "ferr", hidden: true });
+  ed.errors[field.name] = error;
+  input.addEventListener(field.type === "checks" ? "change" : "input", () => {
+    clearPreview(ed);
+    if (field.onchange) field.onchange(ed);
+  });
+  if (field.type === "select" || field.type === "choice") input.addEventListener("change", () => clearPreview(ed));
+  return h("div", { class: "field", dataset: { field: field.name } },
+    field.type === "checks" ? h("span", { class: "label" }, field.label) : h("label", { for: id }, field.label),
+    input, ed.hints[field.name], error);
+}
+
+async function loadChoices(ed, field, select) {
+  const query = field.query(ed);
+  if (!query) { select.replaceChildren(); select.disabled = true; return; }
+  const answer = await api(`/api/choices?${query}`);
+  if (!answer.ok) { showError(ed, answer.error); return; }
+  const current = field.current;
+  const groups = new Map();
+  for (const choice of answer.choices) {
+    const label = `${choice.model} · ${choice.lab}`;
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(choice);
+  }
+  const options = [];
+  let found = false;
+  for (const [label, choices] of groups) {
+    options.push(h("optgroup", { label }, choices.map(choice => {
+      const isCurrent = current && current.model === choice.model && current.effort === choice.effort
+        && (current.provider === undefined || current.provider === choice.provider);
+      found = found || isCurrent;
+      const text = `${choice.model} · ${choice.effort}   rank ${choice.rank} · floor ${choice.floor}` +
+        (isCurrent ? "   (current)" : "") + (choice.offered ? "" : `   — not offered: ${choice.reasons.join("; ")}`);
+      return h("option", { value: JSON.stringify([choice.model, choice.effort, choice.provider]),
+        disabled: !choice.offered && !isCurrent, selected: isCurrent }, text);
+    })));
+  }
+  if (current && !found) options.unshift(h("option", { value: JSON.stringify([current.model, current.effort, current.provider]), selected: true },
+    `${current.model} · ${current.effort}   (current, not among this backend's reachable tiers)`));
+  if (!options.length) options.push(h("option", { value: "", disabled: true, selected: true }, field.none || "nothing reachable"));
+  const unranked = answer.choices.some(choice => choice.reasons.some(reason => reason.endsWith("without a seat_rank")));
+  const hint = ed.hints[field.name];
+  hint.textContent = unranked ? "A tier seated on a pool needs a seat_rank there, which no verb writes: add a [[seat_rank]] row to data/policy.toml, then agent-routing commit --why." : "";
+  hint.hidden = !unranked;
+  const before = select.value;
+  select.replaceChildren(...options);
+  if (before && [...select.options].some(option => option.value === before && !option.disabled)) select.value = before;
+  select.disabled = false;
+}
+
+function values(ed) {
+  const out = {};
+  for (const [name, input] of Object.entries(ed.inputs)) {
+    if (input.classList.contains("checks")) out[name] = [...input.querySelectorAll("input:checked")].map(box => box.value);
+    else out[name] = input.value.trim();
+  }
+  return out;
+}
+
+function keys(ed, event) {
+  if (event.key === "Escape") {
+    event.preventDefault(); event.stopPropagation();
+    if (ed.pending || !ed.preview.hidden) clearPreview(ed, true);
+    else closeEditor(ed.key);
+  } else if (event.key === "Enter" && !(event.target instanceof HTMLButtonElement) && !event.isComposing) {
+    event.preventDefault();
+    if (ed.pending) commit(ed);
+    else preview(ed, ed.spec.actions[0]);
+  }
+}
+
+function closeEditor(key) {
+  const ed = S.editors.get(key);
+  S.editors.delete(key);
+  if (ed) ed.el.remove();
+  render();
+}
+
+function clearErrors(ed) {
+  ed.error.textContent = "";
+  for (const [name, el] of Object.entries(ed.errors)) {
+    el.hidden = true; el.textContent = "";
+    el.parentElement.classList.remove("invalid");
+  }
+}
+
+function clearPreview(ed, focus) {
+  ed.pending = null;
+  ed.preview.hidden = true;
+  ed.preview.replaceChildren();
+  clearErrors(ed);
+  if (focus) { const first = ed.el.querySelector("input, select"); if (first) first.focus(); }
+}
+
+function markStale(ed) {
+  ed.pending = null;
+  const note = h("div", { class: "stale" }, "The stores changed underneath this preview. Press enter to preview it again.");
+  ed.preview.querySelectorAll("button.commit").forEach(button => button.disabled = true);
+  ed.preview.append(note);
+}
+
+// The validator names the field it refuses, as a flag or a store key; show its words there.
+function showError(ed, message) {
+  clearErrors(ed);
+  const words = message.split("\n").map(line => line.replace(/^data\/\S+ \[\[[^\]]+\]\][^:]*:\s*/, "")).join("\n");
+  for (const field of ed.spec.fields) {
+    const names = [field.name, ...(field.keys || [])];
+    if (names.some(name => new RegExp(`(^|[^\\w-])(--)?${name.replace(/[-_]/g, "[-_]")}([^\\w-]|$)`).test(words))) {
+      const el = ed.errors[field.name];
+      el.textContent = message; el.hidden = false;
+      el.parentElement.classList.add("invalid");
+      ed.inputs[field.name].focus();
+      return;
+    }
+  }
+  ed.error.textContent = message;
+}
+
+async function preview(ed, action) {
+  clearPreview(ed);
+  const vals = values(ed);
+  for (const name of action.require || []) {
+    if (!vals[name] || (Array.isArray(vals[name]) && !vals[name].length)) {
+      const el = ed.errors[name];
+      const label = ed.spec.fields.find(field => field.name === name).label;
+      el.textContent = name === "why" ? "A reason is required: one or two sentences on one line." : `Fill in ${label} first.`;
+      el.hidden = false; el.parentElement.classList.add("invalid");
+      ed.inputs[name].focus();
+      return;
+    }
+  }
+  let argv;
+  try { argv = action.argv(vals); } catch (error) { showError(ed, error.message); return; }
+  const answer = await api("/api/edit", { argv, confirm: false });
+  if (!answer.ok) { showError(ed, answer.error); return; }
+  ed.pending = { argv, stamp: answer.stamp, action };
+  drawPreview(ed, answer);
+}
+
+function drawPreview(ed, answer) {
+  const result = answer.result;
+  const parts = [];
+  for (const change of result.changes) {
+    const old = change.before, now = change.after;
+    const suffix = now === null ? " removed" : old === null ? " added" : "";
+    parts.push(h("div", { class: "row-name" }, `${change.store} ${rowName(change.table, now || old)}${suffix}`));
+    if (now === null) continue;
+    for (const key of new Set([...Object.keys(old || {}), ...Object.keys(now)])) {
+      if (old && key in old && key in now && JSON.stringify(old[key]) === JSON.stringify(now[key])) continue;
+      parts.push(h("div", { class: "kv" }, h("span", { class: "k" }, key),
+        h("span", {}, old ? [h("span", { class: "old" }, value(old[key])), h("span", { class: "arrow" }, "→")] : null,
+          h("span", { class: "new" }, value(now[key])))));
+    }
+  }
+  const moved = result.old_route_version !== result.new_route_version;
+  parts.push(h("div", { class: "footer" }, "route ", h("code", {}, result.old_route_version),
+    moved ? [" → ", h("code", {}, result.new_route_version)] : " unchanged"));
+  parts.push(h("div", { class: "footer" }, result.stale_consumers.length ? [
+    "stale consumers:", result.stale_consumers.map(row => h("div", {}, `${row.consumer} (${row.path}): `, h("code", {}, row.refresh)))]
+    : "stale consumers: none"));
+  if (result.notice) parts.push(h("div", { class: "notice" }, result.notice));
+  if (result.undone_commit) parts.push(h("div", { class: "footer" }, "undoes ", h("code", {}, result.undone_commit.slice(0, 12))));
+  if (result.record_id) parts.push(h("div", { class: "footer" }, "appends ", h("code", {}, result.record_id)));
+  const commitButton = h("button", { type: "button", class: "act primary commit", onclick: () => commit(ed) }, "Commit");
+  parts.push(h("div", { class: "actions" }, commitButton,
+    h("button", { type: "button", class: "act", onclick: () => clearPreview(ed, true) }, "Cancel"),
+    h("span", { class: "keys" }, "enter commits · esc goes back")));
+  parts.push(h("details", {}, h("summary", {}, "as a command"), h("pre", { class: "mono" }, answer.command)));
+  ed.preview.replaceChildren(...parts);
+  ed.preview.hidden = false;
+  commitButton.focus();
+}
+
+async function commit(ed) {
+  const pending = ed.pending;
+  if (!pending) return;
+  ed.preview.querySelectorAll("button.commit").forEach(button => button.disabled = true);
+  const answer = await api("/api/edit", { argv: pending.argv, confirm: true, expect: pending.stamp });
+  if (!answer.ok) {
+    if (answer.stale) { markStale(ed); await refresh(); return; }
+    clearPreview(ed);
+    showError(ed, answer.error);
+    return;
+  }
+  const result = answer.result;
+  S.editors.delete(ed.key);
+  ed.el.remove();
+  toast(`Committed ${result.commit.slice(0, 12)}` + (result.old_route_version !== result.new_route_version
+    ? ` · route ${result.new_route_version}` : ""));
+  if (pending.action.after) pending.action.after(result);
+  await refresh();
+}
+
+// Re-attach open editors to their rows after a redraw, keeping what was typed and where the cursor was.
+function placeEditors(root) {
+  const active = document.activeElement;
+  const selection = active && "selectionStart" in active ? [active.selectionStart, active.selectionEnd] : null;
+  for (const ed of S.editors.values()) {
+    if (ed.context !== context()) continue;
+    const anchor = root.querySelector(`[data-anchor="${CSS.escape(ed.anchor)}"]`);
+    if (!anchor) {
+      S.editors.delete(ed.key);
+      banner("warn", `${ed.spec.title}: the row this edit was for is gone from the stores, so the edit was closed.`, `gone:${ed.key}`);
+      continue;
+    }
+    if (anchor.tagName === "TR") {
+      const cells = [...anchor.children].reduce((sum, cell) => sum + (cell.colSpan || 1), 0);
+      let after = anchor;
+      while (after.nextElementSibling && after.nextElementSibling.classList.contains("ed-row")) after = after.nextElementSibling;
+      after.after(h("tr", { class: "ed-row" }, h("td", { colspan: cells }, ed.el)));
+    } else {
+      anchor.after(ed.el);
+    }
+  }
+  if (active && active.isConnected && document.activeElement !== active) {
+    active.focus({ preventScroll: true });
+    if (selection) try { active.setSelectionRange(...selection); } catch (error) { /* not a text input */ }
+  }
+}
+
+// --- views -----------------------------------------------------------------
+
+const context = () => S.view === "models" ? `models/${S.model}` : S.view;
+
+function render() {
+  drawTabs();
+  const main = document.getElementById("main");
+  if (!S.stores) return;
+  const body = { seats: seatsView, models: modelsView, review: reviewView, history: historyView }[S.view]();
+  main.replaceChildren(body, terminalHints());
+  placeEditors(main);
+}
+
+function drawTabs() {
+  document.getElementById("tabs").replaceChildren(...VIEWS.map(([id, label]) => h("button", {
+    type: "button", "aria-current": S.view === id ? "page" : null, onclick: () => go(id) }, label)));
+  if (S.stores) document.getElementById("brand-dots").replaceChildren(...S.stores.labs.slice(0, 4).map(lab => h("i", { style: `--h:${hue(lab)}` })));
+}
+
+async function go(view, model) {
+  S.view = view;
+  if (model !== undefined) S.model = model;
+  history.replaceState(null, "", `${location.search}#${view}${S.model && view === "models" ? "/" + encodeURIComponent(S.model) : ""}`);
+  if (view === "history") await loadLog();
+  if (view === "models" && S.model) await loadCard();
+  render();
+}
+
+function legend() {
+  return h("div", { class: "legend" }, S.stores.labs.map(lab => h("span", { style: `--h:${hue(lab)}` }, lab)));
+}
+
+const seatKey = (profile, variant) => `seat:${profile}:${variant || ""}`;
+const reviewKey = (purpose, family, backend) => `rseat:${purpose}:${family}:${backend}`;
+const guardKey = row => `guard:${row.model}:${row.effort || ""}:${row.profile || ""}`;
+const backendIds = () => catalog("backend").map(row => row.id);
+
+function seatsView() {
+  const backends = backendIds();
+  const table = h("table", { class: "board" },
+    h("thead", {}, h("tr", {}, h("th", {}, "profile"), backends.map(id => h("th", { class: "mono" }, id)))),
+    h("tbody", {}, policy("profile").map(profile => profileRow(profile, backends))));
+  return h("div", {}, legend(), h("div", { class: "scroll" }, table));
+}
+
+function profileRow(profile, backends) {
+  const seats = S.seats.seats.filter(seat => seat.profile === profile.id);
+  const fallbacks = policy("fallback").filter(row => row.profile === profile.id);
+  const purpose = h("span", { class: "sub", title: profile.purpose, onclick: event => event.currentTarget.classList.toggle("open") }, profile.purpose);
+  const head = h("th", { class: "rowhead", scope: "row" }, h("div", { class: "name" }, profile.id), purpose,
+    fallbacks.map(row => h("div", { class: "fallback" }, `when ${row.from_provider} runs out: ${row.backend}${row.variant ? " · " + row.variant : ""}`)),
+    h("button", { type: "button", class: "add", onclick: () => newSeat(profile.id) }, "+ variant"));
+  const cells = backends.map(backend => {
+    const here = seats.filter(seat => seat.backend === backend).sort((a, b) => (b.default - a.default) || String(a.variant).localeCompare(String(b.variant)));
+    return h("td", {}, here.length ? h("div", { class: "cell" }, here.map(seat => seatChip(profile.id, seat))) : h("span", { class: "empty" }, "·"));
+  });
+  return h("tr", { dataset: { anchor: `profile:${profile.id}` } }, head, cells);
+}
+
+function seatChip(profile, seat) {
+  const key = seatKey(profile, seat.variant);
+  const row = policy("seat").find(item => item.profile === profile && (item.variant || null) === (seat.variant || null));
+  return h("div", { class: "seat" },
+    seat.variant ? h("span", { class: "variant" }, seat.variant) : null,
+    chip(seat.roster_model, seat.effort, { row: key, unstable: seat.stability !== "stable", expanded: S.editors.has(key),
+      title: row ? `${row.when}\n${row.why} (since ${row.since})` : undefined, onclick: () => editSeat(row) }),
+    seat.default ? h("span", { class: "mark default" }, "default") : null,
+    seat.stability !== "stable" ? h("span", { class: "mark" }, seat.stability) : null);
+}
+
+function choiceField(current, query, none) {
+  return { name: "holds", label: "holds", type: "choice", current, query, none, keys: ["model", "effort", "provider", "rank"] };
+}
+
+function chosen(vals) {
+  if (!vals.holds) throw new Error("Choose what holds the seat.");
+  return JSON.parse(vals.holds);
+}
+
+function seatQuery(profile) {
+  return ed => {
+    const backends = values(ed).backends;
+    return backends.length ? `profile=${encodeURIComponent(profile)}&` + backends.map(b => `backend=${encodeURIComponent(b)}`).join("&") : null;
+  };
+}
+
+function refreshChoices(ed) {
+  const field = ed.spec.fields.find(item => item.type === "choice");
+  loadChoices(ed, field, ed.inputs[field.name]);
+}
+
+function setSeatArgv(profile, variantOf) {
+  return vals => {
+    const [model, effort, provider] = chosen(vals);
+    const variant = variantOf(vals);
+    return ["set-seat", profile, ...(variant ? ["--variant", variant] : []), ...vals.backends.flatMap(b => ["--backend", b]),
+      "--model", model, "--effort", effort, "--provider", provider, "--when", vals.when, "--why", vals.why];
+  };
+}
+
+function editSeat(row) {
+  const variant = row.variant ? ["--variant", row.variant] : [];
+  const actions = [{ label: "Preview change", require: ["backends", "holds", "when", "why"], argv: setSeatArgv(row.profile, () => row.variant) }];
+  if (row.variant && !row.default) actions.push({ label: "Make default", require: ["why"],
+    argv: vals => ["default-seat", row.profile, ...variant, "--why", vals.why] });
+  actions.push({ label: "Remove", danger: true, require: ["why"], argv: vals => ["remove-seat", row.profile, ...variant, "--why", vals.why] });
+  editor(seatKey(row.profile, row.variant), `profile:${row.profile}`, {
+    title: `${row.profile}${row.variant ? ":" + row.variant : ""}`,
+    meta: `${row.stability} · ${row.provider} · since ${row.since}${row.default ? " · default" : ""}`,
+    facts: [["when", row.when], ["why", row.why]],
+    fields: [
+      { name: "backends", label: "backends", type: "checks", options: backendIds(), value: row.backends, onchange: refreshChoices },
+      choiceField({ model: row.model, effort: row.effort, provider: row.provider }, seatQuery(row.profile)),
+      { name: "when", label: "when", value: row.when },
+      { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },
+    ],
+    actions,
+  });
+}
+
+function newSeat(profile) {
+  editor(`new-seat:${profile}`, `profile:${profile}`, {
+    title: `${profile}: a new variant`,
+    fields: [
+      { name: "variant", label: "variant", value: "", mono: true },
+      { name: "backends", label: "backends", type: "checks", options: backendIds(), value: [], onchange: refreshChoices },
+      choiceField(null, seatQuery(profile), "tick a backend to see what it reaches"),
+      { name: "when", label: "when", value: "" },
+      { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },
+    ],
+    actions: [{ label: "Preview new variant", require: ["variant", "backends", "holds", "when", "why"], argv: setSeatArgv(profile, vals => vals.variant) }],
+  });
+}
+
+// --- review -------------------------------------------------------------------
+
+function reviewView() {
+  const backends = backendIds();
+  const rows = [];
+  for (const purpose of Object.keys(S.stores.purposes)) {
+    const seats = policy("review_seat").filter(row => row.purpose === purpose);
+    const families = [...new Set(["any", ...seats.map(row => row.author_family)])];
+    families.forEach((family, index) => {
+      const head = h("th", { class: "rowhead", scope: "row" },
+        index === 0 ? [h("div", { class: "name" }, purpose),
+          h("span", { class: "sub", title: S.stores.purposes[purpose], onclick: event => event.currentTarget.classList.toggle("open") }, S.stores.purposes[purpose])] : null,
+        h("div", { class: "variant" }, `for ${family === "any" ? "any lab" : family}`),
+        index === families.length - 1 ? h("button", { type: "button", class: "add", onclick: () => newReviewSeat(purpose) }, "+ lab") : null);
+      const cells = backends.map(backend => {
+        const row = seats.find(item => item.author_family === family && item.backend === backend);
+        if (!row) return h("td", {}, h("button", { type: "button", class: "add", "aria-label": `add a ${purpose} seat for ${family} on ${backend}`,
+          onclick: () => editReviewSeat({ purpose, author_family: family, backend }) }, "+"));
+        const key = reviewKey(purpose, family, backend);
+        return h("td", {}, chip(row.model, row.effort, { row: key, expanded: S.editors.has(key),
+          title: `${row.when}\n${row.why} (since ${row.since})`, onclick: () => editReviewSeat(row) }));
+      });
+      rows.push(h("tr", { dataset: { anchor: `review:${purpose}:${family}` } }, head, cells));
+    });
+  }
+  return h("div", {}, legend(), h("div", { class: "scroll" }, h("table", { class: "board" },
+    h("thead", {}, h("tr", {}, h("th", {}, "purpose"), backends.map(id => h("th", { class: "mono" }, id)))),
+    h("tbody", {}, rows))),
+    h("p", { class: "fallback" }, "A review seat names a stable route of the review profile on its backend; seat another reader in the review profile first to offer it here."));
+}
+
+function reviewArgv(purpose, familyOf, backendOf) {
+  return vals => {
+    const [model, effort] = chosen(vals);
+    return ["set-review-seat", purpose, "--author-family", familyOf(vals), "--backend", backendOf(vals),
+      "--model", model, "--effort", effort, "--when", vals.when, "--why", vals.why];
+  };
+}
+
+function editReviewSeat(row) {
+  const exists = "model" in row;
+  const key = reviewKey(row.purpose, row.author_family, row.backend);
+  const actions = [{ label: exists ? "Preview change" : "Preview new seat", require: ["holds", "when", "why"],
+    argv: reviewArgv(row.purpose, () => row.author_family, () => row.backend) }];
+  if (exists) actions.push({ label: "Remove", danger: true, require: ["why"], argv: vals => ["remove-review-seat", row.purpose,
+    "--author-family", row.author_family, "--backend", row.backend, "--why", vals.why] });
+  editor(key, `review:${row.purpose}:${row.author_family}`, {
+    title: `${row.purpose} for ${row.author_family} on ${row.backend}`,
+    meta: exists ? `since ${row.since}` : "new",
+    facts: exists ? [["when", row.when], ["why", row.why]] : [],
+    fields: [
+      choiceField(exists ? { model: row.model, effort: row.effort } : null,
+        () => `for=review_seat&backend=${encodeURIComponent(row.backend)}`, "the review profile has no stable route on this backend"),
+      { name: "when", label: "when", value: exists ? row.when : "" },
+      { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },
+    ],
+    actions,
+  });
+}
+
+function newReviewSeat(purpose) {
+  const taken = new Set(policy("review_seat").filter(row => row.purpose === purpose).map(row => row.author_family));
+  const labs = ["any", ...S.stores.labs].filter(lab => !taken.has(lab));
+  const anchorFamily = [...new Set(["any", ...policy("review_seat").filter(row => row.purpose === purpose).map(row => row.author_family)])].pop();
+  editor(`new-rseat:${purpose}`, `review:${purpose}:${anchorFamily}`, {
+    title: `${purpose}: a seat for one lab`,
+    fields: [
+      { name: "family", label: "author lab", type: "select", options: labs.map(lab => [lab, lab]), value: labs[0], keys: ["author_family", "author-family"], onchange: refreshChoices },
+      { name: "backend", label: "backend", type: "select", options: backendIds().map(id => [id, id]), value: backendIds()[0], onchange: refreshChoices },
+      choiceField(null, ed => `for=review_seat&backend=${encodeURIComponent(values(ed).backend)}`, "the review profile has no stable route on this backend"),
+      { name: "when", label: "when", value: "" },
+      { name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the seat's why." },
+    ],
+    actions: [{ label: "Preview new seat", require: ["family", "backend", "holds", "when", "why"], argv: reviewArgv(purpose, vals => vals.family, vals => vals.backend) }],
+  });
+}
+
+// --- models ------------------------------------------------------------------
+
+function modelsView() {
+  const byLab = new Map(S.stores.labs.map(lab => [lab, []]));
+  for (const model of S.stores.models) byLab.get(labOf(model.id)).push(model);
+  const list = h("div", { class: "lablist" }, [...byLab].filter(([, models]) => models.length).map(([lab, models]) =>
+    h("section", { style: `--h:${hue(lab)}` }, h("h3", {}, lab), h("div", { class: "chips" }, models.map(model =>
+      chip(model.id, model.status || null, { small: true, expanded: S.model === model.id, onclick: () => go("models", model.id) }))))));
+  const banned = S.routes.prohibited;
+  list.append(h("section", {}, h("h3", { style: "--h:0" }, "prohibited"), banned.length ? h("div", { class: "list" }, banned.map(row =>
+    h("div", { class: "line", dataset: { row: `tier:${row.model}:${row.effort}` } }, chip(row.model, row.effort, { small: true, onclick: () => go("models", row.model) }),
+      h("span", { class: "why" }, row.reason)))) : h("span", { class: "empty" }, "none")));
+  return h("div", { class: "models" }, list, S.model && S.card ? cardView() : h("div", { class: "panel" },
+    h("p", { class: "empty" }, "Pick a model to see its seats, tiers, guards and field notes.")));
+}
+
+function cardView() {
+  const card = S.card, model = modelRow(card.model);
+  const facts = [labOf(model.id), model.status ? `${model.status}${model.successor ? " → " + model.successor : ""}` : null,
+    model.aliases && model.aliases.length ? `also ${model.aliases.join(", ")}` : null, model.build ? `build ${model.build}` : null].filter(Boolean);
+  const seats = card.seats.map(row => h("div", { class: "line" }, h("span", { class: "mono" }, `${row.profile}${row.variant ? ":" + row.variant : ""}`),
+    h("span", { class: "tag" }, row.backends.join(", ")), h("span", {}, row.effort),
+    ("variant" in row && !row.default) ? null : h("span", { class: "mark default" }, "default"), h("span", { class: "why" }, row.when)));
+  const reviews = card.review_seats.map(row => h("div", { class: "line" }, h("span", { class: "mono" }, row.purpose),
+    h("span", { class: "tag" }, `for ${row.author_family}`), h("span", { class: "tag" }, row.backend), h("span", {}, row.effort), h("span", { class: "why" }, row.when)));
+  return h("div", { class: "panel" },
+    h("h2", {}, chip(model.id, null, {}), " ", h("span", { class: "fallback" }, facts.join(" · "))),
+    h("h3", {}, "Seats"), seats.length ? h("div", { class: "list" }, seats) : h("span", { class: "empty" }, "none"),
+    h("h3", {}, "Review seats"), reviews.length ? h("div", { class: "list" }, reviews) : h("span", { class: "empty" }, "none"),
+    h("h3", {}, "Tiers"), tiersTable(model),
+    h("h3", {}, "Guards"), guardsList(model),
+    notesSection(card));
+}
+
+function tiersTable(model) {
+  return h("table", { class: "tiers" }, h("thead", {}, h("tr", {}, ["effort", "rank", "floor", "stability", ""].map(text => h("th", {}, text)))),
+    h("tbody", {}, model.effort.map(tier => h("tr", { class: "tier", tabindex: "0", dataset: { anchor: `tier:${model.id}:${tier.effort}`, row: `tier:${model.id}:${tier.effort}` },
+      onclick: () => editTier(model, tier), onkeydown: event => { if (event.key === "Enter") { event.preventDefault(); editTier(model, tier); } } },
+      h("td", {}, tier.effort), h("td", {}, tier.rank), h("td", {}, tier.floor), h("td", { class: "fallback" }, tier.status || "stable"),
+      h("td", { class: "ban" }, tier.prohibited ? `prohibited: ${tier.reason}` : "")))));
+}
+
+function editTier(model, tier) {
+  const actions = [{ label: "Preview rank", require: ["why"], argv: vals => ["rank", model.id, tier.effort, "--rank", vals.rank, "--floor", vals.floor, "--why", vals.why] }];
+  if (tier.prohibited) actions.push({ label: "Allow", require: ["why"], argv: vals => ["allow", model.id, tier.effort, "--why", vals.why] });
+  else actions.push({ label: "Prohibit", danger: true, require: ["reason", "why"], argv: vals => ["prohibit", model.id, tier.effort, "--reason", vals.reason, "--why", vals.why] });
+  const fields = [
+    { name: "rank", label: "rank", type: "number", value: tier.rank, hint: "Reviewer strength on the cross-lab scale." },
+    { name: "floor", label: "floor", type: "number", value: tier.floor, hint: "The least reviewer rank this tier's work needs." },
+  ];
+  if (!tier.prohibited) fields.push({ name: "reason", label: "ban reason", value: "", hint: "Only for Prohibit: one sentence, kept on the tier." });
+  fields.push({ name: "why", label: "why", value: "", hint: "The reason for this edit, recorded in the commit." });
+  editor(`tier:${model.id}:${tier.effort}`, `tier:${model.id}:${tier.effort}`, {
+    title: `${model.id} · ${tier.effort}`, meta: tier.prohibited ? `prohibited: ${tier.reason}` : (tier.status || "stable"), fields, actions });
+}
+
+function guardsList(model) {
+  const guards = policy("guard").filter(row => row.model === model.id);
+  const items = guards.map(row => h("div", { class: "guard", dataset: { anchor: guardKey(row), row: guardKey(row) } },
+    h("div", {}, h("span", { class: "tag" }, [row.effort, row.profile].filter(Boolean).join(" · ") || "every tier"), " ", h("span", { class: "rule" }, row.rule)),
+    h("div", { class: "why" }, `${row.why} · since ${row.since}${row.because ? " · because " + row.because.join(", ") : ""}`),
+    h("div", { class: "buttons" }, h("button", { type: "button", class: "act", onclick: () => editGuard(model, row) }, "Edit or retire"))));
+  return h("div", {}, items.length ? items : h("span", { class: "empty" }, "none"),
+    h("div", { dataset: { anchor: `new-guard:${model.id}` } }, h("button", { type: "button", class: "add", onclick: () => editGuard(model, null) }, "+ guard")));
+}
+
+function guardScope(row) {
+  return [...(row.effort ? ["--effort", row.effort] : []), ...(row.profile ? ["--profile", row.profile] : [])];
+}
+
+function editGuard(model, row) {
+  const fields = [];
+  if (!row) {
+    fields.push({ name: "effort", label: "effort", type: "select", options: [["", "every tier"], ...model.effort.map(tier => [tier.effort, tier.effort])], value: "" });
+    fields.push({ name: "profile", label: "profile", type: "select", options: [["", "every profile"], ...policy("profile").map(p => [p.id, p.id])], value: "" });
+  }
+  fields.push({ name: "rule", label: "rule", value: row ? row.rule : "", hint: "One sentence a lead follows." });
+  fields.push({ name: "because", label: "because", value: "", mono: true, hint: "Note ids this rests on, separated by spaces; added to any it cites." });
+  fields.push({ name: "why", label: "why", value: "", hint: "The reason for this edit; it becomes the guard's why." });
+  const scope = vals => row ? guardScope(row) : guardScope({ effort: vals.effort, profile: vals.profile });
+  const because = vals => vals.because.split(/[\s,]+/).filter(Boolean).flatMap(id => ["--because", id]);
+  const actions = [{ label: row ? "Preview change" : "Preview new guard", require: ["rule", "why"],
+    argv: vals => ["set-guard", model.id, ...scope(vals), "--rule", vals.rule, "--why", vals.why, ...because(vals)] }];
+  if (row) actions.push({ label: "Retire", danger: true, require: ["why"], argv: vals => ["retire-guard", model.id, ...scope(vals), "--why", vals.why] });
+  editor(row ? guardKey(row) : `new-guard:${model.id}`, row ? guardKey(row) : `new-guard:${model.id}`, {
+    title: row ? `guard on ${model.id}${row.effort ? " · " + row.effort : ""}${row.profile ? " · " + row.profile : ""}` : `a new guard on ${model.id}`,
+    meta: row ? `since ${row.since}` : null, facts: row ? [["why", row.why]] : [], fields, actions });
+}
+
+function notesSection(card) {
+  const groups = [["Weaknesses", ["weakness"]], ["Strengths", ["strength"]], ["Observations and measurements", ["observation", "measurement"]]];
+  const out = [];
+  for (const [title, kinds] of groups) {
+    const notes = card.notes.filter(note => kinds.includes(note.kind));
+    out.push(h("h3", {}, title), notes.length ? notes.map(note => noteCard(note, true)) : h("span", { class: "empty" }, "none"));
+  }
+  out.push(h("div", { dataset: { anchor: `new-note:${card.model}` } }, h("button", { type: "button", class: "add", onclick: () => newNote(card.model) }, "+ note")));
+  const inherited = card.inherited_unverified;
+  if (inherited.length) out.push(h("h3", {}, "Inherited, unverified for this model"), inherited.map(note => noteCard(note, false)));
+  out.push(h("h3", {}, h("button", { type: "button", class: "add", onclick: async () => {
+    S.showInactive = !S.showInactive; await loadCard(); render(); } }, S.showInactive ? "hide retracted and superseded" : "show retracted and superseded")));
+  if (S.showInactive && S.inactive) out.push(S.inactive.length ? S.inactive.map(note => noteCard(note, false)) : h("span", { class: "empty" }, "none"));
+  return out;
+}
+
+function noteCard(note, actionable) {
+  const dates = note.date + (note.last_seen !== note.date ? ` → ${note.last_seen}` : "");
+  const disposition = note.disposition;
+  return h("div", { class: `note ${note.live ? "" : "inactive"}`, dataset: { anchor: `note:${note.id}`, row: `note:${note.id}` } },
+    h("div", { class: "top" }, h("span", { class: "mono" }, note.id), h("span", { class: "count" }, `×${note.occurrences}`), h("span", {}, dates),
+      note.model !== S.model ? h("span", { class: "mono" }, note.model) : null,
+      note.effort ? h("span", { class: "tag" }, note.effort) : null, h("span", { class: "tag" }, note.kind), h("span", { class: "tag" }, `cause ${note.cause}`),
+      note.areas.map(area => h("span", { class: "tag" }, area)),
+      disposition ? h("span", { class: "tag" }, disposition.event === "retract" ? "retracted" : "superseded") : null),
+    h("div", { class: "claim" }, note.claim),
+    note.evidence.map(item => h("div", { class: "ev" }, note.evidence.length > 1 ? `${item.date} ` : "", h("code", {}, item.reference))),
+    note.metrics ? h("div", { class: "ev" }, value(note.metrics)) : null,
+    disposition ? h("div", { class: "ev" }, `${disposition.reason}${disposition.replacement ? " (replacement " + disposition.replacement + ")" : ""}`) : null,
+    actionable && note.live ? h("div", { class: "buttons" },
+      h("button", { type: "button", class: "act", onclick: () => noteAction(note, "again") }, "Seen again"),
+      h("button", { type: "button", class: "act", onclick: () => noteAction(note, "supersede") }, "Correct"),
+      h("button", { type: "button", class: "act danger", onclick: () => noteAction(note, "retract") }, "Retract")) : null);
+}
+
+function noteAction(note, verb) {
+  const specs = {
+    again: { title: `${note.id} seen again`, fields: [{ name: "evidence", label: "evidence", value: "", mono: true, hint: "Where it was seen: a session, change or file reference." }],
+      actions: [{ label: "Preview recurrence", require: ["evidence"], argv: vals => ["again", note.id, "--evidence", vals.evidence] }] },
+    retract: { title: `retract ${note.id}`, fields: [{ name: "reason", label: "reason", value: "", hint: "Why the note was mistaken." }],
+      actions: [{ label: "Preview retraction", danger: true, require: ["reason"], argv: vals => ["retract", note.id, "--reason", vals.reason] }] },
+    supersede: { title: `correct ${note.id}`, fields: [
+      { name: "claim", label: "claim", value: note.claim },
+      { name: "evidence", label: "evidence", value: "", mono: true },
+      { name: "reason", label: "reason", value: "", hint: "What the correction fixes." }],
+      actions: [{ label: "Preview correction", require: ["claim", "evidence", "reason"],
+        argv: vals => ["supersede", note.id, "--claim", vals.claim, "--evidence", vals.evidence, "--reason", vals.reason] }] },
+  };
+  editor(`${verb}:${note.id}`, `note:${note.id}`, specs[verb]);
+}
+
+function newNote(model) {
+  const tiers = modelRow(model).effort.map(tier => [tier.effort, tier.effort]);
+  editor(`new-note:${model}`, `new-note:${model}`, {
+    title: `a new note on ${model}`,
+    fields: [
+      { name: "kind", label: "kind", type: "select", options: KINDS.map(kind => [kind, kind]), value: "observation" },
+      { name: "effort", label: "effort", type: "select", options: [["", "any effort"], ...tiers], value: "" },
+      { name: "claim", label: "claim", value: "", hint: "One sentence." },
+      { name: "cause", label: "cause", type: "select", options: CAUSES.map(cause => [cause, cause]), value: "executor",
+        hint: "Whose doing it was: a brief's fault is not the model's." },
+      { name: "areas", label: "areas", value: "", mono: true, hint: "Tags separated by spaces or commas." },
+      { name: "evidence", label: "evidence", value: "", mono: true },
+      { name: "metrics", label: "metrics", value: "", mono: true, hint: "Optional, a JSON object of numbers and strings." },
+    ],
+    actions: [{ label: "Preview note", require: ["claim", "areas", "evidence"], argv: vals => ["note", "--model", model,
+      ...(vals.effort ? ["--effort", vals.effort] : []), "--kind", vals.kind, ...vals.areas.split(/[\s,]+/).filter(Boolean).flatMap(area => ["--area", area]),
+      "--claim", vals.claim, "--cause", vals.cause, "--evidence", vals.evidence, ...(vals.metrics ? ["--metrics", vals.metrics] : [])] }],
+  });
+}
+
+// --- history -----------------------------------------------------------------
+
+function trailer(body) {
+  const match = body.split("\n\n").pop().match(/^Routing-edit: (\S+)$/m);
+  return match ? match[1] : null;
+}
+
+function historyView() {
+  const edits = S.log || [];
+  const latest = edits.find(edit => trailer(edit.body));
+  const items = edits.map(edit => {
+    const paragraphs = edit.body.split("\n\n");
+    const because = (edit.body.match(/^Because: (.+)$/m) || [])[1];
+    const reason = paragraphs.length > 2 || (paragraphs.length === 2 && !trailer(edit.body)) ? paragraphs[1] : "";
+    return h("div", { class: "entry", dataset: { anchor: `edit:${edit.commit}` } },
+      h("code", {}, edit.commit.slice(0, 12)), h("span", { class: "verb" }, trailer(edit.body) || "hand edit"),
+      h("span", {}, edit.subject.replace(/^data: /, "")),
+      reason || because ? h("span", { class: "reason" }, reason, because ? ` · because ${because}` : "") : null);
+  });
+  const undo = latest ? h("div", { dataset: { anchor: "undo" } }, h("button", { type: "button", class: "act", onclick: () => editor("undo", "undo", {
+    title: `undo ${latest.commit.slice(0, 12)}`, meta: latest.subject.replace(/^data: /, ""),
+    fields: [{ name: "why", label: "why", value: "", hint: "The reason for reverting it, recorded in the commit." }],
+    actions: [{ label: "Preview undo", danger: true, require: ["why"], argv: vals => ["undo", "--why", vals.why] }] }) },
+    `Undo the latest verb edit, ${latest.subject.replace(/^data: /, "")}`)) : null;
+  return h("div", { class: "panel" }, h("h2", {}, "Edits to the stores, newest first"), undo,
+    h("div", { class: "history" }, items.length ? items : h("span", { class: "empty" }, "none")),
+    h("p", { class: "fallback" }, "Undo reverts the latest commit a verb made, keeping later edits it does not touch. Hand edits are committed from a terminal."));
+}
+
+function terminalHints() {
+  const commands = ["agent-routing set-fallback", "agent-routing remove-fallback", "agent-routing add-model", "agent-routing supersede-model",
+    "agent-routing commit --why", "agent-routing emit claude-agents", "agent-routing doctrine", "agent-routing lint"];
+  return h("div", { class: "terminal" }, "From a terminal: ", commands.map(command => h("code", {}, command)));
+}
+
+// --- start -------------------------------------------------------------------
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && !event.defaultPrevented && document.activeElement === document.body) {
+    const last = [...S.editors.keys()].pop();
+    if (last) closeEditor(last);
+  }
+});
+window.addEventListener("focus", poll);
+
+(async function start() {
+  const [view, model] = location.hash.slice(1).split("/");
+  if (VIEWS.some(([id]) => id === view)) S.view = view;
+  if (model) S.model = decodeURIComponent(model);
+  drawTabs();
+  await refresh();
+  if (S.view === "history" && !S.log) { await loadLog(); render(); }
+  setInterval(poll, 2000);
+})();
+</script>
+</body>
+</html>
