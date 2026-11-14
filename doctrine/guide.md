@@ -310,6 +310,14 @@ EDIT FROM A PAGE
   request. A refusal answers {"error": MESSAGE} in the validator's or
   parser's words.
 
+  The page holds no routing rule of its own. Each lab has one colour on
+  every model chip. A preview that answers after the form changed, or after
+  a newer preview was asked for, is dropped, so Commit sends what the editor
+  shows. A stable seat on a tier its pool has not ranked shows that pool's
+  order and asks for a place, filled with the suggested one. When the polled
+  state moves, the rows the edit changed flash once and what is being typed
+  stays. What only a terminal does, the page names as a command.
+
 READABLE TEXT VIEWS
   Text uses the terminal width, or 80 columns for redirected output. Seat
   columns align across the model's own rows. Variants read profile:variant;
@@ -700,6 +708,10 @@ WHAT BINDS BEFORE ANY QUERY
   Independent review is an escalation, not a reflex; otherwise the lead
   inspects, runs the gates and records the deferred coverage as Arc debt.
 
+  Nothing here enforces itself. A harness that ignores an answer is not
+  stopped by it: the data states the decision and the prohibitions so that a
+  caller, a launcher or a lint can hold to them.
+
 READ THE POLICY
   agent-routing doctrine     the principles, then every profile's seats with
                              their when, why and since and the guards on
@@ -722,6 +734,16 @@ KEEP CONSUMERS HONEST
   A roster copied into a consumer goes stale. Point a consumer at a verb
   instead of quoting a model. This lint reads other repositories, so it runs
   on demand rather than in this repository's change gate.
+
+  The policy's [[consumer]] rows name the repositories and paths to read and
+  the checks each gets, and its [[accessor]] rows the commands that report a
+  consumer's instruction and agent sources. `roster-literals` rejects a
+  catalog id on any line. `agent-frontmatter` rejects a `model:` line in a
+  Markdown agent definition unless a [[proxy]] or [[pin]] row names that
+  file with the same model, and a file so named keeps the effort its row
+  records. A sibling repository is looked for beside this one's canonical
+  checkout, found through Git's common directory so a worktree resolves the
+  same siblings; AGENT_CODE_ROOT names another directory.
 
 EXPORT LIST PRICES FOR TAPES
   agent-routing prices [--format tapes] [--output <file>]
