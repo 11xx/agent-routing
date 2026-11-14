@@ -140,6 +140,14 @@ def change_policy(root, change):
     path.write_text(stores.emit_policy(document))
 
 
+def change_catalog(root, change):
+    """Rewrite the catalog store after `change` edits its parsed tables."""
+    path = root / stores.CATALOG
+    document = stores.parse_toml(path.read_text(), stores.CATALOG)
+    change(document)
+    path.write_text(stores.emit_catalog(document))
+
+
 def drop_review_seat(document, purpose, backend, family="any"):
     rows = document["review_seat"]
     rows.remove(next(row for row in rows if (row["purpose"], row["backend"], row["author_family"])
@@ -190,6 +198,47 @@ class ReviewSeatValidationTest(unittest.TestCase):
         self.assertEqual(data_problems(root), [f"{self.WHERE}findings author_family=orbit backend=codex: ts-3-core "
                                                "max is no stable route of the review profile on backend 'codex'"])
 
+    def test_a_clearance_seat_is_feasible_only_for_labs_it_can_clear(self):
+        """Claim: an any clearance seat is judged against the authors outside
+        its own lab, so one whose only reachable floors are its own lab's is
+        named, though those low floors would let it pass. Rejects a seat that
+        can clear no lab's authors validating on floors it may never review."""
+        root = scratch(self)
+        change_catalog(root, lambda document: [tier.update(floor=3) for tier in document["tier"]
+                                               if tier["model"].startswith(("nw-", "orbit-"))])
+
+        def change(document):
+            document["seat"].append(seat_row("core", "codex", "tessel-plan", "ts-3-core", "max"))
+            next(row for row in document["review_seat"]
+                 if (row["purpose"], row["backend"]) == ("clearance", "codex")).update(model="ts-3-core", effort="max")
+        change_policy(root, change)
+        self.assertIn(f"{self.WHERE}clearance author_family=any backend=codex: rank 2 is below every floor of the "
+                      "authors outside its lab (the least is 3), so it can never clear them", data_problems(root))
+
+    def test_coverage_counts_only_seats_that_can_clear_the_lab(self):
+        """Claim: removing the only clearance seat able to reach a lab's
+        floors is named, though seats outside that lab remain on every
+        backend. Rejects a policy in which a lab's authors are refused on
+        every backend while the validator calls them served."""
+        root = scratch(self)
+        change_catalog(root, lambda document: [tier.update(floor=3) for tier in document["tier"]
+                                               if tier["model"].startswith("orbit-")])
+
+        def change(document):
+            document["seat"] += [seat_row("core", "codex", "tessel-plan", "ts-3-core", "max"),
+                                 seat_row("atlas-high", "claude", "northwind-plan", "nw-atlas-2", "high")]
+            for row in document["review_seat"]:
+                if row["purpose"] == "clearance":
+                    row.update(model="ts-3-core", effort="max") if row["backend"] == "codex" else row.update(
+                        model="nw-atlas-2", effort="high")
+            document["review_seat"].append(review_seat("clearance", "codex", "ts-3-prime", "xhigh", "orbit"))
+        change_policy(root, change)
+        self.assertEqual(data_problems(root), [])
+        self.assertEqual(resolve(root, "review", "codex", author="orbit-flash#max")["review"]["clears"], True)
+        change_policy(root, lambda document: drop_review_seat(document, "clearance", "codex", "orbit"))
+        self.assertEqual(data_problems(root), [f"{self.WHERE}clearance: lab orbit has seated authors and no "
+                                               "clearance seat outside it at or above the least of their floors"])
+
     def test_a_lab_with_seated_authors_keeps_a_clearance_seat_outside_it(self):
         """Claim: once no clearance seat outside a lab can serve it, the
         validator names that lab when one of its models holds a seat outside
@@ -199,7 +248,7 @@ class ReviewSeatValidationTest(unittest.TestCase):
         root = scratch(self)
         change_policy(root, lambda document: drop_review_seat(document, "clearance", "claude"))
         self.assertEqual(data_problems(root), [f"{self.WHERE}clearance: lab tessel has seated authors and no "
-                                               "clearance seat outside it"])
+                                               "clearance seat outside it at or above the least of their floors"])
 
 
 CLOSED_QUALIFIERS = {"same-model", "same-family", "below-floor", "below-clearance", "floor-unknown",

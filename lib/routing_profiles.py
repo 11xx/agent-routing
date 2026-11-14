@@ -463,19 +463,40 @@ def _tier_of(by_model: dict[str, dict], model: str, effort: str) -> dict | None:
     return next((tier for tier in by_model.get(model, {}).get("effort", []) if tier.get("effort") == effort), None)
 
 
+def _lab_floors(loaded: stores.Data) -> dict[str, list[int]]:
+    """Every author floor the catalog declares, by lab."""
+    floors: dict[str, list[int]] = {}
+    for model in loaded.models:
+        floors.setdefault(_lab(loaded.families, _family(model)), []).extend(
+            tier["floor"] for tier in model.get("effort", []))
+    return floors
+
+
+def _clears_lab(rank: int, seat_lab: str, lab: str, floors: dict[str, list[int]], clearance: int) -> bool:
+    """Whether a clearance seat can clear some author of `lab`.
+
+    It sits outside that lab and reaches both the clearance floor and the
+    least floor of the lab's authors. Validation and coverage share this one
+    feasibility.
+    """
+    return seat_lab != lab and rank >= clearance and rank >= min(floors.get(lab) or [0])
+
+
 def review_seat_problems(loaded: stores.Data) -> list[str]:
     """Each ``[[review_seat]]`` row that can never satisfy its purpose.
 
     A row names a stable route of the review profile on its backend. A
-    clearance seat reaches the ``[review]`` clearance floor and sits outside
-    the lab of the authors it is for. A clearance or findings seat reaches at
-    least the lowest floor of those authors. An exhaustive seat ranks with the
+    clearance seat reaches the ``[review]`` clearance floor and can clear
+    some author of each lab it is for, judged by ``_clears_lab``; an any
+    seat is for every lab but its own. A findings seat reaches at least the
+    lowest floor of the authors it is for. An exhaustive seat ranks with the
     highest-ranked stable review routes its backend's pools serve.
     """
     profile = next((entry for entry in loaded.profiles if entry["id"] == "review"), None)
     by_model = loaded.by_model()
     by_pool = {pool["provider"]: pool for pool in loaded.pools}
     clearance = loaded.policy["review"]["clearance"]
+    lab_floors = _lab_floors(loaded)
     problems = []
     for row in loaded.policy.get("review_seat", []):
         where = f"{stores.POLICY} {stores.label('review_seat', row)}"
@@ -487,19 +508,30 @@ def review_seat_problems(loaded: stores.Data) -> list[str]:
             continue
         rank, family = tier["rank"], row["author_family"]
         seat_lab = _lab(loaded.families, _family(by_model[row["model"]]))
-        floors = [entry["floor"] for model in loaded.models
-                  if family == stores.ANY_FAMILY or _lab(loaded.families, _family(model)) == family
-                  for entry in model.get("effort", [])]
         if row["purpose"] == "clearance":
+            others = [lab for lab in lab_floors if lab != seat_lab]
+            labs = others if family == stores.ANY_FAMILY else [family]
+            outside = [floor for lab in others for floor in lab_floors[lab]]
             if rank < clearance:
                 problems.append(f"{where}: rank {rank} is below the [review] clearance floor {clearance}, "
                                 "which a clearance seat must meet")
-            if family == seat_lab:
+            elif family == seat_lab:
                 problems.append(f"{where}: the seat shares the lab {family} of the authors it is for, "
                                 "so it can never clear them")
-        if row["purpose"] in {"clearance", "findings"} and floors and rank < min(floors):
-            problems.append(f"{where}: rank {rank} is below every floor of the authors it is for "
-                            f"(the least is {min(floors)})")
+            elif family == stores.ANY_FAMILY and outside and not any(
+                    _clears_lab(rank, seat_lab, lab, lab_floors, clearance) for lab in labs):
+                problems.append(f"{where}: rank {rank} is below every floor of the authors outside its lab "
+                                f"(the least is {min(outside)}), so it can never clear them")
+            elif family != stores.ANY_FAMILY and lab_floors.get(family) and not _clears_lab(
+                    rank, seat_lab, family, lab_floors, clearance):
+                problems.append(f"{where}: rank {rank} is below every floor of the authors it is for "
+                                f"(the least is {min(lab_floors[family])})")
+        if row["purpose"] == "findings":
+            floors = [floor for lab, values in lab_floors.items()
+                      if family in (stores.ANY_FAMILY, lab) for floor in values]
+            if floors and rank < min(floors):
+                problems.append(f"{where}: rank {rank} is below every floor of the authors it is for "
+                                f"(the least is {min(floors)})")
         if row["purpose"] == "exhaustive":
             ranks = [_tier_of(by_model, other["model"], other["effort"])["rank"] for other in _review_routes(profile)
                      if row["backend"] in other["backends"] and other.get("stability") == "stable"
@@ -512,13 +544,16 @@ def review_seat_problems(loaded: stores.Data) -> list[str]:
 
 
 def review_coverage_problems(loaded: stores.Data) -> list[str]:
-    """Each lab with seated authors that no clearance review seat can serve.
+    """Each lab with seated authors that no clearance review seat can clear.
 
     A lab has authors in the policy when one of its models holds a seat on a
     profile other than review. On each backend its clearance seat is its own
-    row, else the any row; at least one of those must sit outside its lab.
+    row, else the any row; at least one of those must clear some of its
+    authors by ``_clears_lab``.
     """
     by_model = loaded.by_model()
+    clearance = loaded.policy["review"]["clearance"]
+    lab_floors = _lab_floors(loaded)
     authoring = sorted({_lab(loaded.families, _family(by_model[route["model"]]))
                         for profile in loaded.profiles if profile["id"] != "review"
                         for route in [profile, *profile.get("variant", [])]
@@ -527,10 +562,12 @@ def review_coverage_problems(loaded: stores.Data) -> list[str]:
     problems = []
     for lab in authoring:
         seats = [review_seat_row(loaded, "clearance", lab, backend) for backend in backends]
-        if not any(row is not None and row["model"] in by_model
-                   and _lab(loaded.families, _family(by_model[row["model"]])) != lab for row in seats):
+        reaches = [(tier["rank"], _lab(loaded.families, _family(by_model[row["model"]])))
+                   for row in seats if row is not None
+                   for tier in [_tier_of(by_model, row["model"], row["effort"])] if tier is not None]
+        if not any(_clears_lab(rank, seat_lab, lab, lab_floors, clearance) for rank, seat_lab in reaches):
             problems.append(f"{stores.POLICY} [[review_seat]] purpose=clearance: lab {lab} has seated authors "
-                            "and no clearance seat outside it")
+                            "and no clearance seat outside it at or above the least of their floors")
     return problems
 
 

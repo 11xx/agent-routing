@@ -50,13 +50,15 @@ THE STORES
   (clearance, findings or exhaustive), one author lab, and one backend: its
   `author_family` is a catalog [[family]] id, a lineage no family row groups,
   or `any`, and its model and effort name a stable route of the review
-  profile on that backend. Lint refuses a review seat that can never serve
-  its purpose: a clearance seat below the [review] clearance floor or in the
-  lab of the authors it is for, a clearance or findings seat below every
-  floor of those authors, and an exhaustive seat below the highest-ranked
-  stable review route its backend's pools serve. It also names a lab whose
-  models hold a seat outside review when no clearance seat outside that lab
-  can serve it.
+  profile on that backend. A clearance seat can clear a lab when it sits
+  outside that lab and reaches both the [review] clearance floor and the
+  least floor of the lab's authors; an `any` seat is for every lab but its
+  own. Lint refuses a review seat that can never serve its purpose: a
+  clearance seat that can clear none of the labs it is for, a findings seat
+  below every floor of the authors it is for, and an exhaustive seat below
+  the highest-ranked stable review route its backend's pools serve. By the
+  same rule it names a lab whose models hold a seat outside review when no
+  clearance seat on any backend can clear it.
 
   `lint` checks each store's raw shape (tables, key types, required and
   unknown keys) before anything reads it; every verb refuses a problem in
@@ -119,8 +121,8 @@ EDIT POLICY OR CATALOG
       Upsert or remove the review seat keyed by purpose (clearance, findings
       or exhaustive), author lab and backend. Its model and effort name a
       stable review route on that backend that can serve the purpose. An edit
-      leaving a lab whose models hold seats without a clearance seat outside
-      it is refused, naming the lab.
+      leaving a lab whose models hold seats with no clearance seat that can
+      clear it is refused, naming the lab.
   set-guard MODEL [--effort EFFORT] [--profile PROFILE] --rule SENTENCE --why TEXT
   retire-guard MODEL [--effort EFFORT] [--profile PROFILE] --why TEXT
       Upsert or retire one guard at this exact scope. Multiple guards at the
