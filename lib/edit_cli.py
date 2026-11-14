@@ -11,8 +11,28 @@ EDITS = ("set-seat", "remove-seat", "default-seat", "prohibit", "allow", "rank",
          "set-review-seat", "remove-review-seat", "set-guard", "retire-guard", "add-model", "supersede-model", "note", "again", "retract", "supersede", "commit", "undo")
 
 
-def parser():
-    root = argparse.ArgumentParser(prog="agent-routing", description=__doc__)
+class UsageError(ValueError):
+    """Arguments the verb's parser refuses, in the parser's own words."""
+
+
+class RaisingParser(argparse.ArgumentParser):
+    """The verbs' parser for an in-process caller: a refusal raises instead of printing and exiting."""
+
+    def error(self, message):
+        raise UsageError(message)
+
+    def exit(self, status=0, message=None):
+        raise UsageError((message or "").strip() or f"{self.prog}: no result")
+
+    def print_help(self, file=None):
+        pass
+
+    def print_usage(self, file=None):
+        pass
+
+
+def parser(*, raising=False):
+    root = (RaisingParser if raising else argparse.ArgumentParser)(prog="agent-routing", description=__doc__)
     commands = root.add_subparsers(dest="verb", required=True)
     for verb in (*EDITS, "notes", "card", "log"):
         p = commands.add_parser(verb)
@@ -93,29 +113,42 @@ def parser():
     return root
 
 
+def arguments(argv, *, raising=False):
+    """A verb, whether it asked for JSON, and the options its library call takes."""
+    args = vars(parser(raising=raising).parse_args(argv))
+    return args.pop("verb"), args.pop("json"), args
+
+
+def execute(root, verb, args):
+    """The result object the verb prints with --json, and the data a card or notes view read it from."""
+    if verb == "log":
+        if args["limit"] < 1:
+            raise stores.StoreError("--limit must be positive")
+        return dict(schema="agent-routing-history/1", edits=data_edits.history(root, **args)), None
+    if verb in {"notes", "card"}:
+        with stores.store_lock(root, exclusive=False):
+            texts = data_edits.read_texts(root)
+        data_edits.checked(texts)
+        records = stores.parse_notes(texts[stores.NOTES])
+        loaded = stores.Data.from_texts(texts)
+        if verb == "notes":
+            return dict(schema="agent-routing-notes/1", notes=field_notes.select(records, **args)), loaded
+        return dict(schema="agent-routing-card/1", **field_notes.card(loaded, records, args["model"])), loaded
+    return data_edits.apply(root, verb, **args), None
+
+
 def main(root, argv=None):
-    args = vars(parser().parse_args(argv))
-    verb, as_json = args.pop("verb"), args.pop("json")
+    verb, as_json, args = arguments(argv)
     try:
-        if verb == "log":
-            if args["limit"] < 1:
-                raise stores.StoreError("--limit must be positive")
-            result = dict(schema="agent-routing-history/1", edits=data_edits.history(root, **args))
-            text = data_edits.render(result, root=root) if not as_json else None
+        result, loaded = execute(root, verb, args)
+        if as_json:
+            text = None
+        elif verb == "log":
+            text = data_edits.render(result, root=root)
         elif verb in {"notes", "card"}:
-            with stores.store_lock(root, exclusive=False):
-                texts = data_edits.read_texts(root)
-            data_edits.checked(texts)
-            records = stores.parse_notes(texts[stores.NOTES])
-            if verb == "notes":
-                result = dict(schema="agent-routing-notes/1", notes=field_notes.select(records, **args))
-            else:
-                result = dict(schema="agent-routing-card/1",
-                              **field_notes.card(stores.Data.from_texts(texts), records, args["model"]))
-            text = data_edits.render(result, data=stores.Data.from_texts(texts)) if not as_json else None
+            text = data_edits.render(result, data=loaded)
         else:
-            result = data_edits.apply(root, verb, **args)
-            text = data_edits.render(result) if not as_json else None
+            text = data_edits.render(result)
         print(json.dumps(result, ensure_ascii=False) if as_json else text)
         return 0
     except (OSError, ValueError, TypeError, KeyError) as error:
